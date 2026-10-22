@@ -1,0 +1,86 @@
+{
+  "swarms": {
+    "swarm-1792583998481-y5qtmy": {
+      "swarmId": "swarm-1792583998481-y5qtmy",
+      "topology": "hierarchical-mesh",
+      "maxAgents": 15,
+      "status": "running",
+      "agents": [
+        "agent-1792584039945-or1rwn"
+      ],
+      "tasks": [],
+      "config": {
+        "topology": "hierarchical-mesh",
+        "maxAgents": 15,
+        "strategy": "specialized",
+        "communicationProtocol": "message-bus",
+        "autoScaling": true,
+        "consensusMechanism": "majority"
+      },
+      "createdAt": "2026-10-21T11:59:58.481Z",
+      "updatedAt": "2026-10-21T11:59:58.481Z"
+    },
+    "swarm-1792584074880-hho4f5": {
+      "swarmId": "swarm-1792584074880-hho4f5",
+      "topology": "hierarchical-mesh",
+      "maxAgents": 15,
+      "status": "running",
+      "agents": [
+        "agent-1792584396056-l7zx02"
+      ],
+      "tasks": [],
+      "config": {
+        "topology": "hierarchical-mesh",
+        "maxAgents": 15,
+        "strategy": "specialized",
+        "communicationProtocol": "message-bus",
+        "autoScaling": true,
+        "consensusMechanism": "majority"
+      },
+      "createdAt": "2026-10-21T12:01:14.880Z",
+      "updatedAt": "2026-10-21T12:01:14.880Z"
+    },
+    "swarm-1792584491136-21pct6": {
+      "swarmId": "swarm-1792584491136-21pct6",
+      "topology": "hierarchical-mesh",
+      "maxAgents": 15,
+      "status": "running",
+      "agents": [
+        "agent-1792584567806-qej9rr",
+        "agent-1792585911888-p0bh2d"
+      ],
+      "tasks": [],
+      "config": {
+        "topology": "hierarchical-mesh",
+        "maxAgents": 15,
+        "strategy": "specialized",
+        "communicationProtocol": "message-bus",
+        "autoScaling": true,
+        "consensusMechanism": "majority"
+      },
+      "createdAt": "2026-10-21T12:08:11.136Z",
+      "updatedAt": "2026-10-21T12:08:11.136Z"
+    },
+    "swarm-1792585978733-gja7gz": {
+      "swarmId": "swarm-1792585978733-gja7gz",
+      "topology": "hierarchical-mesh",
+      "maxAgents": 15,
+      "status": "running",
+      "agents": [
+        "agent-1792586027903-s7h236"
+      ],
+      "tasks": [],
+      "config": {
+        "topology": "hierarchical-mesh",
+        "maxAgents": 15,
+        "strategy": "specialized",
+        "communicationProtocol": "message-bus",
+        "autoScaling": true,
+        "consensusMechanism": "majority"
+      },
+      "createdAt": "2026-10-21T12:32:58.733Z",
+      "updatedAt": "2026-10-21T12:32:58.733Z"
+    }
+  },
+  "version": "3.0.0"
+}

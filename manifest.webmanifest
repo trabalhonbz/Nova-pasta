@@ -1,0 +1,18 @@
+{
+  "name": "NBZ Construção | Gestão de Obras",
+  "short_name": "NBZ Obras",
+  "description": "Painel de gestão, relatórios fotográficos e demarcação de áreas das obras da Nbz Construção e Impermeabilização.",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f3f5f8",
+  "theme_color": "#21477f",
+  "icons": [
+    { "src": "./icone-180.png", "sizes": "180x180", "type": "image/png", "purpose": "any" },
+    { "src": "./icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

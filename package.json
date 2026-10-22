@@ -1,0 +1,11 @@
+{
+  "type": "module",
+  "scripts": {
+    "check": "node --check construir_site.js",
+    "generate": "node construir_site.js"
+  },
+  "dependencies": {
+    "dotenv": "^18.0.8",
+    "groq-sdk": "^1.6.0"
+  }
+}

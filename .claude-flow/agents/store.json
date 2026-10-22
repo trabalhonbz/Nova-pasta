@@ -1,0 +1,92 @@
+{
+  "agents": {
+    "agent-1792584039945-or1rwn": {
+      "agentId": "agent-1792584039945-or1rwn",
+      "agentType": "coder",
+      "name": "coder-mvi295fx",
+      "status": "idle",
+      "health": 1,
+      "taskCount": 0,
+      "config": {
+        "provider": "anthropic",
+        "timeout": 300,
+        "autoTools": true
+      },
+      "createdAt": "2026-10-21T12:00:39.945Z",
+      "model": "sonnet",
+      "modelRoutedBy": "default"
+    },
+    "agent-1792584396056-l7zx02": {
+      "agentId": "agent-1792584396056-l7zx02",
+      "agentType": "coder",
+      "name": "coder-mvi2gs7v",
+      "status": "idle",
+      "health": 1,
+      "taskCount": 0,
+      "config": {
+        "provider": "anthropic",
+        "timeout": 300,
+        "autoTools": true
+      },
+      "createdAt": "2026-10-21T12:06:36.056Z",
+      "model": "sonnet",
+      "modelRoutedBy": "default"
+    },
+    "agent-1792584567806-qej9rr": {
+      "agentId": "agent-1792584567806-qej9rr",
+      "agentType": "coder",
+      "name": "coder-mvi2kgqx",
+      "status": "idle",
+      "health": 1,
+      "taskCount": 0,
+      "config": {
+        "provider": "anthropic",
+        "task": "Analise as especificações nesta pasta, configure/crie o banco de dados necessário e gere o site completo para a empresa de impermeabilização seguindo exatamente as instruções dos arquivos locais.",
+        "timeout": 300,
+        "autoTools": true
+      },
+      "createdAt": "2026-10-21T12:09:27.813Z",
+      "model": "opus",
+      "modelRoutedBy": "router",
+      "provider": "anthropic"
+    },
+    "agent-1792585911888-p0bh2d": {
+      "agentId": "agent-1792585911888-p0bh2d",
+      "agentType": "coder",
+      "name": "coder-mvi3d9u9",
+      "status": "idle",
+      "health": 1,
+      "taskCount": 0,
+      "config": {
+        "provider": "anthropic",
+        "model": "llama-3.3-70b-versatile",
+        "timeout": 300,
+        "autoTools": true
+      },
+      "createdAt": "2026-10-21T12:31:51.888Z",
+      "model": "sonnet",
+      "modelRoutedBy": "explicit",
+      "modelId": "llama-3.3-70b-versatile"
+    },
+    "agent-1792586027903-s7h236": {
+      "agentId": "agent-1792586027903-s7h236",
+      "agentType": "coder",
+      "name": "coder-mvi3frcz",
+      "status": "idle",
+      "health": 1,
+      "taskCount": 0,
+      "config": {
+        "provider": "anthropic",
+        "model": "llama-3.3-70b-versatile",
+        "task": "Analise as especificações nesta pasta, configure/crie o banco de dados necessário e gere o site completo para a empresa de impermeabilização seguindo exatamente as instruções dos arquivos locais.",
+        "timeout": 300,
+        "autoTools": true
+      },
+      "createdAt": "2026-10-21T12:33:47.903Z",
+      "model": "sonnet",
+      "modelRoutedBy": "explicit",
+      "modelId": "llama-3.3-70b-versatile"
+    }
+  },
+  "version": "3.0.0"
+}

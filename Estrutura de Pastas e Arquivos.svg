@@ -1,0 +1,129 @@
+<svg class="dark " xmlns="http://www.w3.org/2000/svg" viewBox="0 0 762.2 600" width="762.2" height="600">
+  <style>:root, .light {
+    --_lm: ;
+    --_dm: initial;
+    --bg: #ffffff;
+    --fg: #1f1f1f;
+    --line: #545454;
+    --accent: #1a73e8;
+    --surface: #f8f9fa;
+    --border: #747775;
+  }
+
+  .dark {
+    --_lm: initial;
+    --_dm: ;
+    --bg: #1f1f1f;
+    --fg: #e3e3e3;
+    --line: #bfbfbf;
+    --accent: #8ab4f8;
+    --surface: #2d2e30;
+    --border: #8e918f;
+  }
+  @import url('https://fonts.googleapis.com/css2?family=Google+Sans+Mono:wght@400;500;600;700&amp;display=swap');
+  text { font-family: 'Google Sans Mono', sans-serif; }
+  svg {
+    --_text:          var(--primaryTextColor, var(--fg));
+    --_text-sec:      var(--muted, color-mix(in srgb, var(--fg) 60%, var(--bg)));
+    --_text-muted:    var(--muted, color-mix(in srgb, var(--fg) 40%, var(--bg)));
+    --_text-faint:    color-mix(in srgb, var(--fg) 25%, var(--bg));
+    --_line:          var(--lineColor, var(--defaultLinkColor, var(--line, color-mix(in srgb, var(--fg) 50%, var(--bg)))));
+    --_arrow:         var(--_line);
+    --_node-fill:     var(--primaryColor, var(--surface, color-mix(in srgb, var(--fg) 3%, var(--bg))));
+    --_node-stroke:   var(--primaryBorderColor, var(--nodeBorder, var(--border, color-mix(in srgb, var(--fg) 20%, var(--bg)))));
+    --_group-fill:    var(--surface, var(--bg));
+    --_group-hdr:     color-mix(in srgb, var(--fg) 5%, var(--bg));
+    --_inner-stroke:  var(--_node-stroke);
+    --_key-badge:     color-mix(in srgb, var(--fg) 10%, var(--bg));
+  }</style>
+  <defs>
+    <style>text { font-family: "Google Sans Mono", monospace; font-size: 13px; dominant-baseline: central; white-space: pre; }
+.outer-box { fill: color-mix(in srgb, var(--fg) 6%, transparent); stroke: var(--primaryBorderColor, var(--nodeBorder, var(--border, var(--_node-stroke)))); stroke-width: 1.75px; }
+.rect-pill { fill: var(--bg); stroke: var(--primaryBorderColor, var(--nodeBorder, var(--border, var(--_node-stroke)))); stroke-width: 1.5px; }
+.stadium-pill { fill: var(--bg); stroke: var(--primaryBorderColor, var(--nodeBorder, var(--border, var(--_node-stroke)))); stroke-width: 1.5px; }
+.hex-pill { fill: var(--bg); stroke: var(--primaryBorderColor, var(--nodeBorder, var(--border, var(--_node-stroke)))); stroke-width: 1.5px; stroke-linejoin: round; stroke-linecap: round; }
+.diamond-box { fill: color-mix(in srgb, var(--fg) 9%, transparent); stroke: var(--primaryBorderColor, var(--nodeBorder, var(--border, var(--_node-stroke)))); stroke-width: 1.5px; stroke-linejoin: round; stroke-linecap: round; }
+.header-text { font-size: 14px; font-weight: 600; fill: var(--_text); }
+.label-text { font-size: 13px; font-weight: 500; fill: var(--_text); }
+.annotation-text { font-size: 13px; font-weight: 500; fill: var(--_text); }
+.arrow-line, .bus-line { stroke: var(--_line); stroke-width: 1.5px; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+.divider-line { stroke: var(--primaryBorderColor, var(--nodeBorder, var(--border, var(--_node-stroke)))); stroke-width: 1.0px; stroke-opacity: 0.75; }</style>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 1 L 10 5 L 0 9 Z" fill="var(--_arrow)"/>
+    </marker>
+    <marker id="arrow-left" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 Z" fill="var(--_arrow)"/>
+    </marker>
+  </defs>
+  <line x1="19.25" y1="47" x2="36.25" y2="47" class="bus-line"/>
+  <line x1="53.25" y1="69" x2="70.25" y2="69" class="bus-line"/>
+  <line x1="87.25" y1="91" x2="104.25" y2="91" class="bus-line"/>
+  <line x1="19.25" y1="113" x2="36.25" y2="113" class="bus-line"/>
+  <line x1="53.25" y1="135" x2="70.25" y2="135" class="bus-line"/>
+  <line x1="87.25" y1="157" x2="104.25" y2="157" class="bus-line"/>
+  <line x1="121.25" y1="179" x2="138.25" y2="179" class="bus-line"/>
+  <line x1="87.25" y1="201" x2="104.25" y2="201" class="bus-line"/>
+  <line x1="121.25" y1="223" x2="138.25" y2="223" class="bus-line"/>
+  <line x1="121.25" y1="245" x2="138.25" y2="245" class="bus-line"/>
+  <line x1="121.25" y1="267" x2="138.25" y2="267" class="bus-line"/>
+  <line x1="121.25" y1="289" x2="138.25" y2="289" class="bus-line"/>
+  <line x1="87.25" y1="311" x2="104.25" y2="311" class="bus-line"/>
+  <line x1="121.25" y1="333" x2="138.25" y2="333" class="bus-line"/>
+  <line x1="53.25" y1="355" x2="70.25" y2="355" class="bus-line"/>
+  <line x1="53.25" y1="377" x2="70.25" y2="377" class="bus-line"/>
+  <line x1="53.25" y1="399" x2="70.25" y2="399" class="bus-line"/>
+  <line x1="53.25" y1="421" x2="70.25" y2="421" class="bus-line"/>
+  <line x1="19.25" y1="443" x2="36.25" y2="443" class="bus-line"/>
+  <line x1="53.25" y1="465" x2="70.25" y2="465" class="bus-line"/>
+  <line x1="87.25" y1="487" x2="104.25" y2="487" class="bus-line"/>
+  <line x1="53.25" y1="509" x2="70.25" y2="509" class="bus-line"/>
+  <line x1="19.25" y1="531" x2="36.25" y2="531" class="bus-line"/>
+  <line x1="19.25" y1="553" x2="36.25" y2="553" class="bus-line"/>
+  <line x1="19.25" y1="575" x2="36.25" y2="575" class="bus-line"/>
+  <line x1="19.25" y1="47" x2="19.25" y2="575" class="bus-line"/>
+  <line x1="53.25" y1="135" x2="53.25" y2="421" class="bus-line"/>
+  <line x1="53.25" y1="465" x2="53.25" y2="509" class="bus-line"/>
+  <line x1="87.25" y1="157" x2="87.25" y2="311" class="bus-line"/>
+  <line x1="121.25" y1="223" x2="121.25" y2="289" class="bus-line"/>
+  <text x="15" y="25" class="annotation-text" text-anchor="start" dominant-baseline="central">nbz-sistema/</text>
+  <text x="49" y="47" class="annotation-text" text-anchor="start" dominant-baseline="central">.github/</text>
+  <text x="83" y="69" class="annotation-text" text-anchor="start" dominant-baseline="central">workflows/</text>
+  <text x="117" y="91" class="annotation-text" text-anchor="start" dominant-baseline="central">deploy.yml</text>
+  <text x="287" y="91" class="annotation-text" text-anchor="start" dominant-baseline="central"># Automação de deploy gratuito (GitHub Actions)</text>
+  <text x="49" y="113" class="annotation-text" text-anchor="start" dominant-baseline="central">public/</text>
+  <text x="83" y="135" class="annotation-text" text-anchor="start" dominant-baseline="central">assets/</text>
+  <text x="117" y="157" class="annotation-text" text-anchor="start" dominant-baseline="central">css/</text>
+  <text x="151" y="179" class="annotation-text" text-anchor="start" dominant-baseline="central">global.css</text>
+  <text x="287" y="179" class="annotation-text" text-anchor="start" dominant-baseline="central"># Estilização global do sistema</text>
+  <text x="117" y="201" class="annotation-text" text-anchor="start" dominant-baseline="central">js/</text>
+  <text x="151" y="223" class="annotation-text" text-anchor="start" dominant-baseline="central">auth.js</text>
+  <text x="287" y="223" class="annotation-text" text-anchor="start" dominant-baseline="central"># Lógica de login e verificação de nível de acesso</text>
+  <text x="151" y="245" class="annotation-text" text-anchor="start" dominant-baseline="central">database.js</text>
+  <text x="287" y="245" class="annotation-text" text-anchor="start" dominant-baseline="central"># Integração, salvamento e busca no Banco de Dados</text>
+  <text x="151" y="267" class="annotation-text" text-anchor="start" dominant-baseline="central">engenheiro.js</text>
+  <text x="287" y="267" class="annotation-text" text-anchor="start" dominant-baseline="central"># Controle de campo (toque na imagem, notas rápidas)</text>
+  <text x="151" y="289" class="annotation-text" text-anchor="start" dominant-baseline="central">diretoria.js</text>
+  <text x="287" y="289" class="annotation-text" text-anchor="start" dominant-baseline="central"># Painel analítico, contadores e tabelas de relatórios</text>
+  <text x="117" y="311" class="annotation-text" text-anchor="start" dominant-baseline="central">img/</text>
+  <text x="151" y="333" class="annotation-text" text-anchor="start" dominant-baseline="central">logo.png</text>
+  <text x="287" y="333" class="annotation-text" text-anchor="start" dominant-baseline="central"># Identidade visual da NBZ</text>
+  <text x="83" y="355" class="annotation-text" text-anchor="start" dominant-baseline="central">favicon.ico</text>
+  <text x="83" y="377" class="annotation-text" text-anchor="start" dominant-baseline="central">index.html</text>
+  <text x="287" y="377" class="annotation-text" text-anchor="start" dominant-baseline="central"># Tela de Login (Porta de entrada do sistema)</text>
+  <text x="83" y="399" class="annotation-text" text-anchor="start" dominant-baseline="central">engenheiro.html</text>
+  <text x="287" y="399" class="annotation-text" text-anchor="start" dominant-baseline="central"># Painel de Campo simplificado para os engenheiros</text>
+  <text x="83" y="421" class="annotation-text" text-anchor="start" dominant-baseline="central">diretoria.html</text>
+  <text x="287" y="421" class="annotation-text" text-anchor="start" dominant-baseline="central"># Painel Administrativo / Dashboard da Diretoria</text>
+  <text x="49" y="443" class="annotation-text" text-anchor="start" dominant-baseline="central">supabase/</text>
+  <text x="83" y="465" class="annotation-text" text-anchor="start" dominant-baseline="central">migrations/</text>
+  <text x="117" y="487" class="annotation-text" text-anchor="start" dominant-baseline="central">20261021_init.sql</text>
+  <text x="287" y="487" class="annotation-text" text-anchor="start" dominant-baseline="central"># Script do banco de dados (Tabelas, Usuários e Permissões)</text>
+  <text x="83" y="509" class="annotation-text" text-anchor="start" dominant-baseline="central">config.toml</text>
+  <text x="287" y="509" class="annotation-text" text-anchor="start" dominant-baseline="central"># Configurações locais do banco gratuito</text>
+  <text x="49" y="531" class="annotation-text" text-anchor="start" dominant-baseline="central">.env.example</text>
+  <text x="287" y="531" class="annotation-text" text-anchor="start" dominant-baseline="central"># Modelo das chaves de acesso gratuitas do banco (API Keys)</text>
+  <text x="49" y="553" class="annotation-text" text-anchor="start" dominant-baseline="central">.gitignore</text>
+  <text x="287" y="553" class="annotation-text" text-anchor="start" dominant-baseline="central"># Bloqueio de arquivos confidenciais do Git</text>
+  <text x="49" y="575" class="annotation-text" text-anchor="start" dominant-baseline="central">README.md</text>
+  <text x="287" y="575" class="annotation-text" text-anchor="start" dominant-baseline="central"># Manual técnico de instalação e uso do sistema</text>
+</svg>
