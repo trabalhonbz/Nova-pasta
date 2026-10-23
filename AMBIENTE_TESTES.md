@@ -9,6 +9,7 @@ Escrito para a equipe que opera e publica o painel de gestão de obras.
 | `index.html` | A aplicação inteira (HTML, CSS e JavaScript embutidos). |
 | `manifest.webmanifest` | Permite instalar o painel como aplicativo (PWA) no celular. |
 | `sw.js` | Service worker: guarda os arquivos estáticos para abrir offline. |
+| `tests/` | Bateria automatizada, executada com `npm test`. Não vai para o ar. |
 
 `index.html` funciona sozinho. Os dois últimos arquivos só são usados quando o painel é
 servido por `http://` ou `https://`; abrindo o arquivo direto do disco eles são ignorados
@@ -107,6 +108,13 @@ não podem ser excluídos — marque-os como inativos para preservar o históric
 - As senhas são guardadas apenas como hash PBKDF2-SHA256 (150 000 iterações) com sal
   individual. Em navegadores sem `crypto.subtle`, o sistema cai para um hash interno mais
   fraco — use navegadores atuais.
+- O hash gravado carrega o nome do algoritmo usado (`pbkdf2$…` ou `fallback$…`) e a
+  conferência sempre usa esse algoritmo, não o que estiver disponível no momento. Assim uma
+  senha criada em navegador antigo continua funcionando em navegador atual, e vice-versa.
+- Se o navegador não tiver o recurso de criptografia necessário para conferir a senha
+  gravada, o painel diz isso em vez de "usuário ou senha inválidos" e **não** gasta uma das
+  cinco tentativas — uma limitação do navegador não bloqueia a conta. `crypto.subtle` existe
+  em `https://` e em `localhost`, mas não em `http://` comum nem em arquivo aberto do disco.
 - Acessos, liberações de histórico, tentativas recusadas e alterações de cargo ficam
   registrados no próprio histórico, com o nome do responsável.
 
@@ -117,16 +125,170 @@ Com o painel publicado em `https://`, o Chrome (Android) e o Safari (iPhone) ofe
 rede, porque o `sw.js` guarda os arquivos estáticos. Os dados continuam no navegador do
 aparelho — a instalação não sincroniza nada entre dispositivos.
 
+## Planta, cores dos ambientes e relatório em A4
+
+### As quatro situações
+
+| Situação | Cor | Valor gravado |
+|---|---|---|
+| Finalizado | verde | `executed` |
+| Executando | azul | `inProgress` |
+| Não Liberado | vermelho | `blocked` |
+| Liberado | amarelo | `pending` |
+
+Os rótulos e as cores mudaram, mas **o valor gravado é o mesmo de antes** — nenhum dado
+precisou ser convertido, e plantas marcadas na versão anterior continuam válidas. Para
+mexer em rótulo, cor ou ordem, edite `regionStatusOptions` em `index.html`: a barra da
+planta, o painel do local, o resumo do pavimento e o relatório saem todos de lá.
+
+### A barra da planta
+
+Na planta de um pavimento (**Obras → abrir obra → Abrir planta**) uma única barra no topo
+reúne tudo. Nada do que se usa no dia a dia fica abaixo da planta.
+
+| Botão | O que faz ao tocar numa área |
+|---|---|
+| **Finalizado / Executando / Não Liberado / Liberado** | pinta a área com aquela cor |
+| **Demarcar Áreas** | entra no desenho: arraste para criar a área |
+| **Fotos** | abre **Dados do setor** — fotografias, situação e exclusão |
+
+**Trocar a cor de uma área é um clique.** Com uma cor escolhida no topo, tocar na área já
+aplica. E se a área já estiver selecionada, tocar numa cor no topo aplica nela na hora,
+sem precisar tocar na área de novo.
+
+A seleção é **automática**: tocar numa área a seleciona. Não existe botão "Selecionar
+área" — nem "Aplicar situação", que as cores do topo substituíram.
+
+A cor ativa fica marcada por um anel na própria cor e um **✓** dentro do quadrado, e o
+rótulo acima da barra diz por extenso o que está valendo. Tocar numa área que já está
+naquela cor avisa, em vez de não responder. Cada toque muda apenas a área tocada, e quem
+não tem a permissão `status.edit` recebe o aviso de permissão em vez de pintar.
+
+Enquanto **Demarcar Áreas** está ativo, aparece logo abaixo a fileira com *Desfazer
+ponto*, *Concluir polígono* e *Limpar pavimento* — e some quando se sai do desenho.
+
+Para **mover ou redimensionar** uma área, use o modo **Fotos** (sem cor escolhida):
+arraste o interior para mover e os cantos para redimensionar. Com uma cor escolhida o
+toque é só para pintar, de propósito — assim um tremor no dedo não sai arrastando a
+demarcação.
+
+### Dados do setor
+
+É o painel que abre ao tocar numa área no modo **Fotos**. Reúne o que é específico de um
+setor:
+
+- as **fotografias** do local, que alimentam o relatório;
+- a **situação**, nas mesmas quatro cores da barra do topo;
+- **Editar dados do setor** (nome, área, sistema, material, datas, custo);
+- **Excluir área**.
+
+Excluir e trocar a situação ficam aqui, e não na barra da planta, para que a barra guarde
+só o que se usa a cada toque.
+
+### Lista de pavimentos
+
+Em **Obras → abrir obra → Pavimentos**, cada pavimento é um cartão com identificação,
+área total, barra de progresso, a contagem `% · N setor(es)` e as ações **Replicar** e
+**Excluir**. O cartão inteiro abre a planta.
+
+O cartão **não** repete os botões de situação de cada setor. Eles alongavam a lista — oito
+pavimentos com dois setores cada rendiam 64 botões — e empurravam para fora da tela o que
+a lista existe para mostrar. A situação de um setor se altera em dois lugares:
+
+- **Na planta**, pela paleta de cores: um toque na cor, um toque no ambiente.
+- **No painel do local**, aberto ao tocar num setor dentro da planta (com o pincel
+  desligado), que usa as mesmas cores da paleta e mostra as fotografias e os dados do
+  setor.
+
+### Relatório em folha A4
+
+Em **Relatórios**, o botão **⤓ Imprimir** monta a folha e abre a impressão do navegador.
+A folha é A4 retrato com margens de 12 mm em cima e embaixo e 10 mm nas laterais.
+
+O que muda em relação à tela:
+
+- A **planta** ocupa a largura inteira da coluna (até 150 mm de altura), em vez da
+  miniatura usada na tela.
+- As **fotografias** saem **duas por linha** (cerca de 88 mm cada), com a altura livre —
+  uma foto em retrato continua em retrato e uma em paisagem continua em paisagem, sem
+  corte nem deformação. A legenda (data e autor) vai **abaixo** de cada foto.
+- A folha leva **todas** as fotografias de cada visita. Na tela a galeria mostra só as 6
+  primeiras, com o botão "+N foto(s)"; na impressão esse limite não se aplica.
+- Pavimentos **recolhidos** na tela saem **abertos** no papel.
+- A tabela de setores sai inteira, e o cabeçalho dela **se repete** quando ela atravessa
+  mais de uma página.
+- A folha ganha um **cabeçalho próprio** com o título, a obra filtrada e a data e hora de
+  geração — na tela essas informações ficam na barra de ferramentas, que não é impressa.
+- Botões, filtros e controles de tela não são impressos.
+
+Fundos coloridos não são usados na folha: o navegador só imprime fundo quando a opção
+"Gráficos de segundo plano" está ligada, e sem ela um texto branco sairia invisível. Os
+indicadores em que a cor **é** a informação (chips de situação, barras de progresso) são
+marcados para sair coloridos de qualquer forma.
+
+Imagens grandes podem passar para a página seguinte em vez de serem cortadas ao meio —
+isso é esperado e mantém a folha limpa.
+
+## Bateria automatizada de testes
+
+O painel roda inteiramente no navegador, mas a bateria pode ser executada no terminal: ela
+carrega o próprio `index.html` num navegador simulado (jsdom) e dirige a interface de
+verdade — preenche campos, envia formulários e confere o que ficou gravado.
+
+```bash
+npm install     # só na primeira vez
+npm test
+```
+
+São 47 verificações. Leva alguns minutos, porque usa o PBKDF2 real de 150 000 iterações em
+vez de um substituto rápido — testar o algoritmo de mentira esconderia justamente os
+defeitos de senha.
+
+| Arquivo | Função |
+|---|---|
+| `tests/harness.js` | Sobe o painel em jsdom e oferece os atalhos (criar administrador, entrar, simular cota cheia). |
+| `tests/painel.test.js` | As verificações. |
+
+O que a bateria cobre: primeiro acesso e login, bloqueio após cinco tentativas, isolamento
+do ambiente de testes, permissões por cargo, situação das áreas e soma por situação, regras
+de presença, leitura de planilha (`;`, `,`, aspas, BOM, CRLF), classificação da importação,
+área e geometria das demarcações, conversão dos pavimentos antigos, o comportamento do
+painel quando o armazenamento do navegador está cheio, a paleta de cores dos ambientes e o
+conteúdo da folha de impressão (todas as fotos, pavimentos abertos, imagens carregadas,
+cabeçalho com obra e data).
+
+O que ela **não** cobre, e continua exigindo revisão no navegador: desenho e arraste das
+demarcações com o dedo ou o mouse, pinça para ampliar, importação de plantas em PDF,
+câmera, compressão de fotografias e a instalação como aplicativo.
+
+O **layout** da folha A4 também não é medido pela bateria — o jsdom não calcula impressão.
+A bateria garante o conteúdo e as regras de CSS; o tamanho real das imagens na página se
+confere pela pré-visualização de impressão do navegador (**Relatórios → ⤓ Imprimir**, ou
+Ctrl+P), com a opção de papel em A4.
+
+### Conferir que um teste de correção realmente pega o defeito
+
+Um teste escrito para um bug só vale se falhar na versão que tinha o bug. `NBZ_INDEX`
+aponta a bateria para outra cópia do painel:
+
+```bash
+NBZ_INDEX=/caminho/para/index.html.anterior node tests/painel.test.js
+```
+
+As verificações de correção devem falhar nessa cópia e passar na atual.
+
 ## Publicação de uma versão aprovada
 
-1. Revise a versão em `index.html?ambiente=teste`, passando pelos fluxos de cargos,
-   relatórios, fotografias, demarcações e troca de situação.
-2. Guarde uma cópia dos arquivos atualmente hospedados (`index.html`, `manifest.webmanifest`,
+1. Rode `npm test` e confirme que as 22 verificações passam.
+2. Revise a versão em `index.html?ambiente=teste`, passando pelos fluxos de cargos,
+   relatórios, fotografias, demarcações e troca de situação — inclusive o que a bateria
+   automatizada não alcança (desenho das demarcações, plantas em PDF, câmera).
+3. Guarde uma cópia dos arquivos atualmente hospedados (`index.html`, `manifest.webmanifest`,
    `sw.js`).
-3. Publique os três arquivos no ambiente de produção pela rotina de hospedagem do projeto.
-4. Ao mudar `index.html`, incremente `cacheName` em `sw.js` (por exemplo `nbz-obras-v2`)
+4. Publique os três arquivos no ambiente de produção pela rotina de hospedagem do projeto.
+5. Ao mudar `index.html`, incremente `cacheName` em `sw.js` (por exemplo `nbz-obras-v2`)
    para que os aparelhos já instalados troquem o cache antigo.
-5. Abra o endereço normal (sem `?ambiente=teste`) e confira uma leitura e uma edição
+6. Abra o endereço normal (sem `?ambiente=teste`) e confira uma leitura e uma edição
    controlada.
 
 Este repositório não contém pipeline de deploy, servidor, API nem banco de dados
@@ -138,10 +300,18 @@ conectado: a publicação segue o processo já usado pela equipe de hospedagem.
   registros de presença ficam no `localStorage` do navegador. Não há servidor nem
   sincronização entre aparelhos: o que é lançado no celular do encarregado não aparece
   no computador do escritório.
-- As fotografias são redimensionadas (máx. 1280 px) e recomprimidas em JPEG antes de serem
-  gravadas. Mesmo assim o `localStorage` tem limite de poucos megabytes por site: quando a
-  gravação falha, o painel avisa, desfaz a alteração e mostra "alterações não gravadas" na
-  barra superior.
+- As fotografias são redimensionadas (máx. 1600 px no lado maior) e recomprimidas em JPEG
+  antes de serem gravadas. Mesmo assim o `localStorage` tem limite de poucos megabytes por
+  site: quando a gravação falha, o painel avisa, desfaz a alteração e mostra "alterações não
+  gravadas" na barra superior.
+- Cada gravação é feita por inteiro ou não é feita. O painel grava duas chaves em sequência
+  (obras + histórico, ou cadastro de equipe + presença) e o `localStorage` não tem
+  transação; por isso ele guarda o conteúdo anterior das duas chaves e o restaura se
+  qualquer uma falhar. É o que garante que a mensagem "o valor anterior foi mantido"
+  descreva também o que está gravado, e não apenas o que está na tela.
+- O histórico guarda as 150 atividades mais recentes. O corte é aplicado **antes** de
+  gravar, então um histórico grande consegue encolher e gravar num armazenamento quase
+  cheio, em vez de deixar o painel preso em "alterações não gravadas".
 - Na primeira abertura após esta atualização, os pavimentos antigos que tinham
   comprimento e largura são convertidos para **área total** (área = comprimento × largura)
   e os campos antigos são removidos. Antes de converter, o painel grava uma cópia integral

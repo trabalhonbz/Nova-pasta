@@ -95,6 +95,10 @@
     @keyframes toast-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
     /* ===== Situação rápida (otimizado para toque) ===== */
     .quick-status{border-top:1px dashed #e4e9f0;margin-top:9px;padding-top:9px;display:grid;gap:9px}
+    /* O painel do local reaproveita `.paint-bar`/`.paint-swatches` da barra da planta:
+       mesma amostra, mesmo anel de selecao, mesmo "✓". Só muda a separacao do bloco. */
+    .local-status{border-top:1px dashed #e4e9f0;margin:11px 0 0;padding-top:11px}
+    .local-status .paint-bar-label{margin-bottom:8px}
     .quick-status-item{display:grid;gap:6px}
     .quick-status-head{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:9px}
     .quick-status-head strong{font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -149,6 +153,89 @@
     .sketch-opacity input{flex:1;min-width:110px;accent-color:var(--blue);height:30px}
     .sketch-zoom-readout{font-size:8px;color:#78879b;min-width:62px;text-align:right;white-space:nowrap}
     .sketch-handle{cursor:nwse-resize}
+    /* ===== Tela da planta: pintar setores (igual ao aplicativo de campo) ===== */
+    .plan-dialog{width:min(620px,calc(100% - 20px));max-height:94vh;background:#f9fafc}
+    .plan-topbar{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#fff;border-bottom:1px solid #eceff4}
+    .plan-topbar h2{flex:1;min-width:0;margin:0;font:800 17px/1.25 var(--display);color:#1b2330;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .plan-back,.plan-topbar-icon{width:40px;height:40px;flex:none;border:0;border-radius:10px;background:transparent;color:#1b2330;font-size:19px;display:grid;place-items:center}
+    .plan-back:hover,.plan-topbar-icon:hover{background:#f1f3f7}
+    .plan-body{background:#f9fafc;padding-top:12px}
+    .paint-bar{margin:0 0 10px}
+    .paint-bar-label{display:block;font-size:11px;font-weight:600;letter-spacing:.02em;color:#7d8794;margin-bottom:9px}
+    /* Cada cor leva o próprio nome: a paleta se explica sozinha e o cargo de campo não
+       precisa decorar o significado dos quadradinhos. A cor ativa é marcada por anel na
+       própria cor mais um "✓" dentro do quadrado — antes o estado selecionado pintava o
+       botão de verde, que se confundia com a cor "Executado". */
+    .paint-swatches{display:flex;gap:9px;flex-wrap:wrap}
+    .paint-swatches button{flex:1 1 78px;max-width:132px;min-height:68px;padding:8px 6px;border:2px solid transparent;border-radius:15px;background:#f3f5f8;display:grid;justify-items:center;align-content:center;gap:5px;transition:border-color .12s,background .12s,box-shadow .12s}
+    .paint-swatches button:hover{background:#eceff4}
+    .paint-swatches i{display:block;width:26px;height:26px;border-radius:5px;box-shadow:inset 0 0 0 1px #0000001a}
+    .paint-swatches i.round{border-radius:50%}
+    .paint-swatches span{font-size:9px;font-weight:700;line-height:1.15;text-align:center;color:#5c6878}
+    .paint-swatches i.tool{display:grid;place-items:center;color:#fff;font-size:15px;line-height:1}
+    /* `.sketch-tools` e `.sketch-edit-tools` declaram `display:flex`, que ganha do
+       `display:none` embutido no atributo [hidden]. Sem isto a fileira do desenho
+       aparecia fora do modo de desenho. */
+    .sketch-tools[hidden],.sketch-edit-tools[hidden]{display:none}
+    .paint-swatches button:disabled{opacity:.45}
+    /* A grade da folha acomoda as quatro situações mais o total sem apertar. */
+    .rf-breakdown{grid-template-columns:repeat(auto-fit,minmax(84px,1fr))}
+    .paint-swatches button[aria-pressed="true"]{background:#fff;border-color:var(--sw,#1877f2);box-shadow:0 1px 8px #1b23301f}
+    .paint-swatches button[aria-pressed="true"] span{color:#1b2330}
+    .paint-swatches button[aria-pressed="true"] i{display:grid;place-items:center}
+    .paint-swatches button[aria-pressed="true"] i:after{content:"✓";font:800 15px/1 var(--display);color:var(--ink,#fff)}
+    .plan-progress{margin-top:12px;background:#fff;border:1px solid #eceff4;border-radius:14px;padding:14px 15px;box-shadow:0 2px 10px #1b233008}
+    .plan-progress-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+    .plan-progress-head strong{font:800 14px/1 var(--display);color:#1b2330}
+    .plan-progress-head b{font:800 26px/1 var(--display);color:#1877f2}
+    .plan-progress-track{height:9px;border-radius:99px;background:#e9edf3;overflow:hidden;margin:12px 0 13px}
+    .plan-progress-track i{display:block;height:100%;border-radius:99px;background:#1367fb}
+    .plan-progress-legend{display:grid;grid-template-columns:1fr 1fr;gap:7px 14px}
+    .plan-progress-legend span{display:flex;align-items:center;gap:7px;font-size:12px;color:#6b7280;min-width:0}
+    .plan-progress-legend i{width:14px;height:14px;flex:none;border-radius:3px}
+    .plan-progress-legend b{color:#1b2330;font-weight:700}
+    .plan-progress-total{margin:12px 0 0;font-size:12px;color:#6b7280}
+    .plan-tools{margin-top:12px;border:1px solid #e6eaf1;border-radius:12px;background:#fff;padding:0 11px}
+    .plan-tools[open]{padding-bottom:11px}
+    .plan-tools>summary{list-style:none;cursor:pointer;padding:12px 2px;font-size:11px;font-weight:700;color:#5a6879;display:flex;align-items:center;gap:7px}
+    .plan-tools>summary::-webkit-details-marker{display:none}
+    .plan-dialog .sketch-zoom{right:10px;bottom:10px;gap:8px}
+    .plan-dialog .sketch-zoom button{width:44px;height:44px;border:0;border-radius:13px;background:#eceff4ee;color:#1b2330;font-size:17px;box-shadow:0 1px 4px #1b233014}
+    .region-label{font:800 13px var(--display);fill:#111827;paint-order:stroke;stroke:#fff;stroke-width:4px;stroke-linejoin:round;pointer-events:none}
+    .region-label.area{font-size:12px}
+    /* ===== Relatórios por pavimento ===== */
+    .report-floor-card{background:#fff;border:1px solid #e8ecf2;border-radius:14px;overflow:hidden;margin-bottom:16px;box-shadow:0 2px 10px #1b233008}
+    .report-floor-card>header{background:linear-gradient(100deg,#1d4ed8,#2563eb 55%,#3b82f6);color:#fff;padding:13px 16px}
+    .report-floor-card .rf-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+    .report-floor-card .rf-work{display:block;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#cfe0ff}
+    .report-floor-card .rf-name{display:block;margin-top:3px;font:700 14px/1.3 var(--display);word-break:break-word}
+    .report-floor-card .rf-pct{text-align:right;flex:none}
+    .report-floor-card .rf-pct strong{display:block;font:800 22px/1 var(--display)}
+    .report-floor-card .rf-pct span{font-size:9px;color:#cfe0ff}
+    .report-floor-card .rf-track{height:6px;border-radius:99px;background:#ffffff38;overflow:hidden;margin-top:11px}
+    .report-floor-card .rf-track i{display:block;height:100%;border-radius:99px;background:#fff}
+    .rf-breakdown{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-bottom:1px solid #eef1f6}
+    .rf-breakdown div{padding:12px 6px;text-align:center;border-right:1px solid #eef1f6}
+    .rf-breakdown div:last-child{border-right:0}
+    .rf-breakdown strong{display:block;font:700 13px/1.2 var(--display);color:#1b2330}
+    .rf-breakdown span{font-size:8px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#8e99a8}
+    .rf-toggle{width:100%;border:0;background:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:10px;font-weight:600;color:#45526a;text-align:left}
+    .rf-body{padding:0 16px 16px;border-top:1px solid #eef1f6}
+    .rf-sub{margin:14px 0 8px;font-size:8px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#98a2b1}
+    .rf-plan{border:1px solid #eef1f6;border-radius:10px;background:#f8fafc;min-height:120px;display:grid;place-items:center;padding:10px}
+    .rf-plan img{max-height:190px;width:auto;max-width:100%;border-radius:6px}
+    .rf-table-wrap{overflow-x:auto;border:1px solid #eef1f6;border-radius:10px}
+    .rf-table{width:100%;border-collapse:collapse;font-size:9px;min-width:460px}
+    .rf-table th{background:#f8fafc;color:#8e99a8;font-size:8px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:9px 8px;text-align:left;white-space:nowrap}
+    .rf-table th:not(:first-child),.rf-table td:not(:first-child){text-align:center}
+    .rf-table td{padding:10px 8px;border-top:1px solid #f1f4f8;color:#44506a}
+    .rf-table td:first-child{font-weight:700;color:#1b2330}
+    .rf-chip{display:inline-block;padding:3px 9px;border-radius:99px;font-size:8px;font-weight:700;white-space:nowrap}
+    /* Cabeçalho exclusivo da folha impressa: na tela essas informações já estão na barra
+       de ferramentas, que não vai para o papel. Sem ele a folha saía sem título, sem data
+       e sem dizer a que obra se refere. */
+    .print-header{display:none}
+    .rf-empty{margin:10px 0 0;font-size:9px;color:#909bab}
     /* ===== Ajustes gerais para telas pequenas ===== */
     @media(max-width:600px){
       dialog{width:calc(100% - 14px);max-height:92vh}
@@ -254,7 +341,81 @@
       .team-actions button{flex:1}
       .import-counts{grid-template-columns:1fr}
     }
-    @media print{.auth-overlay,.toast-stack,.user-menu,.sketch-zoom{display:none!important}.photo-gallery{grid-template-columns:repeat(3,1fr)}.photo-gallery .gallery-cell{break-inside:avoid}}
+    /* ===== Relatório em folha A4 =====
+       Folha A4 retrato com margens de 12mm/10mm deixa 190mm de largura útil. Planta e
+       fotografias passam a ser medidas em milímetros, com largura acompanhando a coluna
+       e altura livre (`height:auto`) — é o que amplia a imagem sem deformá-la. O teto em
+       mm existe para a quebra de página sair limpa.
+
+       Fundos coloridos e texto branco não são usados aqui: o navegador só imprime fundo
+       quando "gráficos de segundo plano" está ligado, e sem ele o texto branco sairia
+       invisível. Os indicadores em que a cor é a informação (chips de situação, amostras)
+       pedem `print-color-adjust:exact` para sobreviver de qualquer modo. */
+    @media print{
+      @page{size:A4 portrait;margin:12mm 10mm}
+      .auth-overlay,.toast-stack,.user-menu,.sketch-zoom{display:none!important}
+      .content{max-width:none!important;padding:0!important}
+      /* Botões que só fazem sentido na tela. */
+      .rf-toggle,.floor-croqui,.gallery-more,.report-filter{display:none!important}
+      .print-header{display:block;border-bottom:2px solid #1d4ed8;padding-bottom:3mm;margin-bottom:5mm}
+      .print-header strong{display:block;font:800 14pt/1.2 var(--display);color:#12306b}
+      .print-header span{display:block;margin-top:1.5mm;font-size:8.5pt;color:#5b6678}
+      /* Pavimento ou galeria recolhidos na tela ainda saem inteiros no papel. */
+      .rf-body[hidden]{display:block!important}
+      #reportsView img{max-width:100%}
+      #reportsView{color:#1b2330}
+
+      .report-metrics{gap:4mm}
+      .report-metric{border:1px solid #d7dce4;border-radius:0;background:#fff!important}
+      .report-metric strong{font-size:13pt}
+      .report-metric span{font-size:7pt;color:#5b6678}
+      .total-progress{border:1px solid #d7dce4;border-radius:0;break-inside:avoid}
+      .total-progress-head{font-size:8pt}
+      .total-progress .progress-track{background:#e4e9f0!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+      .total-progress .progress-fill{background:#1d4ed8!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+      .report-heading{font-size:9pt}
+
+      .report-floor-card{border:1px solid #d7dce4;border-radius:0;box-shadow:none;margin:0 0 8mm;break-inside:auto}
+      .report-floor-card>header{background:#fff!important;color:#1b2330!important;border-bottom:2px solid #1d4ed8;padding:0 0 3mm;margin:0 4mm;break-inside:avoid;break-after:avoid}
+      .report-floor-card .rf-work,.report-floor-card .rf-pct span{color:#5b6678!important}
+      .report-floor-card .rf-name{font-size:13pt}
+      .report-floor-card .rf-pct strong{font-size:16pt;color:#1d4ed8}
+      .report-floor-card .rf-track{height:4px;background:#e4e9f0!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+      .report-floor-card .rf-track i{background:#1d4ed8!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+      .rf-breakdown{break-inside:avoid;margin:0 4mm;border-bottom:1px solid #e4e9f0}
+      .rf-breakdown div{padding:2.5mm 2mm}
+      .rf-breakdown strong{font-size:10pt}
+      .rf-breakdown span{font-size:6.5pt}
+      .rf-body{padding:0 4mm 4mm;border-top:0}
+      .rf-sub{font-size:8pt;margin:5mm 0 2mm;color:#5b6678;break-after:avoid}
+
+      /* Planta do ambiente: largura da coluna inteira, até 150mm de altura. */
+      .rf-plan{min-height:0;padding:0;border:1px solid #d7dce4;border-radius:0;background:#fff;break-inside:avoid}
+      .rf-plan img{width:auto;height:auto;max-width:100%;max-height:150mm;border-radius:0}
+      .rf-empty{font-size:8pt}
+
+      /* Setores: cabeçalho repetido a cada página quando a tabela atravessa a folha. */
+      .rf-table-wrap{overflow:visible!important;border:1px solid #d7dce4;border-radius:0;break-inside:auto}
+      .rf-table{min-width:0!important;font-size:8.5pt}
+      .rf-table thead{display:table-header-group}
+      .rf-table tr{break-inside:avoid}
+      .rf-table th{background:#f1f4f9!important;color:#44506a!important;font-size:7.5pt;padding:2mm 1.5mm;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+      .rf-table td{padding:2mm 1.5mm;font-size:8.5pt}
+      .rf-chip{background:#fff!important;border:1px solid currentColor;font-size:7.5pt;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+
+      /* Fotografias: duas por linha (≈88mm cada), altura livre para não achatar retrato. */
+      .photo-group{margin-top:4mm;break-inside:auto}
+      .photo-group-head{font-size:7.5pt;break-after:avoid}
+      .photo-group-head strong{font-size:9pt}
+      .photo-gallery{grid-template-columns:repeat(2,1fr)!important;gap:5mm;align-items:start}
+      .photo-gallery .gallery-cell{display:block;aspect-ratio:auto;min-height:0;background:#fff;border:1px solid #d7dce4;border-radius:0;overflow:visible;break-inside:avoid;page-break-inside:avoid}
+      .photo-gallery .gallery-cell img{width:100%;height:auto;max-height:92mm;object-fit:contain;background:#fff}
+      /* A legenda desce para baixo da foto: sobreposta em 7px era ilegível no papel e
+         cobria justamente o detalhe fotografado. */
+      .photo-gallery .gallery-cell .gallery-caption{position:static;background:none;color:#5b6678;font-size:7.5pt;padding:1.5mm 2mm;text-align:left}
+      .floor-empty-note{font-size:8pt}
+      .status-swatch,.status-chip i{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    }
   </style>
 </head>
 <body>
@@ -349,8 +510,8 @@
     </section>
     <section class="view" id="reportsView" aria-label="Relatórios">
       <div class="report-toolbar"><div><h2 class="section-title" style="font-size:18px">Relatórios</h2><p class="section-subtitle" id="reportTimestamp"></p></div><button class="action-button" type="button" id="printReport">⤓ Imprimir</button></div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px"><label for="reportProject" style="font-size:9px;font-weight:700">Filtrar por obra:</label><select id="reportProject" class="select-field" aria-label="Filtrar relatório por obra"></select></div>
-      <div id="reportContent"></div>
+      <div class="report-filter" style="display:flex;align-items:center;gap:8px;margin-bottom:14px"><label for="reportProject" style="font-size:9px;font-weight:700">Filtrar por obra:</label><select id="reportProject" class="select-field" aria-label="Filtrar relatório por obra"></select></div>
+      <div class="print-header" id="printHeader" aria-hidden="true"></div><div id="reportContent"></div>
     </section>
     <section class="view" id="historyView" aria-label="Histórico">
       <form class="lock-panel" id="historyLockPanel" hidden>
@@ -371,10 +532,10 @@
   <dialog id="newProjectDialog"><div class="dialog-head"><h2>Nova obra</h2><button class="dialog-close" type="button" data-close-dialog aria-label="Fechar">×</button></div><form class="dialog-body" id="newProjectForm"><div class="form-grid"><div class="form-field full"><label for="projectName">Nome da obra</label><input id="projectName" name="name" required maxlength="80" placeholder="Ex.: Edifício Central"></div><div class="form-field"><label for="projectCity">Cidade</label><input id="projectCity" name="city" required maxlength="60" placeholder="São Paulo"></div><div class="form-field"><label for="projectClient">Cliente / responsável</label><input id="projectClient" name="client" required maxlength="60" placeholder="Nome do cliente"></div></div><p class="detail-note">As áreas e os pavimentos serão cadastrados com as medidas reais de cada planta.</p><div class="dialog-actions"><button class="button-secondary" type="button" data-close-dialog>Cancelar</button><button class="button-primary" type="submit">Criar obra</button></div></form></dialog>
   <dialog id="addFloorDialog"><div class="dialog-head"><h2>Adicionar pavimento</h2><button class="dialog-close" type="button" data-close-dialog aria-label="Fechar">×</button></div><form class="dialog-body" id="addFloorForm"><div class="form-grid"><div class="form-field full"><label for="floorName">Identificação</label><input id="floorName" name="name" required maxlength="60" placeholder="Ex.: 2º pavimento"></div><div class="form-field full"><label for="newFloorArea">Área total (m²)</label><input id="newFloorArea" name="area" type="text" inputmode="decimal" autocomplete="off" required maxlength="14" placeholder="Ex.: 1250,50"></div><div class="form-field full"><label for="addFloorPlanFile">Planta do pavimento (opcional)</label><input id="addFloorPlanFile" type="file" accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf"><small class="metric-note">JPG, PNG, WEBP ou PDF, até 25 MB. O PDF usa a primeira página.</small></div></div><p class="detail-note">Informe a área total do pavimento. Você também pode importar a planta agora e demarcar as áreas no croqui.</p><p class="sketch-error" id="addFloorError" role="status"></p><div class="dialog-actions"><button class="button-secondary" type="button" data-close-dialog>Cancelar</button><button class="button-primary" type="submit">Salvar pavimento</button></div></form></dialog>
   <dialog id="projectDetailDialog"><div class="dialog-head"><h2 id="detailTitle">Detalhes da obra</h2><button class="dialog-close" type="button" data-close-dialog aria-label="Fechar">×</button></div><div class="dialog-body" id="detailContent"></div></dialog>
-  <dialog id="sketchDialog"><div class="dialog-head"><h2>Croqui do pavimento</h2><button class="dialog-close" type="button" data-close-dialog aria-label="Fechar">×</button></div><div class="dialog-body"><div class="sketch-toolbar"><div class="form-field"><label for="sketchFloor">Pavimento</label><select id="sketchFloor"></select></div><div class="form-field"><label for="floorAreaInput">Área total (m²)</label><input id="floorAreaInput" type="text" inputmode="decimal" autocomplete="off" maxlength="14"></div><div class="form-field"><label for="regionStatus">Marcação</label><select id="regionStatus"><option value="executed">Executada</option><option value="inProgress">Em execução</option></select></div></div><div class="sketch-readout"><div><strong id="floorAreaReadout">0 m²</strong><span>Área do pavimento</span></div><div><strong id="executedAreaReadout">0 m²</strong><span>Área concluída</span></div><div><strong id="pendingAreaReadout">0 m²</strong><span>Área restante</span></div></div><svg id="sketchCanvas" class="sketch-canvas" viewBox="0 0 1000 650" preserveAspectRatio="none" role="img" aria-label="Croqui do pavimento. Clique para marcar pontos da área."><defs><pattern id="sketchGrid" width="25" height="25" patternUnits="userSpaceOnUse"><path d="M 25 0 L 0 0 0 25" fill="none" stroke="#e5ebf2" stroke-width="1"/></pattern></defs><rect width="1000" height="650" fill="url(#sketchGrid)"/><rect x="100" y="80" width="800" height="480" fill="#ffffff" stroke="#7990ad" stroke-width="3"/><text x="500" y="53" text-anchor="middle" fill="#73839a" font-size="18">Área total do pavimento</text><g id="sketchRegions"></g><polyline id="sketchDraft" points="" fill="#23b78340" stroke="#108d68" stroke-width="4" stroke-dasharray="9 6"/><g id="sketchPoints"></g></svg><div class="sketch-tools"><button class="button-primary" type="button" data-sketch-action="start">＋ Nova marcação</button><button class="action-button" type="button" data-sketch-action="undo" disabled>Desfazer ponto</button><button class="action-button" type="button" data-sketch-action="finish" disabled>Concluir polígono</button><button class="button-secondary" type="button" data-sketch-action="clear">Limpar pavimento</button></div><p class="sketch-tip">Desenhe cada área sem sobrepor marcações. A escala usa o retângulo do croqui e as dimensões informadas acima.</p><p class="sketch-error" id="sketchError" role="status"></p><div class="dialog-actions"><button class="button-secondary" type="button" data-close-dialog>Fechar</button></div></div></dialog>
+  <dialog id="sketchDialog" class="plan-dialog"><div class="plan-topbar"><button class="plan-back" type="button" data-close-dialog aria-label="Voltar">←</button><h2 id="planTitle">Planta</h2><button class="plan-topbar-icon" type="button" data-sketch-action="toggle-tools" aria-label="Setores e ferramentas de edição" aria-expanded="false">☰</button><button class="plan-topbar-icon" type="button" data-sketch-action="photo" aria-label="Registrar fotografia">▣</button></div><div class="dialog-body plan-body"><div class="paint-bar"><span class="paint-bar-label">Toque na área para pintar:</span><div class="paint-swatches" id="paintSwatches" role="group" aria-label="Situação aplicada ao tocar na área"></div></div><div class="sketch-toolbar"><div class="form-field"><label for="sketchFloor">Pavimento</label><select id="sketchFloor"></select></div><div class="form-field"><label for="floorAreaInput">Área total (m²)</label><input id="floorAreaInput" type="text" inputmode="decimal" autocomplete="off" maxlength="14"></div><div class="form-field"><label for="regionStatus">Marcação</label><select id="regionStatus"><option value="executed">Executada</option><option value="inProgress">Em execução</option></select></div></div><div class="sketch-readout"><div><strong id="floorAreaReadout">0 m²</strong><span>Área do pavimento</span></div><div><strong id="executedAreaReadout">0 m²</strong><span>Área concluída</span></div><div><strong id="pendingAreaReadout">0 m²</strong><span>Área restante</span></div></div><svg id="sketchCanvas" class="sketch-canvas" viewBox="0 0 1000 650" preserveAspectRatio="none" role="img" aria-label="Croqui do pavimento. Clique para marcar pontos da área."><defs><pattern id="sketchGrid" width="25" height="25" patternUnits="userSpaceOnUse"><path d="M 25 0 L 0 0 0 25" fill="none" stroke="#e5ebf2" stroke-width="1"/></pattern></defs><rect id="sketchGridRect" width="1000" height="650" fill="url(#sketchGrid)"/><rect id="sketchSheet" x="100" y="80" width="800" height="480" fill="#ffffff" stroke="#7990ad" stroke-width="3"/><text id="sketchCaption" x="500" y="53" text-anchor="middle" fill="#73839a" font-size="18">Área total do pavimento</text><g id="sketchRegions"></g><polyline id="sketchDraft" points="" fill="#23b78340" stroke="#108d68" stroke-width="4" stroke-dasharray="9 6"/><g id="sketchPoints"></g></svg><div class="sketch-tools" hidden><button class="action-button" type="button" data-sketch-action="undo" disabled>Desfazer ponto</button><button class="action-button" type="button" data-sketch-action="finish" disabled>Concluir polígono</button><button class="button-secondary" type="button" data-sketch-action="clear">Limpar pavimento</button></div><p class="sketch-tip">Desenhe cada área sem sobrepor marcações. A escala usa o retângulo do croqui e as dimensões informadas acima.</p><div class="plan-progress" id="planProgress"></div><p class="sketch-error" id="sketchError" role="status"></p><div class="dialog-actions"><button class="button-secondary" type="button" data-close-dialog>Fechar</button></div></div></dialog>
   <dialog id="photoDialog"><div class="dialog-head"><h2>Relatório fotográfico</h2><button class="dialog-close" type="button" data-close-dialog aria-label="Fechar">×</button></div><form class="dialog-body" id="photoReportForm"><div class="form-grid"><div class="form-field"><label for="photoProject">Obra</label><select id="photoProject" name="project" required></select></div><div class="form-field"><label for="photoFloor">Pavimento</label><select id="photoFloor" name="floor" required></select></div><div class="form-field full"><label for="photoRegion">Área / setor demarcado (opcional)</label><select id="photoRegion" name="region"></select></div><div class="form-field full"><label for="photoDescription">Descrição da visita</label><input id="photoDescription" name="description" required maxlength="220" placeholder="Serviço executado, observações e ocorrências"></div><div class="form-field full"><label for="photoFiles">Fotos da obra</label><div class="photo-upload"><div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:8px"><label class="button-secondary photo-manage-label" for="photoFiles">▤ Escolher do dispositivo</label><label class="button-secondary photo-manage-label" for="photoCameraFile">▣ Tirar foto agora</label></div><input id="photoFiles" type="file" accept="image/*" multiple hidden><input id="photoCameraFile" type="file" accept="image/*" capture="environment" hidden><small id="photoFilesSummary">Até 6 imagens por relatório. As fotos são reduzidas e comprimidas antes de ficarem salvas neste navegador.</small><div class="photo-preview-grid" id="photoPreviews"></div></div></div></div><p class="sketch-error" id="photoError" role="status"></p><div class="dialog-actions"><button class="button-secondary" type="button" data-close-dialog>Cancelar</button><button class="button-primary" type="submit">Salvar relatório</button></div></form></dialog>
   <dialog id="photoManageDialog"><div class="dialog-head"><h2 id="photoManageTitle">Gerenciar fotografia</h2><button class="dialog-close" type="button" data-close-dialog aria-label="Fechar">×</button></div><div class="dialog-body"><p id="photoManageContext" class="detail-note"></p><div style="display:flex;gap:7px;flex-wrap:wrap"><label class="button-secondary photo-manage-label" for="photoManageFile">▤ Escolher do dispositivo</label><label class="button-secondary photo-manage-label" for="photoManageCamera">▣ Tirar foto agora</label></div><input id="photoManageFile" type="file" accept="image/*" hidden><input id="photoManageCamera" type="file" accept="image/*" capture="environment" hidden><div id="photoManagePreview" class="photo-manage-preview"></div><p id="photoManageError" class="sketch-error" role="status"></p><div class="dialog-actions"><button id="photoDeleteButton" class="button-secondary floor-delete" type="button" hidden>Excluir foto</button><button class="button-secondary" type="button" data-close-dialog>Cancelar</button><button id="photoManageSave" class="button-primary" type="button" disabled>Salvar</button></div></div></dialog><dialog id="photoZoomDialog"><div class="dialog-head"><h2 id="photoZoomTitle">Fotografia</h2><button class="dialog-close" type="button" data-close-dialog aria-label="Fechar">×</button></div><div class="dialog-body"><img id="photoZoomImage" class="photo-zoom-image" alt="Fotografia ampliada"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:11px"><button class="button-secondary" type="button" id="photoZoomPrevious" style="min-width:86px">← Anterior</button><span id="photoZoomCounter" style="font-size:9px;color:#7d899b"></span><button class="button-secondary" type="button" id="photoZoomNext" style="min-width:86px">Próxima →</button></div><p id="photoZoomCaption" class="detail-note" style="margin-top:9px"></p></div></dialog>
-  <dialog id="regionDialog"><div class="dialog-head"><h2 id="regionDialogTitle">Editar setor</h2><button class="dialog-close" type="button" data-close-dialog aria-label="Fechar">×</button></div><form class="dialog-body" id="regionForm"><div class="region-form-grid"><div class="form-field full"><label for="regionName">Nome do setor <b style="color:#df4545">*</b></label><input id="regionName" maxlength="80" required></div><div class="form-field"><label for="regionDataStatus">Status</label><select id="regionDataStatus"></select></div><div class="form-field"><label for="regionAreaInput">Área real (m²)</label><input id="regionAreaInput" type="text" inputmode="decimal" autocomplete="off" required maxlength="14"></div><div class="form-field"><label for="regionSystemInput">Tipo de impermeabilização</label><input id="regionSystemInput" maxlength="80" placeholder="Ex.: Manta asfáltica"></div><div class="form-field"><label for="regionMaterialInput">Material</label><input id="regionMaterialInput" maxlength="100" placeholder="Ex.: Membrana PU"></div><div class="form-field"><label for="regionUnitCostInput">Custo por m² (R$)</label><input id="regionUnitCostInput" type="text" inputmode="decimal" autocomplete="off" maxlength="14" value="0"></div><div class="form-field"><label for="regionTotalCostInput">Custo total calculado (R$)</label><input id="regionTotalCostInput" class="region-total" readonly></div><div class="form-field full"><label>Demarcação na planta</label><svg id="regionPreviewCanvas" class="region-preview" viewBox="0 0 1000 360" role="img" aria-label="Prévia do setor demarcado"><rect x="12" y="12" width="976" height="336" rx="8" fill="#fff"/><polygon id="regionPreviewPolygon" points="" fill="#2874ed55" stroke="#2671ef" stroke-width="4"/></svg><p class="region-preview-hint">Arraste na planta ou informe as coordenadas do setor.</p></div><div class="region-coordinates full"><div class="form-field"><label for="regionXInput">X (%)</label><input id="regionXInput" type="number" min="0" max="100" step="0.01"></div><div class="form-field"><label for="regionYInput">Y (%)</label><input id="regionYInput" type="number" min="0" max="100" step="0.01"></div><div class="form-field"><label for="regionWidthInput">Largura (%)</label><input id="regionWidthInput" type="number" min="0.01" max="100" step="0.01"></div><div class="form-field"><label for="regionHeightInput">Altura (%)</label><input id="regionHeightInput" type="number" min="0.01" max="100" step="0.01"></div></div></div><p id="regionFormError" class="sketch-error" role="status"></p><div class="region-editor-actions"><button id="regionDeleteButton" class="button-secondary floor-delete" type="button">Excluir setor</button><div class="dialog-actions"><button class="button-secondary" type="button" data-close-dialog>Cancelar</button><button class="button-primary" type="submit">Salvar setor</button></div></div></form></dialog>
+  <dialog id="regionDialog"><div class="dialog-head"><h2 id="regionDialogTitle">Editar setor</h2><button class="dialog-close" type="button" data-close-dialog aria-label="Fechar">×</button></div><form class="dialog-body" id="regionForm"><div class="region-form-grid"><div class="form-field full"><label for="regionName">Nome do setor <b style="color:#df4545">*</b></label><input id="regionName" maxlength="80" required></div><div class="form-field"><label for="regionDataStatus">Status</label><select id="regionDataStatus"></select></div><div class="form-field"><label for="regionAreaInput">Área real (m²)</label><input id="regionAreaInput" type="text" inputmode="decimal" autocomplete="off" required maxlength="14"></div><div class="form-field"><label for="regionSystemInput">Tipo de impermeabilização</label><input id="regionSystemInput" maxlength="80" placeholder="Ex.: Manta asfáltica"></div><div class="form-field"><label for="regionMaterialInput">Material</label><input id="regionMaterialInput" maxlength="100" placeholder="Ex.: Membrana PU"></div><div class="form-field"><label for="regionStartInput">Início</label><input id="regionStartInput" type="date"></div><div class="form-field"><label for="regionEndInput">Término</label><input id="regionEndInput" type="date"></div><div class="form-field"><label for="regionUnitCostInput">Custo por m² (R$)</label><input id="regionUnitCostInput" type="text" inputmode="decimal" autocomplete="off" maxlength="14" value="0"></div><div class="form-field"><label for="regionTotalCostInput">Custo total calculado (R$)</label><input id="regionTotalCostInput" class="region-total" readonly></div><div class="form-field full"><label>Demarcação na planta</label><svg id="regionPreviewCanvas" class="region-preview" viewBox="0 0 1000 360" role="img" aria-label="Prévia do setor demarcado"><rect x="12" y="12" width="976" height="336" rx="8" fill="#fff"/><polygon id="regionPreviewPolygon" points="" fill="#2874ed55" stroke="#2671ef" stroke-width="4"/></svg><p class="region-preview-hint">Arraste na planta ou informe as coordenadas do setor.</p></div><div class="region-coordinates full"><div class="form-field"><label for="regionXInput">X (%)</label><input id="regionXInput" type="number" min="0" max="100" step="0.01"></div><div class="form-field"><label for="regionYInput">Y (%)</label><input id="regionYInput" type="number" min="0" max="100" step="0.01"></div><div class="form-field"><label for="regionWidthInput">Largura (%)</label><input id="regionWidthInput" type="number" min="0.01" max="100" step="0.01"></div><div class="form-field"><label for="regionHeightInput">Altura (%)</label><input id="regionHeightInput" type="number" min="0.01" max="100" step="0.01"></div></div></div><p id="regionFormError" class="sketch-error" role="status"></p><div class="region-editor-actions"><button id="regionDeleteButton" class="button-secondary floor-delete" type="button">Excluir setor</button><div class="dialog-actions"><button class="button-secondary" type="button" data-close-dialog>Cancelar</button><button class="button-primary" type="submit">Salvar setor</button></div></div></form></dialog>
   <dialog id="idleDialog"><div class="dialog-body idle-card"><div class="lock-icon" aria-hidden="true">⏱</div><h2 style="font:700 15px var(--display);margin:6px 0 2px">Sessão inativa</h2><p class="detail-note" id="idleMessage">Você está há 10 minutos sem interagir com o sistema.</p><div class="idle-countdown" id="idleCountdown">60s</div><p class="detail-note">Nada foi perdido: tudo o que já foi salvo continua gravado neste navegador.</p><div class="idle-actions"><button class="button-primary" type="button" id="idleContinue">Continuar usando o sistema</button><button class="button-secondary" type="button" id="idleLogout">Encerrar sessão agora</button></div></div></dialog>
   <dialog id="localDialog"><div class="dialog-head"><h2 id="localTitle">Local</h2><button class="dialog-close" type="button" data-close-dialog aria-label="Fechar">×</button></div><input id="localCameraInput" type="file" accept="image/*" capture="environment" hidden><input id="localFileInput" type="file" accept="image/*" multiple hidden><div class="dialog-body" id="localContent"></div></dialog>
   <dialog id="employeeDialog"><div class="dialog-head"><h2 id="employeeDialogTitle">Novo funcionário</h2><button class="dialog-close" type="button" data-close-dialog aria-label="Fechar">×</button></div><form class="dialog-body" id="employeeForm"><div class="form-grid"><div class="form-field full"><label for="employeeName">Nome completo <b style="color:#df4545">*</b></label><input id="employeeName" required maxlength="80" autocomplete="off"></div><div class="form-field"><label for="employeeCode">Matrícula ou código</label><input id="employeeCode" maxlength="30" autocomplete="off" placeholder="Opcional"></div><div class="form-field"><label for="employeeRole">Função ou cargo</label><input id="employeeRole" maxlength="50" autocomplete="off" placeholder="Opcional"></div><div class="form-field"><label for="employeeCompany">Empresa ou empreiteira</label><input id="employeeCompany" maxlength="60" autocomplete="off" placeholder="Opcional"></div><div class="form-field"><label for="employeePhone">Telefone</label><input id="employeePhone" maxlength="24" autocomplete="off" inputmode="tel" placeholder="Opcional"></div><div class="form-field full"><label for="employeeActive">Situação cadastral</label><select id="employeeActive"><option value="true">Ativo</option><option value="false">Inativo</option></select></div></div><p class="auth-feedback" id="employeeFeedback" role="status"></p><div class="region-editor-actions"><button class="button-secondary floor-delete" type="button" id="employeeDeleteButton" hidden>Excluir cadastro</button><div class="dialog-actions"><button class="button-secondary" type="button" data-close-dialog>Cancelar</button><button class="button-primary" type="submit">Salvar funcionário</button></div></div></form></dialog>
@@ -411,16 +572,46 @@
     const attendanceKey = isTestEnvironment ? 'nbz-presenca-teste-v1' : 'nbz-presenca-v1';
     if (isTestEnvironment) document.querySelector('#testEnvironmentBanner').hidden = false;
     document.querySelector('#authEnvironmentNote').textContent = isTestEnvironment ? 'Ambiente de testes · usuários e obras isolados dos dados reais.' : 'Ambiente de produção.';
+    /* A ordem aqui é a ordem dos atalhos na barra da planta. `value` é o que fica
+       gravado e não mudou: trocar rótulo e cor não exige converter dado nenhum.
+       `ink` é a cor do "✓" sobre a amostra — no amarelo precisa ser escura. */
     const regionStatusOptions = [
-      { value: 'notReleased', label: 'Não liberada', color: '#e36565', ink: '#fff' },
-      { value: 'inProgress', label: 'Em execução', color: '#efb34e', ink: '#3a2c06' },
-      { value: 'released', label: 'Liberada', color: '#438ae8', ink: '#fff' },
-      { value: 'executed', label: 'Finalizada', color: '#20b782', ink: '#fff' }
+      { value: 'executed', label: 'Finalizado', color: '#4caf50', ink: '#fff', chip: '#2e7d32', paint: '#4caf50', mark: 'check' },
+      { value: 'inProgress', label: 'Executando', color: '#1976d2', ink: '#fff', chip: '#1565c0', paint: '#1976d2', mark: 'square' },
+      { value: 'blocked', label: 'Não Liberado', color: '#f44336', ink: '#fff', chip: '#c62828', paint: '#f44336', mark: 'dot' },
+      { value: 'pending', label: 'Liberado', color: '#fdd835', ink: '#3f3300', chip: '#8a6d00', paint: '#fdd835', mark: 'square' }
     ];
+    /* Vocabulário antigo das situações; convertido na carga do armazenamento. */
+    const legacyStatusMap = { notReleased: 'blocked', released: 'pending', finished: 'executed' };
     const statusValues = regionStatusOptions.map((option) => option.value);
     function statusOption(status) { return regionStatusOptions.find((option) => option.value === status); }
     function statusLabelOf(status) { return statusOption(status)?.label || 'Sem situação'; }
     function statusColorOf(status) { return statusOption(status)?.color || '#8491a5'; }
+    function statusPaintOf(status) { return statusOption(status)?.paint || '#8491a5'; }
+    function renderPaintSwatches() {
+      const holder = document.querySelector('#paintSwatches');
+      if (!holder) return;
+      const swatches = regionStatusOptions.map((option) => `<button type="button" data-paint="${option.value}" style="--sw:${option.color};--ink:${option.ink}" aria-pressed="${paintStatus === option.value}" aria-label="Pintar a área tocada como ${escapeHtml(option.label)}" title="Pintar a área tocada como ${escapeHtml(option.label)}"><i style="background:${option.color}"></i><span>${escapeHtml(option.label)}</span></button>`);
+      /* As duas ferramentas ficam na mesma fileira das cores: é tudo o que se faz na
+         planta, e assim nada obriga a rolar a tela.
+         "Fotos" ocupa o lugar do antigo "Não pintar" e guarda o mesmo comportamento —
+         tocar num setor abre o painel do local, de onde saem as fotografias usadas no
+         relatório. */
+      const demarcando = sketchMode === 'draw';
+      swatches.push(`<button type="button" class="paint-tool" data-paint="draw" style="--sw:#2671ef;--ink:#fff" aria-pressed="${demarcando}" aria-label="Demarcar áreas: desenhar um novo setor na planta" title="Desenhar um novo setor na planta"${can('regions.edit') ? '' : ' disabled'}><i class="tool" style="background:#2671ef" aria-hidden="true">▭</i><span>Demarcar Áreas</span></button>`);
+      swatches.push(`<button type="button" class="paint-tool" data-paint="" style="--sw:#6b7a90;--ink:#fff" aria-pressed="${!demarcando && paintStatus === ''}" aria-label="Fotos: tocar num setor abre as fotografias e os dados do local" title="Tocar num setor abre as fotografias e os dados do local"><i class="tool" style="background:#6b7a90" aria-hidden="true">▣</i><span>Fotos</span></button>`);
+      holder.innerHTML = swatches.join('');
+      /* O rótulo da barra repete em palavras o que está ativo, para quem está no
+         canteiro com a tela sob sol não depender só do anel de seleção. */
+      const label = document.querySelector('.paint-bar-label');
+      if (label) {
+        label.textContent = demarcando
+          ? 'Demarcando: arraste na planta para criar a área'
+          : paintStatus
+            ? `Toque na área para pintar como ${statusLabelOf(paintStatus)}`
+            : 'Toque numa área para ver as fotografias e os dados do local';
+      }
+    }
     const roleDefinitions = [
       { value: 'administrador', label: 'Administrador', description: 'Acesso total, incluindo usuários e histórico.', permissions: ['dashboard', 'works', 'reports', 'history', 'team', 'works.create', 'works.edit', 'works.delete', 'photos.edit', 'regions.edit', 'status.edit', 'history.clear', 'users.manage', 'team.manage', 'attendance.edit'] },
       { value: 'engenheiro', label: 'Engenheiro / Coordenador', description: 'Gerencia obras, plantas, fotos, equipe e histórico.', permissions: ['dashboard', 'works', 'reports', 'history', 'team', 'works.create', 'works.edit', 'works.delete', 'photos.edit', 'regions.edit', 'status.edit', 'team.manage', 'attendance.edit'] },
@@ -492,6 +683,7 @@
     const sketchBaseView = { x: 0, y: 0, width: 1000, height: 650 };
     let planView = { ...sketchBaseView };
     let sketchMode = 'pan';
+    let paintStatus = 'executed';
     let regionFillOpacity = Number.isFinite(Number(preferences.fillOpacity)) ? Math.min(0.85, Math.max(0.1, Number(preferences.fillOpacity))) : 0.4;
     const activeSketchPointers = new Map();
     let panDrag = null;
@@ -572,7 +764,14 @@
       if (typeof prepared.name !== 'string' || !prepared.name.trim()) prepared.name = index === 0 ? 'Térreo' : `${index}º pavimento`;
       prepared.regions = Array.isArray(prepared.regions)
         ? prepared.regions.filter((region) => region && Array.isArray(region.points) && region.points.length >= 3 && region.points.every((point) => Number.isFinite(Number(point?.x)) && Number.isFinite(Number(point?.y))))
-          .map((region) => ({ ...region, id: region.id || newId(), status: statusValues.includes(region.status) ? region.status : 'notReleased', points: region.points.map((point) => ({ x: Number(point.x), y: Number(point.y) })) }))
+          .map((region) => {
+            let status = region.status;
+            if (!statusValues.includes(status)) {
+              status = legacyStatusMap[status] || 'pending';
+              migrationApplied = true;
+            }
+            return { ...region, id: region.id || newId(), status, startDate: typeof region.startDate === 'string' ? region.startDate : '', endDate: typeof region.endDate === 'string' ? region.endDate : '', points: region.points.map((point) => ({ x: Number(point.x), y: Number(point.y) })) };
+          })
         : [];
       return prepared;
     }
@@ -619,7 +818,7 @@
       let areaLeft = Math.max(0, Number(project.area) || 0);
       let executedLeft = Math.max(0, Number(project.executed) || 0);
       let inProgressLeft = Math.max(0, Number(project.inProgress) || 0);
-      let notReleasedLeft = Math.max(0, Number(project.pending) || 0);
+      let pendingLeft = Math.max(0, Number(project.pending) || 0);
       return Array.from({ length: floorCount }, (_, index) => {
         const area = index === floorCount - 1 ? areaLeft : Math.round((Number(project.area) || 0) / floorCount * 100) / 100;
         areaLeft -= area;
@@ -629,14 +828,14 @@
         inProgressLeft -= inProgress;
         let start = 0;
         const regions = [];
-        for (const [status, regionArea] of [['executed', executed], ['inProgress', inProgress], ['notReleased', notReleasedLeft]]) {
+        for (const [status, regionArea] of [['executed', executed], ['inProgress', inProgress], ['pending', pendingLeft]]) {
           if (regionArea <= 0 || area <= 0) continue;
           const fraction = Math.min(regionArea / area, 1 - start);
           const left = 100 + start * 800;
           const right = left + fraction * 800;
           regions.push({ id: `${project.id}-${index}-${status}`, status, points: [{ x: left, y: 80 }, { x: right, y: 80 }, { x: right, y: 560 }, { x: left, y: 560 }] });
           start += fraction;
-          if (status === 'notReleased') notReleasedLeft -= fraction * area;
+          if (status === 'pending') pendingLeft -= fraction * area;
         }
         return { id: `${project.id}-floor-${index}`, name: index === 0 ? 'Térreo' : `${index}º pavimento`, area, regions };
       });
@@ -648,18 +847,32 @@
       } catch {}
       return [{ id: 'seed-1', text: 'Relatório de acompanhamento atualizado', detail: 'SK LISBOA · 319 m² executados', date: new Date().toISOString() }, { id: 'seed-2', text: 'Nova obra adicionada ao painel', detail: 'MEDICAL CENTER · São Paulo', date: '2026-06-01T12:00:00.000Z' }];
     }
+    /* O localStorage não tem transação: gravar duas chaves em sequência pode deixar a
+       primeira já persistida quando a segunda estoura a cota. Como todos os pontos de
+       gravação desfazem a alteração na memória quando o retorno é falso, guardamos o
+       conteúdo anterior de cada chave e o restauramos no erro — assim o que está em
+       memória e o que está gravado nunca divergem. */
+    function readRawValue(key) {
+      try { return localStorage.getItem(key); } catch { return null; }
+    }
+    function restoreRawValue(key, raw) {
+      try { if (raw === null) localStorage.removeItem(key); else localStorage.setItem(key, raw); } catch {}
+    }
     function saveState() {
+      /* O corte do histórico vem antes da gravação: é ele que alivia a cota cheia.
+         Depois de gravar, não serviria para nada na tentativa que acabou de falhar. */
+      if (activities.length > 150) activities = activities.slice(activities.length - 150);
+      const previousProjects = readRawValue(storageKey);
+      const previousHistory = readRawValue(historyKey);
       try {
         localStorage.setItem(storageKey, JSON.stringify(projects));
         localStorage.setItem(historyKey, JSON.stringify(activities));
-        if (activities.length > 150) {
-          activities = activities.slice(activities.length - 150);
-          localStorage.setItem(historyKey, JSON.stringify(activities));
-        }
         pendingChanges = false;
         updateSyncIndicator();
         return true;
       } catch (error) {
+        restoreRawValue(storageKey, previousProjects);
+        restoreRawValue(historyKey, previousHistory);
         console.error('Não foi possível salvar os dados neste navegador.', error);
         pendingChanges = true;
         updateSyncIndicator();
@@ -817,11 +1030,18 @@
       const previews = pendingLocalPhotos.length ? `<div class="photo-preview-grid" id="localPreviews">${pendingLocalPhotos.map((item, index) => `<div style="position:relative"><img src="${escapeHtml(item.data)}" alt="Prévia ${index + 1}"><button type="button" data-remove-local="${index}" aria-label="Remover prévia ${index + 1}" style="position:absolute;top:3px;right:3px;width:28px;height:28px;border-radius:50%;border:0;background:#142238cc;color:#fff;font-size:13px">×</button></div>`).join('')}</div><div class="dialog-actions"><button class="button-secondary" type="button" id="localDiscard">Descartar</button><button class="button-primary" type="button" id="localConfirm">Confirmar ${pendingLocalPhotos.length} foto(s)</button></div>` : '';
       document.querySelector('#localContent').innerHTML = `<div class="local-head"><div><p>${escapeHtml(project.name)} · ${escapeHtml(floor.name)}</p></div><span class="team-badge" style="background:${statusColorOf(region.status)}22;color:${statusColorOf(region.status)}">● ${escapeHtml(statusLabelOf(region.status))}</span></div>
         <div class="local-facts"><div><strong>${formatNumber(regionArea(region, floor))} m²</strong><span>Área do local</span></div><div><strong>${photos.length}</strong><span>Fotografia(s)</span></div><div><strong>${escapeHtml(region.system || project.system || 'A definir')}</strong><span>Sistema</span></div>${region.material ? `<div><strong>${escapeHtml(region.material)}</strong><span>Material</span></div>` : ''}</div>
-        ${can('status.edit') ? `<div class="quick-status">${statusSwitchHtml(project, floor, region, floor.regions.indexOf(region), { plainTitle: true })}</div>` : ''}
+        ${can('status.edit') ? localStatusSwatchesHtml(project, floor, region) : ''}
         ${canEditPhotos ? `<div class="local-photo-actions"><label class="button-primary photo-manage-label" for="localCameraInput">▣ Adicionar foto (câmera)</label><label class="button-secondary photo-manage-label" for="localFileInput">▤ Escolher do dispositivo</label></div><p class="auth-feedback" id="localFeedback" role="status"></p>${previews}` : ''}
         <h4 style="font:700 11px var(--display);margin:14px 0 8px">Fotografias do local (${photos.length})</h4>${canEditPhotos ? manage : gallery}
-        <div class="dialog-actions">${can('regions.edit') ? `<button class="button-secondary" type="button" id="localEditData">Editar dados do setor</button>` : ''}<button class="button-secondary" type="button" data-close-dialog>Fechar</button></div>`;
+        <div class="dialog-actions">${can('regions.edit') ? `<button class="button-secondary" type="button" id="localEditData">Editar dados do setor</button><button class="button-secondary floor-delete" type="button" id="localDeleteRegion">Excluir área</button>` : ''}<button class="button-secondary" type="button" data-close-dialog>Fechar</button></div>`;
     }
+    /* Excluir a área mora aqui, junto da situação e das fotografias: é o lugar que o
+       usuário abre quando quer mexer num setor específico. */
+    document.querySelector('#localContent').addEventListener('click', (event) => {
+      if (!event.target.closest('#localDeleteRegion') || !localTarget) return;
+      selectedRegionId = localTarget.regionId;
+      deleteSelectedRegion();
+    });
     document.querySelector('#localDialog').addEventListener('click', (event) => {
       if (event.target.closest('[data-close-dialog]')) { document.querySelector('#localDialog').close(); return; }
       if (event.target.closest('#localEditData') && localTarget) {
@@ -915,6 +1135,8 @@
       document.querySelector('#regionSystemInput').value = region.system || project.system || '';
       document.querySelector('#regionMaterialInput').value = region.material || '';
       document.querySelector('#regionUnitCostInput').value = areaInputValue(region.unitCost || 0);
+      document.querySelector('#regionStartInput').value = region.startDate || '';
+      document.querySelector('#regionEndInput').value = region.endDate || '';
       document.querySelector('#regionXInput').value = box.x.toFixed(2);
       document.querySelector('#regionYInput').value = box.y.toFixed(2);
       document.querySelector('#regionWidthInput').value = box.width.toFixed(2);
@@ -959,6 +1181,8 @@
       region.system = document.querySelector('#regionSystemInput').value.trim();
       region.material = document.querySelector('#regionMaterialInput').value.trim();
       region.unitCost = unitCost;
+      region.startDate = document.querySelector('#regionStartInput').value;
+      region.endDate = document.querySelector('#regionEndInput').value;
       region.points = points;
       const localReport = localReportOf(project, floor, region);
       if (localReport) localReport.description = region.name || localReport.description;
@@ -1005,9 +1229,9 @@
       project.area = project.floorPlans.reduce((sum, floor) => sum + floor.area, 0);
       project.executed = project.floorPlans.reduce((sum, floor) => sum + floorAreaByStatus(floor, 'executed'), 0);
       project.inProgress = project.floorPlans.reduce((sum, floor) => sum + floorAreaByStatus(floor, 'inProgress'), 0);
-      project.pending = project.floorPlans.reduce((sum, floor) => sum + floorAreaByStatus(floor, 'notReleased'), 0);
-      project.released = project.floorPlans.reduce((sum, floor) => sum + floorAreaByStatus(floor, 'released'), 0);
-      project.unclassified = Math.max(0, project.area - project.executed - project.inProgress - project.pending - project.released);
+      project.pending = project.floorPlans.reduce((sum, floor) => sum + floorAreaByStatus(floor, 'pending'), 0);
+      project.blocked = project.floorPlans.reduce((sum, floor) => sum + floorAreaByStatus(floor, 'blocked'), 0);
+      project.unclassified = Math.max(0, project.area - project.executed - project.inProgress - project.pending - project.blocked);
       project.floors = project.floorPlans.length;
       return project;
     }
@@ -1017,7 +1241,7 @@
     }
     function getTotals(source = projects) {
       source.forEach(syncProjectStats);
-      return source.reduce((totals, project) => ({ area: totals.area + project.area, executed: totals.executed + project.executed, inProgress: totals.inProgress + project.inProgress, pending: totals.pending + project.pending, released: totals.released + project.released, unclassified: totals.unclassified + project.unclassified, floors: totals.floors + project.floors, photos: totals.photos + project.photoReports.reduce((count, report) => count + report.photos.length, 0) }), { area: 0, executed: 0, inProgress: 0, pending: 0, released: 0, unclassified: 0, floors: 0, photos: 0 });
+      return source.reduce((totals, project) => ({ area: totals.area + project.area, executed: totals.executed + project.executed, inProgress: totals.inProgress + project.inProgress, pending: totals.pending + project.pending, blocked: totals.blocked + project.blocked, unclassified: totals.unclassified + project.unclassified, floors: totals.floors + project.floors, photos: totals.photos + project.photoReports.reduce((count, report) => count + report.photos.length, 0) }), { area: 0, executed: 0, inProgress: 0, pending: 0, blocked: 0, unclassified: 0, floors: 0, photos: 0 });
     }
     /* Evita background-image:url('') — o navegador tenta carregar a URL vazia. */
     function coverStyle(image, overlay = '') {
@@ -1088,12 +1312,28 @@
       const source = select.value === 'all' ? projects : projects.filter((project) => project.id === select.value);
       const totals = getTotals(source);
       const progress = totals.area ? Math.round(totals.executed / totals.area * 100) : 0;
-      document.querySelector('#reportTimestamp').textContent = `Gerado em ${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date())}`;
-      document.querySelector('#reportContent').innerHTML = `<div class="report-metrics"><div class="report-metric"><strong>${progress}%</strong><span>Progresso geral</span></div><div class="report-metric"><strong>${formatNumber(totals.executed)}</strong><span>m² finalizados</span></div><div class="report-metric"><strong>${formatNumber(totals.inProgress)}</strong><span>m² em execução</span></div><div class="report-metric"><strong>${totals.photos}</strong><span>fotografias</span></div></div><div class="total-progress"><div class="total-progress-head"><span>Progresso total</span><strong>${formatNumber(totals.executed)} / ${formatNumber(totals.area)} m²</strong></div><div class="progress-track"><div class="progress-fill" style="width:${progress}%"></div></div></div><div class="report-heading">▱ ${source.length} obra(s) · ${formatNumber(totals.floors)} pavimento(s)</div>${source.length ? source.map((project) => reportCard(project)).join('') : '<div class="empty-state"><strong>Nenhuma obra cadastrada</strong>Cadastre uma obra para emitir relatórios.</div>'}`;
+      const visits = source.reduce((count, project) => count + project.photoReports.length, 0);
+      const geradoEm = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date());
+      document.querySelector('#reportTimestamp').textContent = `Gerado em ${geradoEm}`;
+      const escopo = select.value === 'all' ? 'Todas as obras' : (projects.find((project) => project.id === select.value)?.name || 'Obra selecionada');
+      document.querySelector('#printHeader').innerHTML = `<strong>NBZ Construção · Relatório de acompanhamento de obras</strong><span>${escapeHtml(escopo)} · Gerado em ${escapeHtml(geradoEm)}</span>`;
+      const cards = source.flatMap((project) => project.floorPlans.map((floor, index) => reportFloorCard(project, floor, index)));
+      document.querySelector('#reportContent').innerHTML = `<div class="report-metrics">`
+        + `<div class="report-metric"><strong>${progress}%</strong><span>Progresso Geral</span></div>`
+        + `<div class="report-metric"><strong>${formatNumber(totals.executed)}</strong><span>m² Executadas</span></div>`
+        + `<div class="report-metric"><strong>${formatNumber(totals.inProgress)}</strong><span>m² ${escapeHtml(statusLabelOf('inProgress'))}</span></div>`
+        + `<div class="report-metric"><strong>${visits}</strong><span>Total de Visitas</span></div></div>`
+        + `<div class="total-progress"><div class="total-progress-head"><span>Progresso Total</span><strong>${formatNumber(totals.executed)} / ${formatNumber(totals.area)} m²</strong></div><div class="progress-track"><div class="progress-fill" style="width:${progress}%"></div></div></div>`
+        + `<div class="report-heading">☰ ${cards.length} pavimento(s) encontrado(s)</div>`
+        + (cards.length ? cards.join('') : '<div class="empty-state"><strong>Nenhum pavimento cadastrado</strong>Cadastre um pavimento para emitir relatórios.</div>');
     }
     const expandedGalleries = new Set();
-    const collapsedReportProjects = new Set();
+    const collapsedReportFloors = new Set();
     const galleryPageSize = 6;
+    /* Enquanto verdadeira, o relatório é montado inteiro: todas as fotografias de cada
+       visita e todos os pavimentos, ignorando o que está recolhido na tela. Sem isso a
+       folha impressa sairia só com as 6 primeiras fotos de cada visita. */
+    let printingReport = false;
     function formatDateTime(value) {
       const date = new Date(value);
       return Number.isNaN(date.getTime()) ? 'sem data' : new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(date);
@@ -1109,7 +1349,7 @@
     function galleryHtml(project, report, options = {}) {
       const photos = options.onlySelected ? reportPhotos(report) : report.photos;
       if (!photos.length) return options.onlySelected && report.photos.length ? '<p class="floor-empty-note">Nenhuma fotografia marcada para este relatório.</p>' : '';
-      const expanded = expandedGalleries.has(report.id);
+      const expanded = printingReport || expandedGalleries.has(report.id);
       const shown = expanded ? photos : photos.slice(0, galleryPageSize);
       const remaining = photos.length - shown.length;
       const cells = shown.map((photo) => {
@@ -1128,29 +1368,50 @@
         return `<div class="photo-group"><div class="photo-group-head"><strong>${escapeHtml(report.description || 'Registro do local')}</strong><span>${formatDate(report.date)}${where} · ${reportPhotos(report).length} foto(s)</span></div>${galleryHtml(project, report, { onlySelected: true })}</div>`;
       }).join('');
     }
-    function statusSwitchHtml(project, floor, region, regionIndex, options = {}) {
-      const name = region.name || `Setor ${regionIndex + 1}`;
-      const editable = can('status.edit');
-      const photoCount = project.photoReports.filter((report) => report.regionId === region.id).reduce((count, report) => count + report.photos.length, 0);
-      const title = can('works') && !options.plainTitle
-        ? `<button type="button" class="local-open" data-open-local="${escapeHtml(project.id)}" data-local-floor="${project.floorPlans.indexOf(floor)}" data-local-region="${escapeHtml(region.id)}" aria-label="Abrir o local ${escapeHtml(name)}"><strong>${escapeHtml(name)}</strong><span aria-hidden="true">▣ ${photoCount}</span></button>`
-        : `<strong>${escapeHtml(options.plainTitle ? 'Situação do local' : name)}</strong>`;
-      return `<div class="quick-status-item"><div class="quick-status-head">${title}<span class="quick-feedback" data-quick-feedback="${escapeHtml(region.id)}">${formatNumber(regionArea(region, floor))} m²</span></div><div class="status-switch" role="group" aria-label="Situação de ${escapeHtml(name)}">${regionStatusOptions.map((option) => `<button type="button" data-set-status="${option.value}" data-project="${escapeHtml(project.id)}" data-floor-id="${escapeHtml(floor.id)}" data-region-id="${escapeHtml(region.id)}" aria-pressed="${region.status === option.value}"${region.status === option.value ? ` style="background:${option.color};color:${option.ink}"` : ''}${editable ? '' : ' disabled'}><i style="background:${option.color}"></i>${option.label}</button>`).join('')}</div></div>`;
+    /* As amostras de cor do local são as mesmas da barra da planta — `.paint-swatches` —
+       e carregam `data-set-status`, tratado pelo mesmo ouvinte que já grava a situação
+       com permissão, desfazimento e aviso. */
+    function localStatusSwatchesHtml(project, floor, region) {
+      const name = region.name || 'o local';
+      const swatches = regionStatusOptions.map((option) => `<button type="button" data-set-status="${option.value}" data-project="${escapeHtml(project.id)}" data-floor-id="${escapeHtml(floor.id)}" data-region-id="${escapeHtml(region.id)}" style="--sw:${option.color};--ink:${option.ink}" aria-pressed="${region.status === option.value}" aria-label="Marcar ${escapeHtml(name)} como ${escapeHtml(option.label)}" title="${escapeHtml(option.label)}"><i style="background:${option.color}"></i><span>${escapeHtml(option.label)}</span></button>`).join('');
+      return `<div class="paint-bar local-status"><span class="paint-bar-label">Situação do local — toque na cor (${formatNumber(regionArea(region, floor))} m²)</span><div class="paint-swatches" role="group" aria-label="Situação de ${escapeHtml(name)}">${swatches}</div></div>`;
     }
-    function floorStatusLegend(floor) {
-      const classified = statusValues.reduce((sum, status) => sum + floorAreaByStatus(floor, status), 0);
-      const free = Math.max(0, floor.area - classified);
-      return `<div class="status-legend">${regionStatusOptions.map((option) => `<span><i style="background:${option.color}"></i>${option.label}: <b>${formatNumber(floorAreaByStatus(floor, option.value))} m²</b></span>`).join('')}${free > 0.01 ? `<span><i style="background:#cbd4e0"></i>Sem situação: <b>${formatNumber(free)} m²</b></span>` : ''}</div>`;
-    }
-    function reportCard(project) {
-      const progress = getProgress(project);
-      const photoCount = project.photoReports.reduce((count, report) => count + report.photos.length, 0);
-      const expanded = !collapsedReportProjects.has(project.id);
-      const floors = project.floorPlans.map((floor, index) => {
-        const regions = floor.regions.length ? `<div class="quick-status">${floor.regions.map((region, regionIndex) => statusSwitchHtml(project, floor, region, regionIndex)).join('')}</div>` : '<p class="floor-empty-note">Nenhuma área demarcada neste pavimento.</p>';
-        return `<section class="report-floor"><div class="report-floor-head"><div><strong>${escapeHtml(floor.name)}</strong><div class="report-floor-meta">${formatNumber(floor.area)} m² totais · ${floor.regions.length} área(s) demarcada(s)</div></div><button class="floor-croqui" type="button" data-open-sketch="${escapeHtml(project.id)}" data-sketch-floor="${index}">▧ Abrir planta</button></div>${floorStatusLegend(floor)}${regions}${reportPhotoGroups(project, floor)}</section>`;
-      }).join('') || '<p class="floor-empty-note">Nenhum pavimento cadastrado nesta obra.</p>';
-      return `<article class="report-card"><div class="report-card-head"><div class="report-card-title"><div><small>${escapeHtml(project.name)}</small><strong style="display:block;margin-top:4px">${escapeHtml(project.client)}</strong></div><div style="text-align:right"><strong style="font-size:18px">${progress}%</strong><small>${project.floors} pavimento(s) · ${photoCount} foto(s)</small></div></div><div class="progress-track"><div class="progress-fill" style="width:${progress}%"></div></div></div><div class="report-breakdown"><div><strong>${formatNumber(project.area)} m²</strong><span>Total</span></div><div><strong style="color:#19a96d">${formatNumber(project.executed)} m²</strong><span>Finalizada</span></div><div><strong style="color:#e59a24">${formatNumber(project.inProgress)} m²</strong><span>Em execução</span></div><div><strong style="color:#3979df">${formatNumber(project.released)} m²</strong><span>Liberada</span></div><div><strong style="color:#d95656">${formatNumber(project.pending)} m²</strong><span>Não liberada</span></div></div><button class="report-card-toggle" type="button" data-toggle-floor="${escapeHtml(project.id)}" aria-expanded="${expanded}">Pavimentos, áreas e fotografias <span>${expanded ? '⌃' : '⌄'}</span></button><div class="floor-list" id="floors-${escapeHtml(project.id)}" ${expanded ? '' : 'hidden'}>${floors}<div style="font-size:8px;color:#8b97a9;padding:8px 2px">Responsável: ${escapeHtml(project.manager)} · Sistema: ${escapeHtml(project.system)}</div></div></article>`;
+    function reportFloorCard(project, floor, index) {
+      const executed = floorAreaByStatus(floor, 'executed');
+      const progress = floor.area ? Math.min(100, Math.round(executed / floor.area * 100)) : 0;
+      const expanded = printingReport || !collapsedReportFloors.has(floor.id);
+      const photoCount = project.photoReports.filter((report) => report.floorId === floor.id).reduce((count, report) => count + reportPhotos(report).length, 0);
+      const plan = floor.planImage
+        ? `<img src="${escapeHtml(floor.planImage)}" alt="Planta de ${escapeHtml(floor.name)}" loading="lazy">`
+        : '<span class="rf-empty">Nenhuma planta importada para este pavimento.</span>';
+      const rows = floor.regions.map((region, regionIndex) => {
+        const option = statusOption(region.status);
+        return `<tr><td>${escapeHtml((region.name || `Setor ${regionIndex + 1}`).toLocaleUpperCase('pt-BR'))}</td>`
+          + `<td>${escapeHtml(region.system || '—')}</td>`
+          + `<td>${escapeHtml(region.material || '—')}</td>`
+          + `<td>${formatNumber(regionArea(region, floor))} m²</td>`
+          + `<td>${region.startDate ? formatDate(region.startDate) : '—'}</td>`
+          + `<td>${region.endDate ? formatDate(region.endDate) : '—'}</td>`
+          + `<td><span class="rf-chip" style="background:${option ? `${option.color}2e` : '#eef1f6'};color:${option ? option.chip : '#8e99a8'}">${escapeHtml(statusLabelOf(region.status))}</span></td></tr>`;
+      }).join('');
+      const table = floor.regions.length
+        ? `<div class="rf-table-wrap"><table class="rf-table"><thead><tr><th>Setor</th><th>Tipo</th><th>Material</th><th>Área</th><th>Início</th><th>Término</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>`
+        : '<p class="rf-empty">Nenhum setor demarcado neste pavimento.</p>';
+      return `<article class="report-floor-card"><header>`
+        + `<div class="rf-top"><div><small class="rf-work">⌂ ${escapeHtml(project.name)}</small><strong class="rf-name">☰ ${escapeHtml(floor.name)}</strong></div>`
+        + `<div class="rf-pct"><strong>${progress}%</strong><span>${floor.regions.length} setor(es)</span></div></div>`
+        + `<div class="rf-track"><i style="width:${progress}%"></i></div></header>`
+        + `<div class="rf-breakdown"><div><strong>${formatNumber(floor.area)} m²</strong><span>Total</span></div>`
+        /* Gerado a partir das situações, para rótulo e cor nunca saírem do lugar. */
+        + regionStatusOptions.map((option) => `<div><strong style="color:${option.chip}">${formatNumber(floorAreaByStatus(floor, option.value))} m²</strong><span>${escapeHtml(option.label)}</span></div>`).join('')
+        + `</div>`
+        + `<button class="rf-toggle" type="button" data-toggle-floor="${escapeHtml(floor.id)}" aria-expanded="${expanded}">Ver setores e relatórios de visita <span>${expanded ? '⌃' : '⌄'}</span></button>`
+        + `<div class="rf-body" id="floors-${escapeHtml(floor.id)}" ${expanded ? '' : 'hidden'}>`
+        + `<p class="rf-sub">Planta do pavimento</p><div class="rf-plan">${plan}</div>`
+        + `<p class="rf-sub">Setores</p>${table}`
+        + `<p class="rf-sub">▣ Fotos dos setores (${photoCount})</p>${reportPhotoGroups(project, floor)}`
+        + `<div style="margin-top:12px"><button class="floor-croqui" type="button" data-open-sketch="${escapeHtml(project.id)}" data-sketch-floor="${index}">▧ Abrir planta</button></div>`
+        + `</div></article>`;
     }
     function renderHistory() {
       const panel = document.querySelector('#historyLockPanel');
@@ -1192,8 +1453,11 @@
       return `<div class="detail-floor-list ${selecting ? 'selection-mode' : ''}">${project.floorPlans.map((floor, index) => {
         const executed = floorAreaByStatus(floor, 'executed');
         const progress = floor.area ? Math.min(100, Math.round(executed / floor.area * 100)) : 0;
-        const quickStatusControls = floor.regions.length ? `<div class="quick-status">${floor.regions.map((region, regionIndex) => statusSwitchHtml(project, floor, region, regionIndex)).join('')}</div>` : '';
-        return `<article class="detail-floor-item">${selecting ? `<input class="floor-select-checkbox" type="checkbox" data-select-floor="${escapeHtml(project.id)}" data-floor-id="${escapeHtml(floor.id)}" aria-label="Selecionar ${escapeHtml(floor.name)}" ${selectedFloorIds.has(floor.id) ? 'checked' : ''}>` : ''}<button class="detail-floor-main" type="button" data-open-sketch="${escapeHtml(project.id)}" data-sketch-floor="${index}" aria-label="Abrir planta e croqui de ${escapeHtml(floor.name)}"><span class="detail-floor-icon" aria-hidden="true">▱</span><span class="detail-floor-identity"><strong>${escapeHtml(floor.name)}</strong><span>${formatNumber(floor.area)} m²</span></span><span class="detail-floor-edit" aria-hidden="true" title="Abrir planta">⠿</span><span class="detail-floor-progress" role="progressbar" aria-valuenow="${progress}" aria-valuemin="0" aria-valuemax="100" aria-label="Progresso de ${escapeHtml(floor.name)}"><i style="width:${progress}%"></i></span><span class="detail-floor-summary">${progress}% · ${floor.regions.length} setor(es)</span></button>${quickStatusControls}${selecting || !can('works.edit') ? '' : `<div class="detail-floor-actions"><button type="button" data-replicate-floor="${escapeHtml(project.id)}" data-floor-index="${index}">▢ Replicar</button>${can('works.delete') ? `<button class="floor-delete" type="button" data-delete-floor="${escapeHtml(project.id)}" data-floor-index="${index}">▤ Excluir</button>` : ''}</div>`}</article>`;
+        /* O cartao do pavimento fica so com identificacao, progresso e acoes. A situacao
+           de cada setor se altera no painel do local (toque no setor dentro da planta) e
+           pela paleta de cores da planta; repetir os seletores aqui alongava o cartao e
+           embaralhava a leitura da lista. */
+        return `<article class="detail-floor-item">${selecting ? `<input class="floor-select-checkbox" type="checkbox" data-select-floor="${escapeHtml(project.id)}" data-floor-id="${escapeHtml(floor.id)}" aria-label="Selecionar ${escapeHtml(floor.name)}" ${selectedFloorIds.has(floor.id) ? 'checked' : ''}>` : ''}<button class="detail-floor-main" type="button" data-open-sketch="${escapeHtml(project.id)}" data-sketch-floor="${index}" aria-label="Abrir planta e croqui de ${escapeHtml(floor.name)}"><span class="detail-floor-icon" aria-hidden="true">▱</span><span class="detail-floor-identity"><strong>${escapeHtml(floor.name)}</strong><span>${formatNumber(floor.area)} m²</span></span><span class="detail-floor-edit" aria-hidden="true" title="Abrir planta">⠿</span><span class="detail-floor-progress" role="progressbar" aria-valuenow="${progress}" aria-valuemin="0" aria-valuemax="100" aria-label="Progresso de ${escapeHtml(floor.name)}"><i style="width:${progress}%"></i></span><span class="detail-floor-summary">${progress}% · ${floor.regions.length} setor(es)</span></button>${selecting || !can('works.edit') ? '' : `<div class="detail-floor-actions"><button type="button" data-replicate-floor="${escapeHtml(project.id)}" data-floor-index="${index}">▢ Replicar</button>${can('works.delete') ? `<button class="floor-delete" type="button" data-delete-floor="${escapeHtml(project.id)}" data-floor-index="${index}">▤ Excluir</button>` : ''}</div>`}</article>`;
       }).join('')}</div>`;
     }
     function openProject(id, selectedMode = null) {
@@ -1367,38 +1631,9 @@
       statusSelect.innerHTML = regionStatusOptions.map((option) => `<option value="${option.value}">${option.label}</option>`).join('');
       statusSelect.value = 'inProgress';
       const canvas = document.querySelector('#sketchCanvas');
-      const tools = document.querySelector('.sketch-tools');
-      const editTools = document.createElement('div');
-      editTools.className = 'sketch-edit-tools';
-      const editHint = document.createElement('span');
-      editHint.className = 'edit-hint';
-      editHint.textContent = 'Editar setores já marcados';
-      const editButton = document.createElement('button');
-      editButton.className = 'action-button';
-      editButton.type = 'button';
-      editButton.dataset.sketchAction = 'edit';
-      editButton.setAttribute('aria-pressed', 'false');
-      editButton.textContent = 'Editar marcação';
-      const applyStatusButton = document.createElement('button');
-      applyStatusButton.className = 'action-button';
-      applyStatusButton.type = 'button';
-      applyStatusButton.dataset.sketchAction = 'apply-status';
-      applyStatusButton.textContent = 'Aplicar situação';
-      applyStatusButton.disabled = true;
-      const deleteRegionButton = document.createElement('button');
-      deleteRegionButton.className = 'action-button';
-      deleteRegionButton.type = 'button';
-      deleteRegionButton.dataset.sketchAction = 'delete-region';
-      deleteRegionButton.textContent = 'Excluir área';
-      deleteRegionButton.disabled = true;
-      const editDataButton = document.createElement('button');
-      editDataButton.className = 'action-button';
-      editDataButton.type = 'button';
-      editDataButton.dataset.sketchAction = 'edit-data';
-      editDataButton.textContent = 'Dados do setor';
-      editDataButton.disabled = true;
-      editTools.append(editHint, editButton, editDataButton, applyStatusButton, deleteRegionButton);
-      tools.after(editTools);
+      /* A fileira "Selecionar área / Aplicar situação / Excluir área" saiu: a seleção é
+         automática, as cores do topo aplicam a situação e a exclusão mora em "Dados do
+         setor", junto das fotografias. */
       const importBar = document.createElement('div');
       importBar.className = 'plan-import';
       importBar.innerHTML = '<label class="action-button" for="floorPlanFile">▧ Importar planta<input id="floorPlanFile" type="file" accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf"></label><span id="planFileName" class="plan-file-name">Nenhuma planta importada</span><button id="removePlan" class="action-button" type="button" disabled>Remover planta</button>';
@@ -1406,13 +1641,10 @@
       viewport.className = 'sketch-viewport';
       canvas.replaceWith(viewport);
       viewport.append(canvas);
-      viewport.insertAdjacentHTML('beforeend', '<div class="sketch-zoom"><button type="button" data-plan-zoom="in" aria-label="Aproximar a planta">＋</button><button type="button" data-plan-zoom="out" aria-label="Afastar a planta">−</button><button type="button" data-plan-zoom="reset" aria-label="Enquadrar a planta inteira" style="font-size:11px">⤢</button></div>');
-      const modeSwitch = document.createElement('div');
-      modeSwitch.className = 'sketch-mode';
-      modeSwitch.setAttribute('role', 'group');
-      modeSwitch.setAttribute('aria-label', 'Ferramenta da planta');
-      modeSwitch.innerHTML = '<button type="button" data-plan-mode="pan"><span aria-hidden="true">✥</span>Navegar</button><button type="button" data-plan-mode="draw"><span aria-hidden="true">▭</span>Demarcar</button><button type="button" data-plan-mode="edit"><span aria-hidden="true">⤧</span>Selecionar</button>';
-      viewport.before(importBar, modeSwitch);
+      viewport.insertAdjacentHTML('beforeend', '<div class="sketch-zoom"><button type="button" data-plan-zoom="in" aria-label="Aproximar a planta"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.4 15.4 21 21"/><path d="M10.5 7.6v5.8M7.6 10.5h5.8"/></svg></button><button type="button" data-plan-zoom="out" aria-label="Afastar a planta"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.4 15.4 21 21"/><path d="M7.6 10.5h5.8"/></svg></button><button type="button" data-plan-zoom="reset" aria-label="Enquadrar a planta inteira"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 10.2A7.8 7.8 0 1 1 5 15.4"/><path d="M4.2 5.2v5h5"/></svg></button></div>');
+      /* O antigo seletor Navegar/Demarcar/Selecionar saiu: navegar é o estado normal,
+         demarcar virou botão da barra de cores e selecionar está na fileira de edição. */
+      viewport.before(importBar);
       const statusSummary = document.createElement('div');
       statusSummary.id = 'statusSummary';
       statusSummary.className = 'status-summary';
@@ -1430,12 +1662,6 @@
         if (!button) return;
         if (button.dataset.planZoom === 'reset') { planView = { ...sketchBaseView }; applyPlanView(); return; }
         zoomPlanView(button.dataset.planZoom === 'in' ? 1.35 : 1 / 1.35);
-      });
-      modeSwitch.addEventListener('click', (event) => {
-        const button = event.target.closest('[data-plan-mode]');
-        if (!button) return;
-        if (button.dataset.planMode !== 'pan' && !requirePermission('regions.edit', 'Seu cargo não permite editar demarcações.')) return;
-        setSketchMode(button.dataset.planMode);
       });
       const svgNamespace = 'http://www.w3.org/2000/svg';
       document.querySelector('#sketchCanvas > rect[width="1000"]')?.setAttribute('pointer-events', 'none');
@@ -1476,6 +1702,63 @@
       document.querySelector('#regionPreviewCanvas').addEventListener('pointercancel', () => { regionPreviewDrag = null; });
       document.querySelector('#regionDeleteButton').addEventListener('click', deleteRegionFromEditor);
       document.querySelector('#regionDialog').addEventListener('close', () => { editingRegionId = null; editingRegionOriginal = null; regionGeometryBase = null; regionPreviewDrag = null; });
+      groupPlanEditingTools();
+      renderPaintSwatches();
+      document.querySelector('#paintSwatches').addEventListener('click', (event) => {
+        const button = event.target.closest('[data-paint]');
+        if (!button) return;
+        if (button.dataset.paint === 'draw') {
+          if (!requirePermission('regions.edit', 'Seu cargo não permite criar demarcações.')) return;
+          /* Demarcar e pintar são excludentes: durante o desenho o toque cria pontos. */
+          paintStatus = '';
+          setSketchMode(sketchMode === 'draw' ? 'pan' : 'draw');
+          return;
+        }
+        paintStatus = button.dataset.paint;
+        if (sketchMode !== 'pan') setSketchMode('pan');
+        /* Com uma área já selecionada, a cor vale para ela imediatamente — era o que
+           faltava: antes o botão só armava o pincel e parecia não fazer nada. */
+        const floor = currentSketchFloor();
+        const region = floor && floor.regions.find((item) => item.id === selectedRegionId);
+        if (region) {
+          paintRegion(projects.find((item) => item.id === sketchProjectId), floor, region, paintStatus);
+          return;
+        }
+        renderPaintSwatches();
+        renderSketchGeometry();
+      });
+      document.querySelector('.plan-topbar').addEventListener('click', (event) => {
+        const button = event.target.closest('[data-sketch-action]');
+        if (!button) return;
+        if (button.dataset.sketchAction === 'toggle-tools') {
+          const tools = document.querySelector('#planTools');
+          tools.open = !tools.open;
+          button.setAttribute('aria-expanded', String(tools.open));
+          return;
+        }
+        const project = projects.find((item) => item.id === sketchProjectId);
+        if (project) openPhotoReport(project.id, sketchFloorIndex);
+      });
+    }
+    /* A tela da planta mostra só o pincel, o desenho e o progresso; as ferramentas de
+       edição continuam disponíveis recolhidas no botão de lista da barra superior. */
+    function groupPlanEditingTools() {
+      const body = document.querySelector('.plan-body');
+      const viewport = body.querySelector('.sketch-viewport');
+      const details = document.createElement('details');
+      details.className = 'plan-tools';
+      details.id = 'planTools';
+      details.innerHTML = '<summary>☰ Ferramentas de edição do pavimento</summary>';
+      const moved = ['.sketch-toolbar', '.sketch-readout', '.plan-import', '#statusSummary', '.sketch-opacity']
+        .map((selector) => body.querySelector(selector))
+        .filter(Boolean);
+      viewport.after(details);
+      moved.forEach((element) => details.append(element));
+      document.querySelector('#planProgress').after(details);
+      /* As ferramentas de marcação e edição ficam logo abaixo das cores, acima da
+         planta: era para alcançá-las que se descia até o fim da tela. */
+      const paintBar = body.querySelector('.paint-bar');
+      paintBar.after(body.querySelector('.sketch-tools'), body.querySelector('.sketch-tip'));
     }
     async function importFloorPlan(file) {
       const project = projects.find((item) => item.id === sketchProjectId);
@@ -1583,11 +1866,13 @@
       regionDrag = null;
       panDrag = null;
       if (sketchMode !== 'draw') sketchPoints = [];
-      if (sketchMode !== 'edit') selectedRegionId = null;
+      /* A seleção acompanha o usuário: só o desenho a descarta. Antes ela sumia ao
+         voltar para a navegação, e por isso tocar numa cor não achava área nenhuma. */
+      if (sketchMode === 'draw') selectedRegionId = null;
       const hints = {
-        pan: 'Navegar: arraste para deslocar a planta. Aproxime com os botões de zoom, a roda do mouse ou dois dedos.',
+        pan: 'Escolha uma cor acima e toque na área para pintá-la. Sem cor escolhida, o toque abre as fotografias e os dados do local. Arraste para deslocar a planta.',
         draw: 'Demarcar: arraste do ponto inicial ao final para criar o retângulo da área. Um toque simples adiciona pontos de um polígono livre.',
-        edit: 'Selecionar: toque numa área para selecioná-la, arraste o interior para movê-la e os cantos para redimensionar. A tecla Delete exclui a área selecionada.'
+        edit: 'Toque numa área para selecioná-la, arraste o interior para movê-la e os cantos para redimensionar.'
       };
       renderSketch();
       document.querySelector('.sketch-tip').textContent = hints[sketchMode];
@@ -1613,29 +1898,63 @@
         { handle: 'sw', x: box.x, y: box.y + box.height }
       ];
     }
+    /* Rótulo (nome e área) e selo da situação desenhados sobre cada setor, como no
+       aplicativo de campo: texto preto com contorno branco e o selo embaixo. */
+    function regionOverlayHtml(region, floor, labelScale) {
+      const box = getPointsBounds(region.points);
+      const centerX = box.x + box.width / 2;
+      const nameSize = Math.max(9, 17 * labelScale);
+      const areaSize = nameSize * 0.88;
+      const name = (region.name || 'Setor').toLocaleUpperCase('pt-BR');
+      const label = `<text class="region-label" x="${centerX.toFixed(1)}" y="${(box.y - nameSize * 0.35).toFixed(1)}" text-anchor="middle" style="font-size:${nameSize.toFixed(1)}px;stroke-width:${(nameSize / 3.6).toFixed(2)}px">${escapeHtml(name)}</text>`
+        + `<text class="region-label area" x="${centerX.toFixed(1)}" y="${(box.y + areaSize * 0.95).toFixed(1)}" text-anchor="middle" style="font-size:${areaSize.toFixed(1)}px;stroke-width:${(areaSize / 3.6).toFixed(2)}px">${escapeHtml(formatNumber(regionArea(region, floor)))} m²</text>`;
+      const option = statusOption(region.status);
+      if (!option) return label;
+      const size = Math.min(Math.max(10, 26 * labelScale), Math.max(8, Math.min(box.width, box.height) * 0.7));
+      const markY = box.y + box.height - size * 0.75;
+      const mark = option.mark === 'dot'
+        ? `<circle cx="${centerX.toFixed(1)}" cy="${(markY + size / 2).toFixed(1)}" r="${(size / 2).toFixed(1)}" fill="${option.color}" pointer-events="none"/>`
+        : `<rect x="${(centerX - size / 2).toFixed(1)}" y="${markY.toFixed(1)}" width="${size.toFixed(1)}" height="${size.toFixed(1)}" rx="${(size * 0.18).toFixed(1)}" fill="${option.color}" pointer-events="none"/>`
+          + (option.mark === 'check' ? `<path d="M ${(centerX - size * 0.26).toFixed(1)} ${(markY + size * 0.52).toFixed(1)} l ${(size * 0.19).toFixed(1)} ${(size * 0.21).toFixed(1)} l ${(size * 0.34).toFixed(1)} ${(-size * 0.42).toFixed(1)}" fill="none" stroke="#fff" stroke-width="${(size * 0.16).toFixed(2)}" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>` : '');
+      return label + mark;
+    }
     function renderSketchGeometry() {
       const floor = currentSketchFloor();
       if (!floor) return;
       const handleRadius = Math.max(7, Math.round(planView.width / 72));
       const strokeWidth = Math.max(1.5, planView.width / 340);
+      const labelScale = planView.width / sketchBaseView.width;
       document.querySelector('#sketchRegions').innerHTML = floor.regions.map((region) => {
         const selected = region.id === selectedRegionId;
-        return `<polygon data-region-id="${escapeHtml(region.id)}" points="${region.points.map((point) => `${Math.round(point.x * 100) / 100},${Math.round(point.y * 100) / 100}`).join(' ')}" fill="${statusColorOf(region.status)}" fill-opacity="${regionFillOpacity}" stroke="${selected ? '#173f76' : statusColorOf(region.status)}" stroke-width="${selected ? strokeWidth * 2.2 : strokeWidth}" stroke-dasharray="${selected ? `${strokeWidth * 3} ${strokeWidth * 2}` : 'none'}" style="cursor:${sketchMode === 'edit' ? 'move' : 'pointer'}"><title>${escapeHtml(region.name || 'Setor sem nome')} · ${formatNumber(regionArea(region, floor))} m² · ${statusLabelOf(region.status)}</title></polygon>`;
+        const paint = statusPaintOf(region.status);
+        const points = region.points.map((point) => `${Math.round(point.x * 100) / 100},${Math.round(point.y * 100) / 100}`).join(' ');
+        const shape = `<polygon data-region-id="${escapeHtml(region.id)}" points="${points}" fill="${paint}" fill-opacity="${regionFillOpacity}" stroke="${selected ? '#173f76' : paint}" stroke-width="${selected ? strokeWidth * 3.4 : strokeWidth * 2.6}" stroke-linejoin="round" stroke-dasharray="${selected ? `${strokeWidth * 4} ${strokeWidth * 3}` : 'none'}" style="cursor:${sketchMode === 'edit' ? 'move' : 'pointer'}"><title>${escapeHtml(region.name || 'Setor sem nome')} · ${formatNumber(regionArea(region, floor))} m² · ${statusLabelOf(region.status)}</title></polygon>`;
+        return shape + regionOverlayHtml(region, floor, labelScale);
       }).join('');
       drawSketchDraft();
       const draftPoints = sketchPoints.map((point) => `<circle cx="${point.x}" cy="${point.y}" r="${handleRadius * 0.7}" fill="#108d68" stroke="white" stroke-width="${strokeWidth * 1.5}"/>`).join('');
-      const selectedRegion = sketchEditing && floor.regions.find((region) => region.id === selectedRegionId);
+      const selectedRegion = floor.regions.find((region) => region.id === selectedRegionId);
       const handles = selectedRegion ? regionHandles(selectedRegion).map((item) => `<circle class="sketch-handle" data-region-handle="${item.handle}" data-region-id="${escapeHtml(selectedRegion.id)}" cx="${Math.round(item.x * 100) / 100}" cy="${Math.round(item.y * 100) / 100}" r="${handleRadius}" fill="white" stroke="#173f76" stroke-width="${strokeWidth * 1.6}"/>`).join('') : '';
       document.querySelector('#sketchPoints').innerHTML = draftPoints + handles;
       document.querySelector('#sketchCanvas').className = `sketch-canvas mode-${sketchMode}`;
       document.querySelectorAll('[data-plan-mode]').forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.planMode === sketchMode)));
+      /* A única fileira extra é a do desenho, e só enquanto se demarca. */
+      document.querySelector('.sketch-tools').hidden = sketchMode !== 'draw';
       document.querySelector('[data-sketch-action="undo"]').disabled = sketchPoints.length === 0;
       document.querySelector('[data-sketch-action="finish"]').disabled = sketchPoints.length < 3;
-      document.querySelector('[data-sketch-action="edit"]').setAttribute('aria-pressed', String(sketchEditing));
-      document.querySelector('[data-sketch-action="edit"]').textContent = sketchEditing ? 'Sair da seleção' : 'Selecionar marcação';
-      document.querySelector('[data-sketch-action="apply-status"]').disabled = !selectedRegion;
-      document.querySelector('[data-sketch-action="delete-region"]').disabled = !selectedRegion;
-      document.querySelector('[data-sketch-action="edit-data"]').disabled = !selectedRegion;
+    }
+    /* Cartão de progresso do pavimento: percentual executado, barra e as quatro
+       situações com a área de cada uma. */
+    function renderPlanProgress(floor) {
+      const holder = document.querySelector('#planProgress');
+      if (!holder) return;
+      const executed = floorAreaByStatus(floor, 'executed');
+      const progress = floor.area ? Math.min(100, Math.round(executed / floor.area * 100)) : 0;
+      const legend = regionStatusOptions.map((option) => `<span><i style="background:${option.color}"></i>${option.label}: <b>${formatNumber(floorAreaByStatus(floor, option.value))} m²</b></span>`).join('');
+      holder.innerHTML = `<div class="plan-progress-head"><strong>Progresso</strong><b>${progress}%</b></div>`
+        + `<div class="plan-progress-track"><i style="width:${progress}%"></i></div>`
+        + `<div class="plan-progress-legend">${legend}</div>`
+        + `<p class="plan-progress-total">Total: ${formatNumber(floor.area)} m²</p>`;
     }
     function renderSketch() {
       const project = projects.find((item) => item.id === sketchProjectId);
@@ -1656,13 +1975,20 @@
       document.querySelector('#floorAreaInput').value = areaInputValue(floor.area);
       document.querySelector('#floorAreaReadout').textContent = `${formatNumber(floor.area)} m²`;
       document.querySelector('#executedAreaReadout').textContent = `${formatNumber(floorAreaByStatus(floor, 'executed'))} m²`;
-      document.querySelector('#executedAreaReadout').nextElementSibling.textContent = 'Finalizada';
-      const classifiedArea = ['released', 'notReleased', 'inProgress', 'executed'].reduce((sum, status) => sum + floorAreaByStatus(floor, status), 0);
+      document.querySelector('#executedAreaReadout').nextElementSibling.textContent = statusLabelOf('executed');
+      const classifiedArea = statusValues.reduce((sum, status) => sum + floorAreaByStatus(floor, status), 0);
       document.querySelector('#pendingAreaReadout').textContent = `${formatNumber(Math.max(0, floor.area - classifiedArea))} m²`;
-      document.querySelector('#pendingAreaReadout').nextElementSibling.textContent = 'Sem status';
+      document.querySelector('#pendingAreaReadout').nextElementSibling.textContent = 'Sem situação';
       document.querySelector('#statusSummary').innerHTML = regionStatusOptions.map(({ value, label, color }) => `<div class="status-chip"><i class="status-swatch" style="background:${color}"></i><span>${label}: <strong>${formatNumber(floorAreaByStatus(floor, value))} m²</strong></span></div>`).join('');
+      const hasPlan = Boolean(floor.planImage);
+      ['#sketchGridRect', '#sketchCaption'].forEach((selector) => document.querySelector(selector).setAttribute('visibility', hasPlan ? 'hidden' : 'visible'));
+      document.querySelector('#sketchSheet').setAttribute('visibility', hasPlan ? 'hidden' : 'visible');
+      document.querySelector('#planFrame').setAttribute('stroke', hasPlan ? 'none' : '#7990ad');
+      document.querySelector('#planTitle').textContent = `Planta - ${floor.name}`;
+      renderPlanProgress(floor);
+      renderPaintSwatches();
       const canEditRegions = can('regions.edit');
-      document.querySelectorAll('[data-sketch-action="start"],[data-sketch-action="clear"],#floorPlanFile,#floorAreaInput').forEach((element) => { element.disabled = !canEditRegions; });
+      document.querySelectorAll('[data-sketch-action="clear"],#floorPlanFile,#floorAreaInput').forEach((element) => { element.disabled = !canEditRegions; });
       document.querySelector('#removePlan').disabled = !canEditRegions || !floor.planImage;
       document.querySelector('.plan-import').hidden = !canEditRegions;
       clampPlanView();
@@ -1725,7 +2051,8 @@
       planView = { ...sketchBaseView };
       document.querySelector('#sketchFloor').innerHTML = project.floorPlans.map((floor, index) => `<option value="${index}">${escapeHtml(floor.name)}</option>`).join('');
       document.querySelector('#sketchFloor').value = String(sketchFloorIndex);
-      setSketchMode(can('regions.edit') ? 'draw' : 'pan');
+      paintStatus = can('status.edit') ? 'executed' : '';
+      setSketchMode('pan');
       if (!document.querySelector('#sketchDialog').open) document.querySelector('#sketchDialog').showModal();
     }
     function pointInPolygon(point, polygon) {
@@ -1796,20 +2123,18 @@
       openRegionEditor(project.id, sketchFloorIndex, region.id);
       document.querySelector('#sketchError').textContent = `${formatNumber(regionArea(region, floor))} m² ${statusLabel.toLocaleLowerCase('pt-BR')} registrado(s). Você pode continuar marcando neste pavimento.`;
     }
-    function applySelectedRegionStatus() {
-      const project = projects.find((item) => item.id === sketchProjectId);
-      const floor = project && selectedFloor(project, sketchFloorIndex);
-      const region = floor && floor.regions.find((item) => item.id === selectedRegionId);
-      if (!project || !floor || !region) return;
+    /* Pintar é só trocar a situação do setor tocado pela cor selecionada na paleta. */
+    function paintRegion(project, floor, region, status) {
+      if (!statusValues.includes(status)) return;
+      const nome = region.name || 'Setor';
+      /* Tocar numa área que já está na cor escolhida não fazia nada e parecia defeito. */
+      if (region.status === status) { notify(`${nome} já está como ${statusLabelOf(status)}.`, 'info', 1800); return; }
       if (!requirePermission('status.edit', 'Seu cargo não permite alterar a situação das áreas.')) return;
-      const nextStatus = document.querySelector('#regionStatus').value;
-      if (region.status === nextStatus) return;
       const previousStatus = region.status;
-      region.status = nextStatus;
+      region.status = status;
       updateProjectFromFloor(project);
       const activityCount = activities.length;
-      const label = regionStatusOptions.find((option) => option.value === nextStatus)?.label || nextStatus;
-      addActivity('Status de área atualizado', `${project.name} · ${floor.name} · ${label} · ${formatNumber(regionArea(region, floor))} m²`);
+      addActivity('Situação da área atualizada', `${project.name} · ${floor.name} · ${region.name || 'setor sem nome'} · ${statusLabelOf(status)} · ${formatNumber(regionArea(region, floor))} m²`);
       if (!saveState()) {
         region.status = previousStatus;
         updateProjectFromFloor(project);
@@ -1817,8 +2142,11 @@
         document.querySelector('#sketchError').textContent = 'Não foi possível salvar a alteração de situação.';
         return;
       }
+      document.querySelector('#sketchError').textContent = '';
+      notify(`${nome}: ${statusLabelOf(status)} · ${formatNumber(regionArea(region, floor))} m²`, 'ok', 2200);
       renderSketch();
       renderAll();
+      if (document.querySelector('#projectDetailDialog').open) openProject(project.id, 'floors');
     }
     function deleteSelectedRegion() {
       const project = projects.find((item) => item.id === sketchProjectId);
@@ -2099,7 +2427,10 @@
       if (!project || !floor || !region || !statusValues.includes(status)) return;
       const feedback = document.querySelector(`[data-quick-feedback="${CSS.escape(regionId)}"]`);
       if (region.status === status) {
+        /* Sem o antigo rótulo em linha, a confirmação vem pelo aviso: tocar na cor que já
+           está aplicada precisa responder alguma coisa, senão parece defeito. */
         if (feedback) { feedback.textContent = 'situação já aplicada'; feedback.className = 'quick-feedback'; }
+        else notify(`${region.name || 'Setor'} já está como ${statusLabelOf(status)}.`, 'info', 1800);
         return;
       }
       const previous = region.status;
@@ -2120,6 +2451,9 @@
       notify(`${region.name || 'Setor'}: ${statusLabelOf(status)}`, 'ok', 2200);
       renderAll();
       if (document.querySelector('#sketchDialog').open) renderSketch();
+      /* O painel do local fica aberto depois da troca: redesenhar move o "✓" para a cor
+         escolhida e atualiza a tarja de situação no topo do painel. */
+      if (document.querySelector('#localDialog').open) renderLocalPanel();
       if (document.querySelector('#projectDetailDialog').open) openProject(project.id, 'floors');
       const savedFeedback = document.querySelector(`[data-quick-feedback="${CSS.escape(regionId)}"]`);
       if (savedFeedback) { savedFeedback.textContent = '✓ salvo'; savedFeedback.className = 'quick-feedback ok'; }
@@ -2277,7 +2611,52 @@
       renderWorks();
     }));
     document.querySelector('#reportProject').addEventListener('change', renderReports);
-    document.querySelector('#printReport').addEventListener('click', () => window.print());
+    /* Imprimir exige três cuidados que a tela não tem: as galerias mostram só as
+       primeiras fotos, pavimentos podem estar recolhidos, e as imagens usam
+       `loading="lazy"` — o que deixa buracos no papel onde a foto nem chegou a carregar.
+       A rotina remonta o relatório completo, espera as imagens de fato e só então manda
+       para a impressora. */
+    let printRestoreTimer = null;
+    async function loadReportImages() {
+      const images = [...document.querySelectorAll('#reportContent img')];
+      images.forEach((image) => { image.loading = 'eager'; image.decoding = 'sync'; });
+      await Promise.all(images.map((image) => image.complete ? Promise.resolve() : new Promise((resolve) => {
+        /* Uma fotografia corrompida não pode impedir a impressão: o erro também resolve,
+           e o limite de tempo garante que a folha saia de qualquer maneira. */
+        image.addEventListener('load', resolve, { once: true });
+        image.addEventListener('error', resolve, { once: true });
+        window.setTimeout(resolve, 4000);
+      })));
+    }
+    function restoreReportAfterPrint() {
+      window.clearTimeout(printRestoreTimer);
+      if (!printingReport) return;
+      printingReport = false;
+      renderReports();
+    }
+    async function printReportSheet() {
+      const button = document.querySelector('#printReport');
+      if (button.disabled) return;
+      button.disabled = true;
+      notify('Preparando o relatório para impressão…', 'info', 2600);
+      printingReport = true;
+      renderReports();
+      try { await loadReportImages(); }
+      finally { button.disabled = false; }
+      /* Alguns navegadores devolvem o controle antes de `afterprint`; o tempo limite
+         devolve a tela ao normal mesmo que o evento não chegue. */
+      window.clearTimeout(printRestoreTimer);
+      printRestoreTimer = window.setTimeout(restoreReportAfterPrint, 60000);
+      window.print();
+    }
+    document.querySelector('#printReport').addEventListener('click', printReportSheet);
+    /* Ctrl+P não passa pelo botão: ao menos remonta o relatório completo antes da folha. */
+    window.addEventListener('beforeprint', () => {
+      if (printingReport) return;
+      printingReport = true;
+      renderReports();
+    });
+    window.addEventListener('afterprint', restoreReportAfterPrint);
     document.querySelector('#worksGrid').addEventListener('click', (event) => { const target = event.target.closest('[data-open-project]'); if (target) openProject(target.dataset.openProject); });
     document.querySelector('#dashboardProjects').addEventListener('click', (event) => { const target = event.target.closest('[data-open-project]'); if (target) openProject(target.dataset.openProject); });
     document.querySelector('#mapBoard').addEventListener('click', (event) => { const target = event.target.closest('[data-open-project]'); if (target) openProject(target.dataset.openProject); });
@@ -2301,11 +2680,11 @@
       }
       const button = event.target.closest('[data-toggle-floor]');
       if (!button) return;
-      const projectId = button.dataset.toggleFloor;
-      const list = document.querySelector(`#floors-${CSS.escape(projectId)}`);
+      const floorId = button.dataset.toggleFloor;
+      const list = document.querySelector(`#floors-${CSS.escape(floorId)}`);
       const hide = !list.hidden;
-      if (hide) collapsedReportProjects.add(projectId);
-      else collapsedReportProjects.delete(projectId);
+      if (hide) collapsedReportFloors.add(floorId);
+      else collapsedReportFloors.delete(floorId);
       list.hidden = hide;
       button.setAttribute('aria-expanded', String(!hide));
       button.lastElementChild.textContent = hide ? '⌄' : '⌃';
@@ -2436,23 +2815,29 @@
         event.preventDefault();
         return;
       }
-      if (sketchMode === 'edit') {
-        const handle = event.target.closest('[data-region-handle]');
-        const regionElement = event.target.closest('[data-region-id]');
-        const regionId = handle?.dataset.regionId || regionElement?.dataset.regionId;
-        const region = regionId ? floor.regions.find((item) => item.id === regionId) : null;
-        if (!region) {
-          selectedRegionId = null;
-          renderSketchGeometry();
-          return;
-        }
+      /* Fora do desenho, tocar numa área já a seleciona — não existe mais um botão
+         "Selecionar área" para apertar antes. */
+      const handle = event.target.closest('[data-region-handle]');
+      const regionElement = event.target.closest('[data-region-id]');
+      const regionId = handle?.dataset.regionId || regionElement?.dataset.regionId;
+      const region = regionId ? floor.regions.find((item) => item.id === regionId) : null;
+      if (region) {
         selectedRegionId = region.id;
         document.querySelector('#regionStatus').value = region.status;
-        regionDrag = { regionId: region.id, kind: handle ? 'resize' : 'move', handle: handle?.dataset.regionHandle || '', startPoint: point, originalPoints: region.points.map((item) => ({ ...item })), originalBox: getPointsBounds(region.points), originalArea: region.area, pointerId: event.pointerId, moved: false };
-        captureSketchPointer(event.pointerId);
+        /* Arrastar a área só vale sem pincel armado (modo Fotos) ou pelas alças de
+           canto: com uma cor ativa o toque é para pintar, e um tremor no dedo não
+           pode sair movendo a demarcação. */
+        if (handle || !paintStatus) {
+          regionDrag = { regionId: region.id, kind: handle ? 'resize' : 'move', handle: handle?.dataset.regionHandle || '', startPoint: point, originalPoints: region.points.map((item) => ({ ...item })), originalBox: getPointsBounds(region.points), originalArea: region.area, pointerId: event.pointerId, moved: false };
+          captureSketchPointer(event.pointerId);
+          renderSketchGeometry();
+          event.preventDefault();
+          return;
+        }
         renderSketchGeometry();
-        event.preventDefault();
-        return;
+      } else if (selectedRegionId) {
+        selectedRegionId = null;
+        renderSketchGeometry();
       }
       panDrag = { pointerId: event.pointerId, startClientX: event.clientX, startClientY: event.clientY, startX: planView.x, startY: planView.y, moved: false };
       captureSketchPointer(event.pointerId);
@@ -2533,6 +2918,7 @@
         selectedRegionId = region.id;
         document.querySelector('#regionStatus').value = region.status;
         if (sketchMode === 'edit') { renderSketchGeometry(); return; }
+        if (paintStatus) { paintRegion(project, floor, region, paintStatus); return; }
         openLocalPanel(project.id, sketchFloorIndex, region.id);
         return;
       }
@@ -2557,15 +2943,6 @@
         renderSketchGeometry();
       } else if (action === 'finish') {
         finishSketchRegion();
-      } else if (action === 'edit') {
-        if (!requirePermission('regions.edit', 'Seu cargo não permite editar demarcações.')) return;
-        setSketchMode(sketchMode === 'edit' ? 'pan' : 'edit');
-      } else if (action === 'apply-status') {
-        applySelectedRegionStatus();
-      } else if (action === 'edit-data') {
-        if (selectedRegionId) openLocalPanel(sketchProjectId, sketchFloorIndex, selectedRegionId);
-      } else if (action === 'delete-region') {
-        deleteSelectedRegion();
       } else if (action === 'clear') {
         if (!requirePermission('regions.edit', 'Seu cargo não permite remover demarcações.')) return;
         const project = projects.find((item) => item.id === sketchProjectId);
@@ -2655,7 +3032,7 @@
       if (!form.reportValidity()) return;
       if (!requirePermission('works.create', 'Seu cargo não permite cadastrar obras.')) return;
       const values = new FormData(form);
-      const project = { id: newId(), name: String(values.get('name')).trim().toLocaleUpperCase('pt-BR'), city: String(values.get('city')).trim(), client: String(values.get('client')).trim(), manager: currentUser ? currentUser.name : 'Administrador', area: 0, executed: 0, inProgress: 0, pending: 0, released: 0, unclassified: 0, floors: 0, floorPlans: [], photoReports: [], status: 'Em andamento', date: new Date().toISOString().slice(0, 10), system: 'A definir', image: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=900&q=80' };
+      const project = { id: newId(), name: String(values.get('name')).trim().toLocaleUpperCase('pt-BR'), city: String(values.get('city')).trim(), client: String(values.get('client')).trim(), manager: currentUser ? currentUser.name : 'Administrador', area: 0, executed: 0, inProgress: 0, pending: 0, blocked: 0, unclassified: 0, floors: 0, floorPlans: [], photoReports: [], status: 'Em andamento', date: new Date().toISOString().slice(0, 10), system: 'A definir', image: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=900&q=80' };
       if (!project.name || !project.city || !project.client) return;
       const preparedProject = prepareProject(project);
       projects.unshift(preparedProject);
@@ -2763,6 +3140,8 @@
     let employees = loadEmployees();
     let attendance = loadAttendance();
     function saveTeamState() {
+      const previousEmployees = readRawValue(employeesKey);
+      const previousAttendance = readRawValue(attendanceKey);
       try {
         localStorage.setItem(employeesKey, JSON.stringify(employees));
         localStorage.setItem(attendanceKey, JSON.stringify(attendance));
@@ -2770,6 +3149,8 @@
         updateSyncIndicator();
         return true;
       } catch (error) {
+        restoreRawValue(employeesKey, previousEmployees);
+        restoreRawValue(attendanceKey, previousAttendance);
         console.error('Não foi possível salvar os dados da equipe.', error);
         pendingChanges = true;
         updateSyncIndicator();
@@ -3318,8 +3699,12 @@
       }
       return `fallback$${first.toString(16).padStart(8, '0')}${second.toString(16).padStart(8, '0')}`;
     }
-    async function hashPassword(password, salt) {
-      if (window.crypto?.subtle?.deriveBits) {
+    /* O prefixo do hash gravado (`pbkdf2$` ou `fallback$`) diz com qual algoritmo a
+       senha foi protegida. Conferir sempre com o algoritmo disponível no momento
+       recusava a senha correta quando os dois não coincidiam — e cinco recusas
+       trancam o acesso. `algorithm` fixa qual usar; 'auto' é para senhas novas. */
+    async function hashPassword(password, salt, algorithm = 'auto') {
+      if (algorithm !== 'fallback' && window.crypto?.subtle?.deriveBits) {
         try {
           const encoder = new TextEncoder();
           const key = await crypto.subtle.importKey('raw', encoder.encode(password), 'PBKDF2', false, ['deriveBits']);
@@ -3327,7 +3712,16 @@
           return `pbkdf2$${[...new Uint8Array(bits)].map((byte) => byte.toString(16).padStart(2, '0')).join('')}`;
         } catch {}
       }
+      /* Um hash PBKDF2 não pode ser conferido pelo hash de reserva: sem o algoritmo
+         certo a resposta honesta é "não sei", e quem chama avisa o motivo. */
+      if (algorithm === 'pbkdf2') return null;
       return fallbackHash(password, salt);
+    }
+    function hashAlgorithmOf(user) { return String(user?.hash || '').startsWith('fallback$') ? 'fallback' : 'pbkdf2'; }
+    /* Verdadeiro quando o navegador atual não consegue conferir a senha deste usuário
+       (hash PBKDF2 sem `crypto.subtle`, por exemplo em origem não segura). */
+    function passwordCheckUnavailable(user) {
+      return Boolean(user) && hashAlgorithmOf(user) === 'pbkdf2' && !window.crypto?.subtle?.deriveBits;
     }
     function constantTimeEquals(left, right) {
       if (typeof left !== 'string' || typeof right !== 'string' || left.length !== right.length) return false;
@@ -3337,7 +3731,8 @@
     }
     async function verifyPassword(user, password) {
       if (!user || typeof password !== 'string' || !password) return false;
-      return constantTimeEquals(await hashPassword(password, user.salt), user.hash);
+      const attempt = await hashPassword(password, user.salt, hashAlgorithmOf(user));
+      return typeof attempt === 'string' && constantTimeEquals(attempt, user.hash);
     }
     function validUsername(username) { return /^[a-z0-9._-]{3,40}$/.test(username); }
     function closeAllDialogs() {
@@ -3478,6 +3873,11 @@
       const password = document.querySelector('#loginPassword').value;
       feedback.textContent = 'Verificando credenciais…';
       const user = users.find((item) => item.username === username);
+      if (passwordCheckUnavailable(user)) {
+        feedback.textContent = 'Este navegador não oferece o recurso de criptografia necessário para conferir a senha. Abra o painel por https:// ou use um navegador atual.';
+        document.querySelector('#loginPassword').value = '';
+        return;
+      }
       if (!await verifyPassword(user, password)) {
         const result = registerFailedAttempt(loginGateKey, gate);
         feedback.textContent = result.lockedUntil ? `Acesso bloqueado por ${gateLockMs / 60000} minutos após ${maxAttempts} tentativas.` : `Usuário ou senha inválidos. Tentativa ${result.attempts} de ${maxAttempts}.`;
@@ -3600,6 +4000,11 @@
         return;
       }
       const password = document.querySelector('#historyPassword').value;
+      if (passwordCheckUnavailable(currentUser)) {
+        feedback.textContent = 'Este navegador não oferece o recurso de criptografia necessário para conferir a senha. Abra o painel por https:// ou use um navegador atual.';
+        document.querySelector('#historyPassword').value = '';
+        return;
+      }
       feedback.textContent = 'Verificando…';
       if (!await verifyPassword(currentUser, password)) {
         const result = registerFailedAttempt(historyGateKey, gate);
