@@ -5,3 +5,9 @@
 .claude-flow/data/
 .claude-flow/logs/
 .claude-flow/sessions/
+
+# Dependências instaladas via npm
+node_modules/
+
+# Cache do PowerShell capturado por engano pelo OneDrive
+Microsoft/
