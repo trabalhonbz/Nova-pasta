@@ -1,0 +1,212 @@
+/* Parte de src/estilos/, carregado pelo index.html em ordem numerada.
+   A ordem importa: regras de arquivos posteriores sobrepõem as anteriores,
+   de propósito. */
+
+/* ===== Autenticação, cargos e histórico protegido ===== */
+.auth-overlay{
+  position:fixed;
+  inset:0;
+  z-index:5000;
+  background:linear-gradient(140deg,#13294d,#21477f);
+  display:grid;
+  place-items:center;
+  padding:18px;
+  overflow-y:auto
+}
+.auth-overlay[hidden]{
+  display:none
+}
+.auth-card{
+  width:min(370px,100%);
+  background:#fff;
+  border-radius:14px;
+  padding:20px 20px 22px;
+  box-shadow:0 22px 60px #08182f66
+}
+.auth-card h2{
+  font:800 17px var(--display);
+  margin:0 0 3px
+}
+.auth-card p.auth-lead{
+  font-size:10px;
+  color:#7a8698;
+  margin:0 0 14px
+}
+.auth-card .form-field{
+  margin-bottom:10px
+}
+.auth-card .form-field input,.auth-card .form-field select{
+  height:44px;
+  font-size:12px
+}
+.auth-card .button-primary{
+  width:100%;
+  height:46px;
+  font-size:11px
+}
+.auth-brand{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  margin-bottom:14px
+}
+.auth-env{
+  margin:12px 0 0;
+  font-size:9px;
+  color:#8b96a7;
+  text-align:center
+}
+.auth-feedback{
+  min-height:16px;
+  font-size:10px;
+  margin:4px 0 8px;
+  color:#c34646
+}
+.auth-feedback.ok{
+  color:#17935f
+}
+.app-shell[hidden]{
+  display:none
+}
+.user-box{
+  cursor:pointer
+}
+.user-menu{
+  display:flex;
+  align-items:center;
+  gap:7px
+}
+.user-menu button{
+  border:1px solid var(--line);
+  border-radius:7px;
+  background:#fff;
+  color:#64718a;
+  font-size:9px;
+  padding:6px 8px;
+  min-height:32px
+}
+.user-menu button:hover{
+  border-color:#9eb5d8;
+  color:var(--blue)
+}
+.role-tag{
+  display:inline-block;
+  border-radius:20px;
+  background:var(--blue-3);
+  color:var(--blue);
+  font-size:8px;
+  font-weight:700;
+  padding:2px 7px
+}
+.nav-button[hidden],[data-requires][hidden]{
+  display:none!important
+}
+.lock-panel{
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:11px;
+  padding:22px 18px;
+  text-align:center;
+  max-width:380px;
+  margin:10px auto
+}
+.lock-panel .lock-icon{
+  font-size:26px;
+  color:var(--blue)
+}
+.lock-panel h3{
+  font:700 13px var(--display);
+  margin:7px 0 4px
+}
+.lock-panel p{
+  font-size:10px;
+  color:#7c8899;
+  margin:0 0 13px
+}
+.lock-panel input{
+  width:100%;
+  height:44px;
+  border:1px solid #dfe5ed;
+  border-radius:8px;
+  padding:0 10px;
+  font-size:12px;
+  color:#38475c
+}
+.lock-panel .button-primary{
+  width:100%;
+  height:44px;
+  margin-top:9px;
+  font-size:11px
+}
+.lock-panel .auth-feedback{
+  text-align:left
+}
+.users-table{
+  display:grid;
+  gap:7px
+}
+.users-row{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:8px;
+  align-items:center;
+  border:1px solid var(--line);
+  border-radius:9px;
+  padding:10px
+}
+.users-row strong{
+  display:block;
+  font-size:10px
+}
+.users-row span{
+  font-size:8px;
+  color:#8995a7
+}
+.users-row .floor-delete{
+  min-height:38px;
+  padding:0 10px
+}
+/* ===== Avisos (toasts) ===== */
+.toast-stack{
+  position:fixed;
+  left:50%;
+  bottom:16px;
+  transform:translateX(-50%);
+  z-index:6000;
+  display:grid;
+  gap:7px;
+  width:min(380px,calc(100% - 24px));
+  pointer-events:none
+}
+.toast{
+  background:#20304a;
+  color:#fff;
+  border-radius:9px;
+  padding:11px 13px;
+  font-size:10px;
+  font-weight:600;
+  box-shadow:0 10px 26px #0b182c45;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  animation:toast-in .18s ease-out
+}
+.toast.ok{
+  background:#15845c
+}
+.toast.error{
+  background:#b63f3f
+}
+.toast.loading{
+  background:#2a4a7d
+}
+@keyframes toast-in{
+  from{
+    opacity:0;
+    transform:translateY(8px)
+  }
+  to{
+    opacity:1;
+    transform:none
+  }
+}

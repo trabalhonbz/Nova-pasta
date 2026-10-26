@@ -1,0 +1,137 @@
+/* Lista de obras: busca, filtros, alternância de visão e mapa.
+
+   Faz parte de src/estilos/, carregado pelo index.html em ordem numerada.
+   A ordem importa: regras de arquivos posteriores sobrepõem as anteriores,
+   de propósito. */
+
+.toolbar{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  flex-wrap:wrap;
+  margin:18px 0 12px
+}
+.searchbox{
+  height:34px;
+  display:flex;
+  align-items:center;
+  gap:7px;
+  padding:0 10px;
+  background:white;
+  border:1px solid #dfe5ed;
+  border-radius:8px;
+  flex:1;
+  min-width:190px;
+  max-width:310px;
+  color:#9aa5b4
+}
+.searchbox input{
+  border:0;
+  outline:0;
+  width:100%;
+  font-size:9px;
+  color:var(--ink);
+  background:transparent
+}
+.filter-chip,.view-toggle button{
+  height:28px;
+  border:1px solid #e1e6ed;
+  border-radius:20px;
+  padding:0 11px;
+  background:#fff;
+  color:#667388;
+  font-size:8px
+}
+.filter-chip.active,.view-toggle button.active{
+  background:var(--blue);
+  border-color:var(--blue);
+  color:#fff
+}
+.toolbar-spacer{
+  flex:1
+}
+.view-toggle{
+  display:flex;
+  background:white;
+  border:1px solid #e1e6ed;
+  border-radius:8px;
+  padding:2px;
+  gap:2px
+}
+.view-toggle button{
+  border:0;
+  border-radius:6px;
+  height:24px;
+  padding:0 9px
+}
+.results-count{
+  font-size:8px;
+  color:#96a0b0;
+  margin:0 0 8px
+}
+.works-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px
+}
+.works-grid .project-card .project-cover{
+  height:120px
+}
+.works-grid .project-info{
+  padding:10px 12px
+}
+.work-footer{
+  display:flex;
+  justify-content:space-between;
+  border-top:1px solid #edf0f4;
+  margin-top:9px;
+  padding-top:8px;
+  font-size:8px;
+  color:#8792a3
+}
+.open-project{
+  border:0;
+  background:none;
+  color:var(--blue);
+  font-size:8px;
+  font-weight:700;
+  padding:0
+}
+.map-board{
+  height:350px;
+  border:1px solid #e3e9f1;
+  border-radius:11px;
+  position:relative;
+  overflow:hidden;
+  background-color:#e9eef2;
+  background-image:linear-gradient(25deg,transparent 47%,#fff 48%,#fff 50%,transparent 51%),linear-gradient(145deg,transparent 44%,#fff 45%,#fff 47%,transparent 48%),linear-gradient(90deg,#e1e8e8 1px,transparent 1px),linear-gradient(#e1e8e8 1px,transparent 1px);
+  background-size:100% 100%,100% 100%,52px 52px,52px 52px
+}
+.map-label{
+  position:absolute;
+  color:#86949e;
+  font-size:8px;
+  background:#ffffffae;
+  padding:3px 6px;
+  border-radius:4px
+}
+.map-pin{
+  position:absolute;
+  transform:translate(-50%,-100%);
+  border:0;
+  background:var(--blue);
+  color:white;
+  border-radius:9px;
+  padding:6px 9px;
+  font-size:8px;
+  box-shadow:0 3px 10px #17375b30
+}
+.map-pin:after{
+  content:"";
+  position:absolute;
+  bottom:-5px;
+  left:calc(50% - 5px);
+  border-width:5px 5px 0;
+  border-style:solid;
+  border-color:var(--blue) transparent transparent
+}

@@ -1,0 +1,239 @@
+/* Relatórios: barra de ações, cartões, lista de pavimentos e histórico.
+
+   Faz parte de src/estilos/, carregado pelo index.html em ordem numerada.
+   A ordem importa: regras de arquivos posteriores sobrepõem as anteriores,
+   de propósito. */
+
+.report-toolbar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin:20px 0 14px
+}
+.select-field{
+  height:32px;
+  min-width:180px;
+  border:1px solid #dfe5ed;
+  border-radius:7px;
+  background:white;
+  padding:0 9px;
+  color:#4d5a6d;
+  font-size:9px
+}
+.action-button{
+  height:32px;
+  padding:0 11px;
+  border:1px solid #dfe5ed;
+  border-radius:7px;
+  background:white;
+  color:#47566b;
+  font-size:9px;
+  font-weight:600
+}
+.action-button:hover{
+  border-color:#9eb5d8;
+  color:var(--blue)
+}
+.report-metrics{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:8px;
+  margin-bottom:12px
+}
+.report-metric{
+  padding:10px 8px;
+  text-align:center;
+  border-radius:8px;
+  background:#edf3ff;
+  color:var(--blue)
+}
+.report-metric:nth-child(2){
+  background:#edfbf4;
+  color:#17a66f
+}
+.report-metric:nth-child(3){
+  background:#eef8ff;
+  color:#347eca
+}
+.report-metric:nth-child(4){
+  background:#f0f0ff;
+  color:#615ee6
+}
+.report-metric strong{
+  font:800 16px var(--display);
+  display:block
+}
+.report-metric span{
+  font-size:8px;
+  color:#718096
+}
+.total-progress{
+  padding:11px 12px;
+  background:white;
+  border:1px solid var(--line);
+  border-radius:9px;
+  margin-bottom:16px
+}
+.total-progress-head{
+  display:flex;
+  justify-content:space-between;
+  font-size:8px;
+  margin-bottom:7px
+}
+.total-progress .progress-track{
+  height:6px;
+  background:#e7edf5
+}
+.total-progress .progress-fill{
+  background:#2671ef
+}
+.report-heading{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  font-size:9px;
+  font-weight:700;
+  margin:13px 0 8px
+}
+.report-card{
+  overflow:hidden;
+  margin-bottom:11px
+}
+.report-card-head{
+  background:linear-gradient(110deg,#21477f,#28599f);
+  color:#fff;
+  padding:11px 13px
+}
+.report-card-title{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px
+}
+.report-card-title strong{
+  font-size:9px
+}
+.report-card-head small{
+  display:block;
+  color:#c5d5eb;
+  font-size:8px;
+  margin-top:3px
+}
+.report-card-head .progress-track{
+  height:4px;
+  margin-top:9px;
+  background:#ffffff44
+}
+.report-card-head .progress-fill{
+  background:#38c993
+}
+.report-breakdown{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  border-bottom:1px solid #edf0f4
+}
+.report-breakdown div{
+  text-align:center;
+  padding:8px 4px;
+  border-right:1px solid #edf0f4
+}
+.report-breakdown div:last-child{
+  border:0
+}
+.report-breakdown strong{
+  display:block;
+  font-size:9px
+}
+.report-breakdown span{
+  color:#8b97a9;
+  font-size:8px
+}
+.report-card-toggle{
+  width:100%;
+  border:0;
+  background:#fff;
+  text-align:left;
+  padding:8px 12px;
+  color:#58667a;
+  font-size:8px;
+  display:flex;
+  justify-content:space-between
+}
+.floor-list{
+  padding:0 12px 10px
+}
+.floor-row{
+  display:grid;
+  grid-template-columns:1.2fr .7fr .7fr .7fr;
+  gap:8px;
+  align-items:center;
+  padding:8px 2px;
+  border-top:1px solid #eff2f6;
+  font-size:8px;
+  color:#748095
+}
+.floor-row strong{
+  color:#37465c
+}
+.floor-row .done{
+  color:#16a971
+}
+.floor-row .pending{
+  color:#e49a25
+}
+.history-list{
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:10px
+}
+.history-row{
+  display:grid;
+  grid-template-columns:26px 1fr auto;
+  align-items:start;
+  gap:9px;
+  padding:12px;
+  border-bottom:1px solid #eff2f5
+}
+.history-row:last-child{
+  border:0
+}
+.history-symbol{
+  width:23px;
+  height:23px;
+  border-radius:50%;
+  display:grid;
+  place-items:center;
+  background:#edf3ff;
+  color:#3565a7
+}
+.history-row strong{
+  display:block;
+  font-size:9px
+}
+.history-row p{
+  margin:2px 0 0;
+  color:#8793a5;
+  font-size:8px
+}
+.history-row time{
+  font-size:8px;
+  color:#9da7b5;
+  white-space:nowrap
+}
+.empty-state{
+  background:white;
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:32px 16px;
+  text-align:center;
+  color:#8b97a8;
+  font-size:10px;
+  grid-column:1/-1
+}
+.empty-state strong{
+  display:block;
+  color:#3f4d60;
+  font-size:11px;
+  margin-bottom:4px
+}

@@ -1,0 +1,122 @@
+/* Diálogos, formulários, botões e cabeçalho de detalhe da obra.
+
+   Faz parte de src/estilos/, carregado pelo index.html em ordem numerada.
+   A ordem importa: regras de arquivos posteriores sobrepõem as anteriores,
+   de propósito. */
+
+dialog{
+  width:min(440px,calc(100% - 28px));
+  border:0;
+  border-radius:12px;
+  padding:0;
+  box-shadow:0 24px 80px #13243b40;
+  color:var(--ink)
+}
+dialog::backdrop{
+  background:#14223870;
+  backdrop-filter:blur(2px)
+}
+.dialog-head{
+  padding:16px 18px;
+  border-bottom:1px solid var(--line);
+  display:flex;
+  align-items:center;
+  justify-content:space-between
+}
+.dialog-head h2{
+  font:700 15px var(--display);
+  margin:0
+}
+.dialog-close{
+  border:0;
+  background:#f0f3f7;
+  border-radius:50%;
+  width:27px;
+  height:27px;
+  color:#657287
+}
+.dialog-body{
+  padding:16px 18px 18px
+}
+.form-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:11px
+}
+.form-field{
+  display:grid;
+  gap:5px
+}
+.form-field.full{
+  grid-column:1/-1
+}
+.form-field label{
+  font-size:9px;
+  font-weight:700;
+  color:#59677b
+}
+.form-field input,.form-field select{
+  width:100%;
+  height:34px;
+  border:1px solid #dfe5ed;
+  border-radius:7px;
+  padding:0 9px;
+  color:#38475c;
+  background:#fff;
+  font-size:10px
+}
+.dialog-actions{
+  display:flex;
+  justify-content:flex-end;
+  gap:7px;
+  margin-top:16px
+}
+.button-primary{
+  height:33px;
+  border:0;
+  border-radius:7px;
+  background:var(--blue);
+  color:#fff;
+  padding:0 13px;
+  font-size:9px;
+  font-weight:700
+}
+.button-secondary{
+  height:33px;
+  border:1px solid #dfe5ed;
+  border-radius:7px;
+  background:#fff;
+  color:#647186;
+  padding:0 13px;
+  font-size:9px
+}
+.detail-cover{
+  height:126px;
+  background-size:cover;
+  background-position:center;
+  position:relative
+}
+.detail-summary{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:7px;
+  margin:13px 0
+}
+.detail-summary div{
+  background:#f4f6f9;
+  border-radius:7px;
+  padding:9px
+}
+.detail-summary strong{
+  display:block;
+  font:800 14px var(--display)
+}
+.detail-summary span{
+  font-size:8px;
+  color:#8b97a8
+}
+.detail-note{
+  font-size:9px;
+  color:#778497;
+  margin:0
+}

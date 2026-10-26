@@ -1,0 +1,339 @@
+/* Parte de src/estilos/, carregado pelo index.html em ordem numerada.
+   A ordem importa: regras de arquivos posteriores sobrepõem as anteriores,
+   de propósito. */
+
+/* ===== Aviso de inatividade ===== */
+.idle-card{
+  text-align:center
+}
+.idle-card .lock-icon{
+  font-size:30px
+}
+.idle-countdown{
+  font:800 26px var(--display);
+  color:var(--blue);
+  margin:6px 0 2px
+}
+.idle-actions{
+  display:grid;
+  gap:7px;
+  margin-top:14px
+}
+.idle-actions button{
+  min-height:46px;
+  font-size:11px
+}
+/* ===== Painel do local (área demarcada) ===== */
+.local-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-bottom:10px
+}
+.local-head h3{
+  font:700 13px var(--display);
+  margin:0
+}
+.local-head p{
+  margin:2px 0 0;
+  font-size:9px;
+  color:#808d9f
+}
+.local-facts{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(104px,1fr));
+  gap:7px;
+  margin:10px 0
+}
+.local-facts div{
+  background:#f4f6f9;
+  border-radius:8px;
+  padding:9px
+}
+.local-facts strong{
+  display:block;
+  font:800 13px var(--display)
+}
+.local-facts span{
+  font-size:8px;
+  color:#8b97a8
+}
+.local-photo-actions{
+  display:flex;
+  gap:7px;
+  flex-wrap:wrap;
+  margin:12px 0 8px
+}
+.local-photo-actions .photo-manage-label,.local-photo-actions button{
+  flex:1 1 150px;
+  justify-content:center;
+  min-height:46px;
+  font-size:11px;
+  text-align:center
+}
+.photo-item-meta{
+  display:block;
+  font-size:7px;
+  color:#8b97a9;
+  line-height:1.3;
+  margin-top:3px;
+  text-align:center
+}
+.photo-include{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+  font-size:8px;
+  color:#5f6d82;
+  min-height:34px;
+  cursor:pointer
+}
+.photo-include input{
+  accent-color:#2671ef;
+  width:16px;
+  height:16px
+}
+/* ===== Equipe: presença e cadastro ===== */
+.team-switch{
+  display:flex;
+  gap:4px;
+  padding:3px;
+  background:#eef2f7;
+  border-radius:9px;
+  margin:16px 0 12px
+}
+.team-switch button{
+  flex:1;
+  border:0;
+  border-radius:7px;
+  background:transparent;
+  color:#6c7a90;
+  min-height:44px;
+  font-size:10px;
+  font-weight:700
+}
+.team-switch button[aria-selected="true"]{
+  background:#fff;
+  color:var(--blue);
+  box-shadow:0 1px 4px #18355720
+}
+.team-filters{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:8px;
+  margin-bottom:12px
+}
+.team-filters .form-field label{
+  font-size:8px
+}
+.team-filters input,.team-filters select{
+  height:42px;
+  border:1px solid #dfe5ed;
+  border-radius:8px;
+  padding:0 9px;
+  background:#fff;
+  color:#38475c;
+  font-size:11px;
+  width:100%
+}
+.team-summary{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
+  gap:8px;
+  margin-bottom:12px
+}
+.team-summary div{
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:11px
+}
+.team-summary strong{
+  display:block;
+  font:800 19px var(--display)
+}
+.team-summary span{
+  font-size:8px;
+  color:#8b97a8
+}
+.team-list{
+  display:grid;
+  gap:8px
+}
+.team-row{
+  background:#fff;
+  border:1px solid var(--line);
+  border-left:4px solid #d7dde6;
+  border-radius:10px;
+  padding:11px;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:9px;
+  align-items:center
+}
+.team-row.present{
+  border-left-color:var(--green);
+  background:#f6fdfa
+}
+.team-row.inactive{
+  opacity:.72
+}
+.team-row strong{
+  display:block;
+  font-size:11px
+}
+.team-row .team-meta{
+  font-size:8px;
+  color:#8995a7;
+  margin-top:2px;
+  line-height:1.5
+}
+.team-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  border-radius:20px;
+  padding:2px 8px;
+  font-size:8px;
+  font-weight:700;
+  background:#eef1f6;
+  color:#64748b
+}
+.team-badge.present{
+  background:#e6f9f1;
+  color:#108257
+}
+.team-badge.absent{
+  background:#f1f4f8;
+  color:#6b7a8d
+}
+.team-badge.off{
+  background:#fdeeee;
+  color:#b14343
+}
+.team-actions{
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+  justify-content:flex-end
+}
+.team-actions button{
+  min-height:44px;
+  padding:0 13px;
+  border-radius:8px;
+  border:1px solid #dfe5ed;
+  background:#fff;
+  color:#4a5a70;
+  font-size:10px;
+  font-weight:700
+}
+.team-actions button.primary{
+  background:var(--green);
+  border-color:transparent;
+  color:#fff
+}
+.team-actions button.danger{
+  background:#fff;
+  border-color:#eccccc;
+  color:#b14343
+}
+.team-history{
+  display:grid;
+  gap:6px;
+  margin-top:10px
+}
+.team-history article{
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:9px;
+  padding:9px 11px;
+  font-size:9px;
+  color:#5f6d82
+}
+.team-history strong{
+  display:block;
+  font-size:10px;
+  color:#37465c
+}
+.team-history .correction{
+  font-size:8px;
+  color:#9aa5b6;
+  margin-top:3px
+}
+.import-preview{
+  max-height:230px;
+  overflow:auto;
+  border:1px solid var(--line);
+  border-radius:9px;
+  margin:10px 0
+}
+.import-preview table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:9px
+}
+.import-preview th,.import-preview td{
+  text-align:left;
+  padding:6px 8px;
+  border-bottom:1px solid #eff2f6;
+  white-space:nowrap
+}
+.import-preview th{
+  background:#f6f8fb;
+  position:sticky;
+  top:0;
+  font-size:8px;
+  color:#64748b
+}
+.import-preview tr.skip td{
+  color:#b14343;
+  background:#fdf6f6
+}
+.import-preview tr.update td{
+  background:#fffaf0
+}
+.import-counts{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:7px;
+  margin:10px 0
+}
+.import-counts div{
+  border-radius:8px;
+  padding:9px;
+  text-align:center;
+  background:#eef3fb;
+  color:#2c4e85
+}
+.import-counts strong{
+  display:block;
+  font:800 17px var(--display)
+}
+.import-counts span{
+  font-size:8px
+}
+.import-counts div.update{
+  background:#fff6e6;
+  color:#8a5d11
+}
+.import-counts div.skip{
+  background:#fdeeee;
+  color:#a63f3f
+}
+@media(max-width:600px){
+  .team-row{
+    grid-template-columns:1fr
+  }
+  .team-actions{
+    justify-content:stretch
+  }
+  .team-actions button{
+    flex:1
+  }
+  .import-counts{
+    grid-template-columns:1fr
+  }
+}

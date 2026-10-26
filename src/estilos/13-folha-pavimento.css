@@ -1,0 +1,182 @@
+/* Parte de src/estilos/, carregado pelo index.html em ordem numerada.
+   A ordem importa: regras de arquivos posteriores sobrepõem as anteriores,
+   de propósito. */
+
+/* ===== Relatórios por pavimento ===== */
+.report-floor-card{
+  background:#fff;
+  border:1px solid #e8ecf2;
+  border-radius:14px;
+  overflow:hidden;
+  margin-bottom:16px;
+  box-shadow:0 2px 10px #1b233008
+}
+.report-floor-card>header{
+  background:linear-gradient(100deg,#1d4ed8,#2563eb 55%,#3b82f6);
+  color:#fff;
+  padding:13px 16px
+}
+.report-floor-card .rf-top{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px
+}
+.report-floor-card .rf-work{
+  display:block;
+  font-size:9px;
+  font-weight:700;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  color:#cfe0ff
+}
+.report-floor-card .rf-name{
+  display:block;
+  margin-top:3px;
+  font:700 14px/1.3 var(--display);
+  word-break:break-word
+}
+.report-floor-card .rf-pct{
+  text-align:right;
+  flex:none
+}
+.report-floor-card .rf-pct strong{
+  display:block;
+  font:800 22px/1 var(--display)
+}
+.report-floor-card .rf-pct span{
+  font-size:9px;
+  color:#cfe0ff
+}
+.report-floor-card .rf-track{
+  height:6px;
+  border-radius:99px;
+  background:#ffffff38;
+  overflow:hidden;
+  margin-top:11px
+}
+.report-floor-card .rf-track i{
+  display:block;
+  height:100%;
+  border-radius:99px;
+  background:#fff
+}
+.rf-breakdown{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  border-bottom:1px solid #eef1f6
+}
+.rf-breakdown div{
+  padding:12px 6px;
+  text-align:center;
+  border-right:1px solid #eef1f6
+}
+.rf-breakdown div:last-child{
+  border-right:0
+}
+.rf-breakdown strong{
+  display:block;
+  font:700 13px/1.2 var(--display);
+  color:#1b2330
+}
+.rf-breakdown span{
+  font-size:8px;
+  font-weight:700;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  color:#8e99a8
+}
+.rf-toggle{
+  width:100%;
+  border:0;
+  background:#fff;
+  padding:12px 16px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  font-size:10px;
+  font-weight:600;
+  color:#45526a;
+  text-align:left
+}
+.rf-body{
+  padding:0 16px 16px;
+  border-top:1px solid #eef1f6
+}
+.rf-sub{
+  margin:14px 0 8px;
+  font-size:8px;
+  font-weight:700;
+  letter-spacing:.07em;
+  text-transform:uppercase;
+  color:#98a2b1
+}
+.rf-plan{
+  border:1px solid #eef1f6;
+  border-radius:10px;
+  background:#f8fafc;
+  min-height:120px;
+  display:grid;
+  place-items:center;
+  padding:10px
+}
+.rf-plan img{
+  max-height:190px;
+  width:auto;
+  max-width:100%;
+  border-radius:6px
+}
+.rf-table-wrap{
+  overflow-x:auto;
+  border:1px solid #eef1f6;
+  border-radius:10px
+}
+.rf-table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:9px;
+  min-width:460px
+}
+.rf-table th{
+  background:#f8fafc;
+  color:#8e99a8;
+  font-size:8px;
+  font-weight:700;
+  letter-spacing:.05em;
+  text-transform:uppercase;
+  padding:9px 8px;
+  text-align:left;
+  white-space:nowrap
+}
+.rf-table th:not(:first-child),.rf-table td:not(:first-child){
+  text-align:center
+}
+.rf-table td{
+  padding:10px 8px;
+  border-top:1px solid #f1f4f8;
+  color:#44506a
+}
+.rf-table td:first-child{
+  font-weight:700;
+  color:#1b2330
+}
+.rf-chip{
+  display:inline-block;
+  padding:3px 9px;
+  border-radius:99px;
+  font-size:8px;
+  font-weight:700;
+  white-space:nowrap
+}
+/* Cabeçalho exclusivo da folha impressa: na tela essas informações já estão na barra
+   de ferramentas, que não vai para o papel. Sem ele a folha saía sem título, sem data
+   e sem dizer a que obra se refere. */
+.print-header{
+  display:none
+}
+.rf-empty{
+  margin:10px 0 0;
+  font-size:9px;
+  color:#909bab
+}

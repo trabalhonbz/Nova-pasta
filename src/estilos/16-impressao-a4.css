@@ -1,0 +1,262 @@
+/* Parte de src/estilos/, carregado pelo index.html em ordem numerada.
+   A ordem importa: regras de arquivos posteriores sobrepõem as anteriores,
+   de propósito. */
+
+/* ===== Relatório em folha A4 =====
+   Folha A4 retrato com margens de 12mm/10mm deixa 190mm de largura útil. Planta e
+   fotografias passam a ser medidas em milímetros, com largura acompanhando a coluna
+   e altura livre (`height:auto`) — é o que amplia a imagem sem deformá-la. O teto em
+   mm existe para a quebra de página sair limpa.
+
+   Fundos coloridos e texto branco não são usados aqui: o navegador só imprime fundo
+   quando "gráficos de segundo plano" está ligado, e sem ele o texto branco sairia
+   invisível. Os indicadores em que a cor é a informação (chips de situação, amostras)
+   pedem `print-color-adjust:exact` para sobreviver de qualquer modo. */
+@media print{
+  @page{
+    size:A4 portrait;
+    margin:12mm 10mm
+  }
+  .auth-overlay,.toast-stack,.user-menu,.sketch-zoom{
+    display:none!important
+  }
+  .content{
+    max-width:none!important;
+    padding:0!important
+  }
+  /* Botões que só fazem sentido na tela. */
+  .rf-toggle,.floor-croqui,.gallery-more,.report-filter{
+    display:none!important
+  }
+  .print-header{
+    display:block;
+    border-bottom:2px solid #1d4ed8;
+    padding-bottom:3mm;
+    margin-bottom:5mm
+  }
+  .print-header strong{
+    display:block;
+    font:800 14pt/1.2 var(--display);
+    color:#12306b
+  }
+  .print-header span{
+    display:block;
+    margin-top:1.5mm;
+    font-size:8.5pt;
+    color:#5b6678
+  }
+  /* Pavimento ou galeria recolhidos na tela ainda saem inteiros no papel. */
+  .rf-body[hidden]{
+    display:block!important
+  }
+  #reportsView img{
+    max-width:100%
+  }
+  #reportsView{
+    color:#1b2330
+  }
+  .report-metrics{
+    gap:4mm
+  }
+  .report-metric{
+    border:1px solid #d7dce4;
+    border-radius:0;
+    background:#fff!important
+  }
+  .report-metric strong{
+    font-size:13pt
+  }
+  .report-metric span{
+    font-size:7pt;
+    color:#5b6678
+  }
+  .total-progress{
+    border:1px solid #d7dce4;
+    border-radius:0;
+    break-inside:avoid
+  }
+  .total-progress-head{
+    font-size:8pt
+  }
+  .total-progress .progress-track{
+    background:#e4e9f0!important;
+    -webkit-print-color-adjust:exact;
+    print-color-adjust:exact
+  }
+  .total-progress .progress-fill{
+    background:#1d4ed8!important;
+    -webkit-print-color-adjust:exact;
+    print-color-adjust:exact
+  }
+  .report-heading{
+    font-size:9pt
+  }
+  .report-floor-card{
+    border:1px solid #d7dce4;
+    border-radius:0;
+    box-shadow:none;
+    margin:0 0 8mm;
+    break-inside:auto
+  }
+  .report-floor-card>header{
+    background:#fff!important;
+    color:#1b2330!important;
+    border-bottom:2px solid #1d4ed8;
+    padding:0 0 3mm;
+    margin:0 4mm;
+    break-inside:avoid;
+    break-after:avoid
+  }
+  .report-floor-card .rf-work,.report-floor-card .rf-pct span{
+    color:#5b6678!important
+  }
+  .report-floor-card .rf-name{
+    font-size:13pt
+  }
+  .report-floor-card .rf-pct strong{
+    font-size:16pt;
+    color:#1d4ed8
+  }
+  .report-floor-card .rf-track{
+    height:4px;
+    background:#e4e9f0!important;
+    -webkit-print-color-adjust:exact;
+    print-color-adjust:exact
+  }
+  .report-floor-card .rf-track i{
+    background:#1d4ed8!important;
+    -webkit-print-color-adjust:exact;
+    print-color-adjust:exact
+  }
+  .rf-breakdown{
+    break-inside:avoid;
+    margin:0 4mm;
+    border-bottom:1px solid #e4e9f0
+  }
+  .rf-breakdown div{
+    padding:2.5mm 2mm
+  }
+  .rf-breakdown strong{
+    font-size:10pt
+  }
+  .rf-breakdown span{
+    font-size:6.5pt
+  }
+  .rf-body{
+    padding:0 4mm 4mm;
+    border-top:0
+  }
+  .rf-sub{
+    font-size:8pt;
+    margin:5mm 0 2mm;
+    color:#5b6678;
+    break-after:avoid
+  }
+  /* Planta do ambiente: largura da coluna inteira, até 150mm de altura. */
+  .rf-plan{
+    min-height:0;
+    padding:0;
+    border:1px solid #d7dce4;
+    border-radius:0;
+    background:#fff;
+    break-inside:avoid
+  }
+  .rf-plan img{
+    width:auto;
+    height:auto;
+    max-width:100%;
+    max-height:150mm;
+    border-radius:0
+  }
+  .rf-empty{
+    font-size:8pt
+  }
+  /* Setores: cabeçalho repetido a cada página quando a tabela atravessa a folha. */
+  .rf-table-wrap{
+    overflow:visible!important;
+    border:1px solid #d7dce4;
+    border-radius:0;
+    break-inside:auto
+  }
+  .rf-table{
+    min-width:0!important;
+    font-size:8.5pt
+  }
+  .rf-table thead{
+    display:table-header-group
+  }
+  .rf-table tr{
+    break-inside:avoid
+  }
+  .rf-table th{
+    background:#f1f4f9!important;
+    color:#44506a!important;
+    font-size:7.5pt;
+    padding:2mm 1.5mm;
+    -webkit-print-color-adjust:exact;
+    print-color-adjust:exact
+  }
+  .rf-table td{
+    padding:2mm 1.5mm;
+    font-size:8.5pt
+  }
+  .rf-chip{
+    background:#fff!important;
+    border:1px solid currentColor;
+    font-size:7.5pt;
+    -webkit-print-color-adjust:exact;
+    print-color-adjust:exact
+  }
+  /* Fotografias: duas por linha (≈88mm cada), altura livre para não achatar retrato. */
+  .photo-group{
+    margin-top:4mm;
+    break-inside:auto
+  }
+  .photo-group-head{
+    font-size:7.5pt;
+    break-after:avoid
+  }
+  .photo-group-head strong{
+    font-size:9pt
+  }
+  .photo-gallery{
+    grid-template-columns:repeat(2,1fr)!important;
+    gap:5mm;
+    align-items:start
+  }
+  .photo-gallery .gallery-cell{
+    display:block;
+    aspect-ratio:auto;
+    min-height:0;
+    background:#fff;
+    border:1px solid #d7dce4;
+    border-radius:0;
+    overflow:visible;
+    break-inside:avoid;
+    page-break-inside:avoid
+  }
+  .photo-gallery .gallery-cell img{
+    width:100%;
+    height:auto;
+    max-height:92mm;
+    object-fit:contain;
+    background:#fff
+  }
+  /* A legenda desce para baixo da foto: sobreposta em 7px era ilegível no papel e
+     cobria justamente o detalhe fotografado. */
+  .photo-gallery .gallery-cell .gallery-caption{
+    position:static;
+    background:none;
+    color:#5b6678;
+    font-size:7.5pt;
+    padding:1.5mm 2mm;
+    text-align:left
+  }
+  .floor-empty-note{
+    font-size:8pt
+  }
+  .status-swatch,.status-chip i{
+    -webkit-print-color-adjust:exact;
+    print-color-adjust:exact
+  }
+}

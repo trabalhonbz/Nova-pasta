@@ -1,0 +1,172 @@
+/* Fotografias nos relatórios e barra de ferramentas do croqui.
+
+   Faz parte de src/estilos/, carregado pelo index.html em ordem numerada.
+   A ordem importa: regras de arquivos posteriores sobrepõem as anteriores,
+   de propósito. */
+
+.detail-actions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin:14px 0
+}
+.detail-actions .button-primary,.detail-actions .button-secondary{
+  height:36px
+}
+.detail-reports{
+  display:grid;
+  gap:8px;
+  margin-top:15px
+}
+.photo-report-card{
+  border:1px solid var(--line);
+  border-radius:8px;
+  padding:9px
+}
+.photo-report-head{
+  display:flex;
+  justify-content:space-between;
+  gap:8px;
+  font-size:9px;
+  font-weight:700
+}
+.photo-report-card p{
+  font-size:8px;
+  color:#7d899b;
+  margin:4px 0
+}
+.photo-thumbs{
+  display:flex;
+  gap:6px;
+  overflow-x:auto
+}
+.photo-thumbs img{
+  width:120px;
+  height:90px;
+  object-fit:contain;
+  background:#f2f5f9;
+  border-radius:5px
+}
+.photo-item{
+  position:relative;
+  flex:0 0 auto
+}
+.photo-item button{
+  display:block;
+  width:100%;
+  min-height:36px;
+  margin-top:3px;
+  padding:5px;
+  border:0;
+  border-radius:5px;
+  background:#edf3ff;
+  color:#245da2;
+  font-size:11px
+}
+.photo-manage-label{
+  display:inline-flex;
+  align-items:center;
+  min-height:42px;
+  cursor:pointer
+}
+.photo-zoom-image{
+  display:block;
+  width:100%;
+  max-height:75vh;
+  object-fit:contain
+}
+.photo-manage-preview img{
+  display:block;
+  max-width:100%;
+  max-height:45vh;
+  margin:12px auto;
+  object-fit:contain
+}
+.sketch-toolbar{
+  display:flex;
+  align-items:end;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-bottom:10px
+}
+.sketch-toolbar .form-field{
+  min-width:105px;
+  flex:1
+}
+.sketch-toolbar input,.sketch-toolbar select{
+  height:32px
+}
+.sketch-readout{
+  display:flex;
+  gap:8px;
+  margin:10px 0
+}
+.sketch-readout div{
+  flex:1;
+  background:#f2f6fc;
+  border-radius:7px;
+  padding:8px 10px
+}
+.sketch-readout strong{
+  display:block;
+  font:800 14px var(--display)
+}
+.sketch-readout span{
+  font-size:8px;
+  color:#7d899b
+}
+.sketch-canvas{
+  width:100%;
+  height:300px;
+  display:block;
+  border:1px solid #dce4ef;
+  border-radius:9px;
+  background:#f8fafc;
+  cursor:crosshair;
+  touch-action:none
+}
+.sketch-tools{
+  display:flex;
+  gap:7px;
+  flex-wrap:wrap;
+  margin-top:9px
+}
+.sketch-tip{
+  font-size:8px;
+  color:#8793a4;
+  margin:8px 0 0
+}
+.sketch-error{
+  font-size:9px;
+  color:#c34646;
+  min-height:15px;
+  margin:5px 0 0
+}
+.photo-upload{
+  border:1px dashed #b7c4d5;
+  border-radius:8px;
+  padding:14px;
+  background:#f8fafc
+}
+.photo-upload input{
+  font-size:9px;
+  width:100%
+}
+.photo-upload small{
+  display:block;
+  color:#8a96a8;
+  font-size:8px;
+  margin-top:5px
+}
+.photo-preview-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:6px;
+  margin-top:9px
+}
+.photo-preview-grid img{
+  width:100%;
+  height:80px;
+  object-fit:cover;
+  border-radius:6px
+}

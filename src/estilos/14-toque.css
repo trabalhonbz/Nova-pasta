@@ -1,0 +1,155 @@
+/* Parte de src/estilos/, carregado pelo index.html em ordem numerada.
+   A ordem importa: regras de arquivos posteriores sobrepõem as anteriores,
+   de propósito. */
+
+/* ===== Ajustes gerais para telas pequenas ===== */
+@media(max-width:600px){
+  dialog{
+    width:calc(100% - 14px);
+    max-height:92vh
+  }
+  .dialog-body{
+    padding:13px 13px 16px
+  }
+  .dialog-head{
+    padding:13px 14px
+  }
+  .dialog-close{
+    width:38px;
+    height:38px;
+    font-size:17px
+  }
+  .form-field input,.form-field select{
+    height:44px;
+    font-size:12px
+  }
+  .button-primary,.button-secondary,.action-button{
+    min-height:44px;
+    font-size:10px;
+    padding:0 13px
+  }
+  .select-field{
+    height:44px;
+    font-size:11px
+  }
+  .photo-thumbs img{
+    width:138px;
+    height:104px
+  }
+  .photo-item button{
+    min-height:44px;
+    font-size:10px
+  }
+  .detail-floor-actions button{
+    min-height:42px;
+    font-size:9px;
+    padding:0 9px
+  }
+  .sketch-toolbar{
+    gap:7px
+  }
+  .sketch-toolbar .form-field{
+    flex-basis:100%
+  }
+  .sketch-tools{
+    gap:6px
+  }
+  .sketch-tools button{
+    flex:1 1 calc(50% - 6px);
+    min-height:44px
+  }
+  .plan-import{
+    gap:7px
+  }
+  .main-nav{
+    height:auto;
+    padding:0 0 7px
+  }
+  .nav-button{
+    min-height:42px;
+    padding:0 13px;
+    font-size:11px;
+    border-radius:9px
+  }
+  .nav-icon{
+    font-size:14px
+  }
+  .user-menu button{
+    min-height:40px;
+    padding:0 10px;
+    font-size:10px
+  }
+  .toolbar .filter-chip{
+    min-height:38px;
+    font-size:9px
+  }
+  .searchbox{
+    height:44px
+  }
+  .searchbox input{
+    font-size:12px
+  }
+  .photo-gallery{
+    grid-template-columns:repeat(auto-fill,minmax(102px,1fr))
+  }
+  .report-card-toggle{
+    min-height:44px;
+    align-items:center;
+    font-size:9px
+  }
+  .users-row{
+    grid-template-columns:1fr
+  }
+}
+/* Resolve a sobreposição entre nome, barra de progresso e resumo do pavimento:
+   as regras antigas misturavam grid-area nomeada com grid-row numérica. */
+.detail-floor-main{
+  grid-template-areas:"icon identity edit" "progress progress progress" "summary summary summary";
+  row-gap:6px;
+  align-items:center
+}
+.detail-floor-main .detail-floor-icon{
+  grid-area:icon;
+  align-self:center
+}
+.detail-floor-main .detail-floor-identity{
+  grid-area:identity
+}
+.detail-floor-main .detail-floor-edit{
+  grid-area:edit;
+  justify-self:end
+}
+.detail-floor-main .detail-floor-progress{
+  grid-area:progress
+}
+.detail-floor-main .detail-floor-summary{
+  grid-area:summary
+}
+.report-breakdown{
+  grid-template-columns:repeat(5,minmax(0,1fr))
+}
+@media(max-width:600px){
+  .report-breakdown{
+    grid-template-columns:repeat(2,minmax(0,1fr))
+  }
+  .report-breakdown div{
+    border-right:1px solid #edf0f4;
+    border-top:1px solid #edf0f4
+  }
+  .report-breakdown div:nth-child(2n){
+    border-right:0
+  }
+  .report-breakdown div:nth-child(-n+2){
+    border-top:0
+  }
+  .report-breakdown div:last-child{
+    grid-column:1/-1;
+    border-right:0
+  }
+}
+@media(hover:none){
+  .project-card:hover{
+    transform:none;
+    box-shadow:0 2px 5px #27384e08
+  }
+}

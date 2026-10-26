@@ -1,0 +1,50 @@
+/* Variáveis de cor e tipografia, reposição do navegador e foco visível.
+
+   Faz parte de src/estilos/, carregado pelo index.html em ordem numerada.
+   A ordem importa: regras de arquivos posteriores sobrepõem as anteriores,
+   de propósito. */
+
+:root{
+  color-scheme:light;
+  --blue:#21477f;
+  --blue-2:#28589d;
+  --blue-3:#e9f0ff;
+  --ink:#202b3c;
+  --muted:#8491a5;
+  --line:#e7ebf1;
+  --bg:#f3f5f8;
+  --white:#fff;
+  --green:#20b782;
+  --orange:#f5a623;
+  --red:#e36565;
+  --font:'DM Sans',sans-serif;
+  --display:'Manrope',sans-serif;
+  --max:1050px
+}
+*{
+  box-sizing:border-box
+}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--ink);
+  font:13px/1.5 var(--font);
+  -webkit-font-smoothing:antialiased
+}
+button,input,select{
+  font:inherit
+}
+button{
+  cursor:pointer
+}
+a{
+  color:inherit;
+  text-decoration:none
+}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{
+  outline:3px solid #78a9f5;
+  outline-offset:2px
+}
+::selection{
+  background:#c9dcff
+}

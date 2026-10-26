@@ -1,0 +1,158 @@
+/* Barra do topo, marca, navegação, caixa do usuário e faixa de destaque.
+
+   Faz parte de src/estilos/, carregado pelo index.html em ordem numerada.
+   A ordem importa: regras de arquivos posteriores sobrepõem as anteriores,
+   de propósito. */
+
+.topbar{
+  height:44px;
+  background:#fff;
+  border-bottom:1px solid var(--line);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 max(20px,calc((100vw - 1240px)/2));
+  position:sticky;
+  top:0;
+  z-index:20;
+  gap:28px
+}
+.brand{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  min-width:190px
+}
+.brand-mark{
+  width:29px;
+  height:29px;
+  border-radius:9px;
+  background:var(--blue);
+  color:#fff;
+  display:grid;
+  place-items:center;
+  font-size:15px;
+  box-shadow:0 3px 8px #17375b30
+}
+.brand-name{
+  font:800 11px/1.15 var(--display);
+  letter-spacing:.04em;
+  color:var(--blue)
+}
+.brand-name small{
+  display:block;
+  color:#99a4b6;
+  font:500 9px/1.5 var(--font);
+  letter-spacing:.13em
+}
+.main-nav{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:5px;
+  height:100%
+}
+.nav-button{
+  border:0;
+  border-radius:7px;
+  padding:7px 11px;
+  background:transparent;
+  color:#788397;
+  font-size:10px;
+  display:flex;
+  align-items:center;
+  gap:7px;
+  white-space:nowrap
+}
+.nav-button:hover{
+  background:#f4f6f9;
+  color:var(--blue)
+}
+.nav-button.active{
+  background:var(--blue);
+  color:#fff
+}
+.nav-icon{
+  font-size:13px;
+  line-height:1
+}
+.user-box{
+  min-width:145px;
+  border-left:1px solid var(--line);
+  padding-left:12px;
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:9px;
+  text-align:right
+}
+.user-box strong{
+  display:block;
+  font-size:9px
+}
+.user-box span{
+  color:#9aa4b5;
+  font-size:10px
+}
+.avatar{
+  width:24px;
+  height:24px;
+  border-radius:50%;
+  display:grid;
+  place-items:center;
+  background:#203f70;
+  color:#fff;
+  font-size:9px;
+  font-weight:700
+}
+.hero-band{
+  background:linear-gradient(115deg,#21477f,#28569a);
+  color:white;
+  min-height:118px
+}
+.hero-inner{
+  max-width:760px;
+  margin:auto;
+  padding:24px 0 23px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:24px
+}
+.eyebrow{
+  font-size:9px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:#d2e2fa
+}
+.hero-band h1{
+  margin:3px 0 2px;
+  font:800 23px/1.2 var(--display);
+  letter-spacing:0
+}
+.hero-band p{
+  margin:0;
+  color:#b8cbe5;
+  font-size:10px
+}
+.hero-stats{
+  display:flex;
+  gap:8px
+}
+.hero-stat{
+  min-width:78px;
+  padding:8px 12px;
+  border:1px solid #ffffff30;
+  border-radius:11px;
+  background:#ffffff12;
+  text-align:center
+}
+.hero-stat strong{
+  display:block;
+  font:800 19px/1.2 var(--display)
+}
+.hero-stat span{
+  font-size:8px;
+  color:#d4e1f4;
+  white-space:nowrap
+}

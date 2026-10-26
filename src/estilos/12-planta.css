@@ -1,0 +1,349 @@
+/* Parte de src/estilos/, carregado pelo index.html em ordem numerada.
+   A ordem importa: regras de arquivos posteriores sobrepõem as anteriores,
+   de propósito. */
+
+/* ===== Visor do croqui: zoom, deslocamento e opacidade ===== */
+.sketch-viewport{
+  position:relative
+}
+/* o elemento acompanha a proporção do viewBox (1000x650) para a planta não distorcer
+   e para o mapeamento tela <-> planta continuar linear em qualquer tamanho de tela */
+.sketch-canvas{
+  width:100%;
+  height:auto;
+  aspect-ratio:1000 / 650;
+  touch-action:none
+}
+@supports not (aspect-ratio:1/1){
+  .sketch-canvas{
+    height:min(58vh,420px)
+  }
+}
+.sketch-canvas.mode-pan{
+  cursor:grab
+}
+.sketch-canvas.mode-draw{
+  cursor:crosshair
+}
+.sketch-canvas.mode-edit{
+  cursor:default
+}
+.sketch-zoom{
+  position:absolute;
+  right:8px;
+  bottom:8px;
+  display:grid;
+  gap:5px
+}
+.sketch-zoom button{
+  width:40px;
+  height:40px;
+  border:1px solid #ccd7e6;
+  border-radius:9px;
+  background:#ffffffee;
+  color:#3d5878;
+  font-size:15px;
+  font-weight:700;
+  display:grid;
+  place-items:center;
+  box-shadow:0 2px 6px #17375b22
+}
+.sketch-mode{
+  display:flex;
+  gap:4px;
+  padding:3px;
+  background:#eef2f7;
+  border-radius:9px;
+  margin:0 0 8px
+}
+.sketch-mode button{
+  flex:1;
+  border:0;
+  border-radius:7px;
+  background:transparent;
+  color:#6c7a90;
+  min-height:42px;
+  font-size:9px;
+  font-weight:700;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:5px
+}
+.sketch-mode button[aria-pressed="true"]{
+  background:#fff;
+  color:var(--blue);
+  box-shadow:0 1px 4px #18355720
+}
+.sketch-opacity{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-top:8px;
+  font-size:8px;
+  color:#78879b
+}
+.sketch-opacity input{
+  flex:1;
+  min-width:110px;
+  accent-color:var(--blue);
+  height:30px
+}
+.sketch-zoom-readout{
+  font-size:8px;
+  color:#78879b;
+  min-width:62px;
+  text-align:right;
+  white-space:nowrap
+}
+.sketch-handle{
+  cursor:nwse-resize
+}
+/* ===== Tela da planta: pintar setores (igual ao aplicativo de campo) ===== */
+.plan-dialog{
+  width:min(620px,calc(100% - 20px));
+  max-height:94vh;
+  background:#f9fafc
+}
+.plan-topbar{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:10px 12px;
+  background:#fff;
+  border-bottom:1px solid #eceff4
+}
+.plan-topbar h2{
+  flex:1;
+  min-width:0;
+  margin:0;
+  font:800 17px/1.25 var(--display);
+  color:#1b2330;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap
+}
+.plan-back,.plan-topbar-icon{
+  width:40px;
+  height:40px;
+  flex:none;
+  border:0;
+  border-radius:10px;
+  background:transparent;
+  color:#1b2330;
+  font-size:19px;
+  display:grid;
+  place-items:center
+}
+.plan-back:hover,.plan-topbar-icon:hover{
+  background:#f1f3f7
+}
+.plan-body{
+  background:#f9fafc;
+  padding-top:12px
+}
+.paint-bar{
+  margin:0 0 10px
+}
+.paint-bar-label{
+  display:block;
+  font-size:11px;
+  font-weight:600;
+  letter-spacing:.02em;
+  color:#7d8794;
+  margin-bottom:9px
+}
+/* Cada cor leva o próprio nome: a paleta se explica sozinha e o cargo de campo não
+   precisa decorar o significado dos quadradinhos. A cor ativa é marcada por anel na
+   própria cor mais um "✓" dentro do quadrado — antes o estado selecionado pintava o
+   botão de verde, que se confundia com a cor "Executado". */
+.paint-swatches{
+  display:flex;
+  gap:9px;
+  flex-wrap:wrap
+}
+.paint-swatches button{
+  flex:1 1 78px;
+  max-width:132px;
+  min-height:68px;
+  padding:8px 6px;
+  border:2px solid transparent;
+  border-radius:15px;
+  background:#f3f5f8;
+  display:grid;
+  justify-items:center;
+  align-content:center;
+  gap:5px;
+  transition:border-color .12s,background .12s,box-shadow .12s
+}
+.paint-swatches button:hover{
+  background:#eceff4
+}
+.paint-swatches i{
+  display:block;
+  width:26px;
+  height:26px;
+  border-radius:5px;
+  box-shadow:inset 0 0 0 1px #0000001a
+}
+.paint-swatches i.round{
+  border-radius:50%
+}
+.paint-swatches span{
+  font-size:9px;
+  font-weight:700;
+  line-height:1.15;
+  text-align:center;
+  color:#5c6878
+}
+.paint-swatches i.tool{
+  display:grid;
+  place-items:center;
+  color:#fff;
+  font-size:15px;
+  line-height:1
+}
+/* `.sketch-tools` e `.sketch-edit-tools` declaram `display:flex`, que ganha do
+   `display:none` embutido no atributo [hidden]. Sem isto a fileira do desenho
+   aparecia fora do modo de desenho. */
+.sketch-tools[hidden],.sketch-edit-tools[hidden]{
+  display:none
+}
+.paint-swatches button:disabled{
+  opacity:.45
+}
+/* A grade da folha acomoda as quatro situações mais o total sem apertar. */
+.rf-breakdown{
+  grid-template-columns:repeat(auto-fit,minmax(84px,1fr))
+}
+.paint-swatches button[aria-pressed="true"]{
+  background:#fff;
+  border-color:var(--sw,#1877f2);
+  box-shadow:0 1px 8px #1b23301f
+}
+.paint-swatches button[aria-pressed="true"] span{
+  color:#1b2330
+}
+.paint-swatches button[aria-pressed="true"] i{
+  display:grid;
+  place-items:center
+}
+.paint-swatches button[aria-pressed="true"] i:after{
+  content:"✓";
+  font:800 15px/1 var(--display);
+  color:var(--ink,#fff)
+}
+.plan-progress{
+  margin-top:12px;
+  background:#fff;
+  border:1px solid #eceff4;
+  border-radius:14px;
+  padding:14px 15px;
+  box-shadow:0 2px 10px #1b233008
+}
+.plan-progress-head{
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  gap:10px
+}
+.plan-progress-head strong{
+  font:800 14px/1 var(--display);
+  color:#1b2330
+}
+.plan-progress-head b{
+  font:800 26px/1 var(--display);
+  color:#1877f2
+}
+.plan-progress-track{
+  height:9px;
+  border-radius:99px;
+  background:#e9edf3;
+  overflow:hidden;
+  margin:12px 0 13px
+}
+.plan-progress-track i{
+  display:block;
+  height:100%;
+  border-radius:99px;
+  background:#1367fb
+}
+.plan-progress-legend{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:7px 14px
+}
+.plan-progress-legend span{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  font-size:12px;
+  color:#6b7280;
+  min-width:0
+}
+.plan-progress-legend i{
+  width:14px;
+  height:14px;
+  flex:none;
+  border-radius:3px
+}
+.plan-progress-legend b{
+  color:#1b2330;
+  font-weight:700
+}
+.plan-progress-total{
+  margin:12px 0 0;
+  font-size:12px;
+  color:#6b7280
+}
+.plan-tools{
+  margin-top:12px;
+  border:1px solid #e6eaf1;
+  border-radius:12px;
+  background:#fff;
+  padding:0 11px
+}
+.plan-tools[open]{
+  padding-bottom:11px
+}
+.plan-tools>summary{
+  list-style:none;
+  cursor:pointer;
+  padding:12px 2px;
+  font-size:11px;
+  font-weight:700;
+  color:#5a6879;
+  display:flex;
+  align-items:center;
+  gap:7px
+}
+.plan-tools>summary::-webkit-details-marker{
+  display:none
+}
+.plan-dialog .sketch-zoom{
+  right:10px;
+  bottom:10px;
+  gap:8px
+}
+.plan-dialog .sketch-zoom button{
+  width:44px;
+  height:44px;
+  border:0;
+  border-radius:13px;
+  background:#eceff4ee;
+  color:#1b2330;
+  font-size:17px;
+  box-shadow:0 1px 4px #1b233014
+}
+.region-label{
+  font:800 13px var(--display);
+  fill:#111827;
+  paint-order:stroke;
+  stroke:#fff;
+  stroke-width:4px;
+  stroke-linejoin:round;
+  pointer-events:none
+}
+.region-label.area{
+  font-size:12px
+}

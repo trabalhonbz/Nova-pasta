@@ -11,3 +11,15 @@ node_modules/
 
 # Cache do PowerShell capturado por engano pelo OneDrive
 Microsoft/
+
+# Segredos do wrangler dev
+.dev.vars
+
+# Segredo de produção gerado pelo script de publicação
+.pepper-producao.txt
+
+# Estado local do wrangler: banco D1 de desenvolvimento e caches de build.
+# Fica de fora do git por duas razões, e a segunda é a séria:
+#   - é estado de máquina, recriável com `npm run db:local`;
+#   - o banco guarda a tabela `usuarios`, com hash e salt das senhas.
+.wrangler/

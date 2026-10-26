@@ -1,0 +1,193 @@
+/* Adaptações por largura de tela e impressão simples.
+
+   Faz parte de src/estilos/, carregado pelo index.html em ordem numerada.
+   A ordem importa: regras de arquivos posteriores sobrepõem as anteriores,
+   de propósito. */
+
+@media(max-width:800px){
+  .topbar{
+    padding:0 16px;
+    gap:10px
+  }
+  .brand{
+    min-width:154px
+  }
+  .user-box{
+    min-width:auto
+  }
+  .user-copy{
+    display:none
+  }
+  .hero-inner{
+    width:calc(100% - 32px)
+  }
+  .content{
+    width:min(calc(100% - 28px),760px)
+  }
+}
+@media(max-width:600px){
+  .topbar{
+    height:auto;
+    min-height:62px;
+    flex-wrap:wrap;
+    padding:8px 13px 0;
+    gap:5px
+  }
+  .brand{
+    min-width:0;
+    flex:1
+  }
+  .user-box{
+    border:0;
+    min-width:0;
+    padding:0
+  }
+  .main-nav{
+    order:3;
+    width:100%;
+    height:34px;
+    justify-content:flex-start;
+    overflow-x:auto;
+    scrollbar-width:none
+  }
+  .main-nav::-webkit-scrollbar{
+    display:none
+  }
+  .nav-button{
+    padding:6px 9px
+  }
+  .hero-band{
+    min-height:110px
+  }
+  .hero-inner{
+    padding:19px 0
+  }
+  .hero-band h1{
+    font-size:20px
+  }
+  .hero-stats{
+    gap:5px
+  }
+  .hero-stat{
+    min-width:62px;
+    padding:7px 8px
+  }
+  .hero-stat strong{
+    font-size:16px
+  }
+  .hero-stat span{
+    font-size:7px
+  }
+  .content{
+    margin-top:14px
+  }
+  .metrics{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:8px
+  }
+  .metric{
+    min-height:82px
+  }
+  .dashboard-grid{
+    grid-template-columns:1fr
+  }
+  .project-stack{
+    grid-template-columns:repeat(2,minmax(0,1fr))
+  }
+  .chart-grid{
+    grid-template-columns:1fr
+  }
+  .chart-panel{
+    min-height:210px
+  }
+  .works-grid{
+    grid-template-columns:1fr
+  }
+  .works-grid .project-card .project-cover{
+    height:150px
+  }
+  .toolbar{
+    gap:6px
+  }
+  .searchbox{
+    max-width:none;
+    flex-basis:100%
+  }
+  .toolbar-spacer{
+    display:none
+  }
+  .view-toggle{
+    margin-left:auto
+  }
+  .report-metrics{
+    grid-template-columns:repeat(2,1fr)
+  }
+  .report-toolbar{
+    align-items:flex-start;
+    flex-direction:column
+  }
+  .report-breakdown{
+    grid-template-columns:repeat(2,1fr)
+  }
+  .report-breakdown div:nth-child(2){
+    border-right:0
+  }
+  .floor-row{
+    grid-template-columns:1.1fr .7fr .7fr
+  }
+  .floor-row span:last-child{
+    display:none
+  }
+  .hero-inner{
+    align-items:flex-start
+  }
+  .user-box .avatar{
+    width:22px;
+    height:22px
+  }
+}
+@media(max-width:380px){
+  .hero-inner{
+    gap:8px
+  }
+  .hero-stats{
+    flex-direction:column
+  }
+  .hero-stat{
+    padding:4px 7px
+  }
+  .project-stack{
+    grid-template-columns:1fr
+  }
+  .brand-name{
+    font-size:10px
+  }
+  .bar-row{
+    grid-template-columns:76px 1fr 30px
+  }
+  .axis{
+    margin-left:89px
+  }
+}
+@media print{
+  body{
+    background:white
+  }
+  .topbar,.hero-band,.toolbar,.report-toolbar,.plain-link,.action-button{
+    display:none!important
+  }
+  .content{
+    width:100%;
+    margin:0
+  }
+  .view{
+    display:none!important
+  }
+  #reportsView{
+    display:block!important
+  }
+  .panel,.report-card,.total-progress{
+    box-shadow:none;
+    break-inside:avoid
+  }
+}

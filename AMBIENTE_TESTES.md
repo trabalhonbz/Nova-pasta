@@ -6,14 +6,19 @@ Escrito para a equipe que opera e publica o painel de gestão de obras.
 
 | Arquivo | Função |
 |---|---|
-| `index.html` | A aplicação inteira (HTML, CSS e JavaScript embutidos). |
+| `index.html` | A página e o JavaScript do painel. |
+| `src/estilos/` | As folhas de estilo, numeradas: a ordem de carga é significativa. |
+| `src/db.js`, `src/api.js`, `src/sincronizar.js` | Camada de mídia, cliente da API e fusão de dados. |
 | `manifest.webmanifest` | Permite instalar o painel como aplicativo (PWA) no celular. |
 | `sw.js` | Service worker: guarda os arquivos estáticos para abrir offline. |
+| `src/worker/`, `src/schema.sql` | A API na Cloudflare e o banco. Não fazem parte da página. |
 | `tests/` | Bateria automatizada, executada com `npm test`. Não vai para o ar. |
 
-`index.html` funciona sozinho. Os dois últimos arquivos só são usados quando o painel é
-servido por `http://` ou `https://`; abrindo o arquivo direto do disco eles são ignorados
-sem erro.
+O `index.html` **não** funciona sozinho: sem `src/estilos/` ele abre sem formatação, e sem
+os três arquivos de `src/` abre sem a camada de mídia nem o cliente da API. Publique a
+pasta `src/` junto. O `manifest.webmanifest` e o `sw.js` só valem quando o painel é
+servido por `http://` ou `https://`; abrindo o arquivo direto do disco são ignorados sem
+erro.
 
 ## Ambiente de produção
 
@@ -283,11 +288,13 @@ As verificações de correção devem falhar nessa cópia e passar na atual.
 2. Revise a versão em `index.html?ambiente=teste`, passando pelos fluxos de cargos,
    relatórios, fotografias, demarcações e troca de situação — inclusive o que a bateria
    automatizada não alcança (desenho das demarcações, plantas em PDF, câmera).
-3. Guarde uma cópia dos arquivos atualmente hospedados (`index.html`, `manifest.webmanifest`,
-   `sw.js`).
-4. Publique os três arquivos no ambiente de produção pela rotina de hospedagem do projeto.
-5. Ao mudar `index.html`, incremente `cacheName` em `sw.js` (por exemplo `nbz-obras-v2`)
-   para que os aparelhos já instalados troquem o cache antigo.
+3. Guarde uma cópia dos arquivos atualmente hospedados (`index.html`,
+   `manifest.webmanifest`, `sw.js` e a pasta `src/`).
+4. Publique esses arquivos no ambiente de produção pela rotina de hospedagem do projeto.
+   Esquecer `src/` publica um painel sem formatação e sem sincronização.
+5. Ao acrescentar ou renomear arquivo estático, atualize a lista `precache` do `sw.js`.
+   Trocar o `cacheName` não é mais necessário para o conteúdo mudar: o service worker
+   busca na rede primeiro o que é nosso, e só usa o cache quando não há rede.
 6. Abra o endereço normal (sem `?ambiente=teste`) e confira uma leitura e uma edição
    controlada.
 

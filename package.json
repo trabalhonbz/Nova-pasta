@@ -3,13 +3,29 @@
   "scripts": {
     "check": "node --check construir_site.js",
     "generate": "node construir_site.js",
-    "test": "node tests/painel.test.js"
+    "test": "node tests/painel.test.js && node tests/midia.test.js && node tests/worker.test.js && node tests/fotos.test.js && node tests/integracao.test.js",
+    "test:fotos": "node tests/fotos.test.js",
+    "test:integracao": "node tests/integracao.test.js",
+    "test:painel": "node tests/painel.test.js",
+    "test:midia": "node tests/midia.test.js",
+    "test:worker": "node tests/worker.test.js",
+    "dev": "wrangler dev --local --port 8787",
+    "painel": "node scripts/servir-painel.mjs",
+    "db:local": "wrangler d1 execute nbz-obras --file=src/schema.sql --local",
+    "db:reset": "node scripts/resetar-d1-local.mjs",
+    "db:remoto": "wrangler d1 execute nbz-obras --file=src/schema.sql --remote",
+    "login": "wrangler login",
+    "quem": "wrangler whoami",
+    "publicar": "node scripts/publicar.mjs",
+    "deploy": "wrangler deploy"
   },
   "dependencies": {
     "dotenv": "^18.0.8",
     "groq-sdk": "^1.6.0"
   },
   "devDependencies": {
-    "jsdom": "^30.1.3"
+    "fake-indexeddb": "^6.2.6",
+    "jsdom": "^30.1.3",
+    "wrangler": "^4.152.0"
   }
 }

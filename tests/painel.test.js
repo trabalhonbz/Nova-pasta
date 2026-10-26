@@ -9,10 +9,9 @@
    Os testes de senha levam alguns segundos: o painel protege senhas com PBKDF2 de
    150 000 iterações e a suíte usa o algoritmo real, não um substituto.
 */
-import { readFile } from 'fs/promises';
 import {
   boot, criarAdministrador, entrar, esgotarCota, limitarCota, pausa,
-  teste, confirmar, igual, executar, indexPath
+  teste, confirmar, igual, executar, estilosDoPainel
 } from './harness.js';
 
 const CHAVE_OBRAS = 'nbz-gestao-obras-v1';
@@ -991,9 +990,10 @@ teste('a folha impressa leva título, obra e data no próprio cabeçalho', async
 
 teste('a folha de impressão está declarada em A4 com planta e fotos em milímetros', async () => {
   /* O jsdom não calcula layout de impressão: o que se garante aqui é que as regras que
-     definem a folha A4 e o tamanho das imagens continuam no arquivo. A conferência
-     visual da folha é manual, pela pré-visualização de impressão do navegador. */
-  const fonte = await readFile(indexPath, 'utf8');
+     definem a folha A4 e o tamanho das imagens continuam nas folhas de estilo. A
+     conferência visual da folha é manual, pela pré-visualização de impressão do
+     navegador. */
+  const fonte = estilosDoPainel();
   const exigir = (padrao, mensagem) => confirmar(padrao.test(fonte), mensagem);
   exigir(/@page\{size:A4 portrait;margin:12mm 10mm\}/, 'deveria declarar a folha A4 com margens');
   exigir(/\.rf-plan img\{[^}]*max-height:150mm/, 'a planta deveria ter altura máxima em milímetros');

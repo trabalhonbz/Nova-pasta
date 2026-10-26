@@ -1,0 +1,68 @@
+# Configuracao do Worker NBZ (API de obras, fotos e usuarios).
+#
+# Antes do primeiro deploy, criar os recursos e colar os ids abaixo:
+#
+#   npx wrangler login
+#   npx wrangler d1 create nbz-obras
+#   npx wrangler r2 bucket create nbz-fotos
+#   npx wrangler d1 execute nbz-obras --file=src/schema.sql --remote
+#   npx wrangler secret put PEPPER        # cole um valor aleatorio longo
+#   npx wrangler deploy
+#
+# O PEPPER protege as senhas no banco e NAO pode ser trocado depois sem
+# invalidar todas elas — se precisar trocar, todo mundo passa pela redefinicao
+# do administrador. Gere com:
+#
+#   node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
+
+name = "nbz-obras-api"
+main = "src/worker/index.js"
+compatibility_date = "2026-09-01"
+
+# Sem dominio proprio o Worker atende em https://nbz-obras-api.<conta>.workers.dev,
+# que ja e HTTPS e nao depende de DNS nenhum.
+workers_dev = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "nbz-obras"
+database_id = "0ec868e4-8240-4284-bbc7-9ee96b6ba5e0"
+
+# ARMAZENAMENTO DAS FOTOGRAFIAS (R2) — desligado por enquanto.
+#
+# O R2 exige ativacao no painel da Cloudflare, e essa ativacao pede cartao
+# cadastrado mesmo para o plano gratuito de 10 GB. Enquanto isso nao for feito,
+# manter o binding aqui faria o deploy falhar inteiro — e nao ha razao para o
+# login e os dados de obra esperarem pelas fotos.
+#
+# Sem este bloco:
+#   - login, usuarios, obras, pavimentos, setores e situacoes funcionam normal;
+#   - as fotografias ficam no IndexedDB do aparelho (centenas de MB, contra os
+#     ~5 MB do localStorage de antes) e entram numa fila de envio;
+#   - as rotas de foto respondem 503 com explicacao, nao "Erro interno".
+#
+# PARA LIGAR, quando o R2 estiver ativo:
+#   1. npx wrangler r2 bucket create nbz-fotos
+#   2. tire o # das tres linhas abaixo
+#   3. npm run deploy
+#
+# A fila acumulada sobe sozinha na sincronizacao seguinte: nada se perde no
+# meio-tempo, porque o binario fica guardado no aparelho desde que foi tirado.
+#
+# [[r2_buckets]]
+# binding = "FOTOS"
+# bucket_name = "nbz-fotos"
+
+[vars]
+# Origens que podem chamar a API, separadas por virgula. Deliberadamente sem
+# "*": o painel manda o header Authorization, e liberar qualquer origem
+# permitiria a outro site chamar a API em nome de quem esta logado.
+# Troque pelo endereco onde o index.html for publicado.
+# `localhost` e `127.0.0.1` são origens DIFERENTES para o navegador, e errar qual
+# você digitou na barra de endereço rende um bloqueio de CORS difícil de
+# diagnosticar. Por isso as duas constam.
+ORIGENS = "http://localhost:8788,http://127.0.0.1:8788,https://nbz-obras.pages.dev"
+
+[triggers]
+# Limpeza diaria das sessoes vencidas, as 3h UTC (meia-noite em Brasilia).
+crons = ["0 3 * * *"]

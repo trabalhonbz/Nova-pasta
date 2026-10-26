@@ -16,407 +16,24 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <style>
-    :root{color-scheme:light;--blue:#21477f;--blue-2:#28589d;--blue-3:#e9f0ff;--ink:#202b3c;--muted:#8491a5;--line:#e7ebf1;--bg:#f3f5f8;--white:#fff;--green:#20b782;--orange:#f5a623;--red:#e36565;--font:'DM Sans',sans-serif;--display:'Manrope',sans-serif;--max:1050px}
-    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:13px/1.5 var(--font);-webkit-font-smoothing:antialiased}button,input,select{font:inherit}button{cursor:pointer}a{color:inherit;text-decoration:none}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #78a9f5;outline-offset:2px}::selection{background:#c9dcff}
-    .topbar{height:44px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 max(20px,calc((100vw - 1240px)/2));position:sticky;top:0;z-index:20;gap:28px}.brand{display:flex;align-items:center;gap:9px;min-width:190px}.brand-mark{width:29px;height:29px;border-radius:9px;background:var(--blue);color:#fff;display:grid;place-items:center;font-size:15px;box-shadow:0 3px 8px #17375b30}.brand-name{font:800 11px/1.15 var(--display);letter-spacing:.04em;color:var(--blue)}.brand-name small{display:block;color:#99a4b6;font:500 9px/1.5 var(--font);letter-spacing:.13em}.main-nav{display:flex;align-items:center;justify-content:center;gap:5px;height:100%}.nav-button{border:0;border-radius:7px;padding:7px 11px;background:transparent;color:#788397;font-size:10px;display:flex;align-items:center;gap:7px;white-space:nowrap}.nav-button:hover{background:#f4f6f9;color:var(--blue)}.nav-button.active{background:var(--blue);color:#fff}.nav-icon{font-size:13px;line-height:1}.user-box{min-width:145px;border-left:1px solid var(--line);padding-left:12px;display:flex;align-items:center;justify-content:flex-end;gap:9px;text-align:right}.user-box strong{display:block;font-size:9px}.user-box span{color:#9aa4b5;font-size:10px}.avatar{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:#203f70;color:#fff;font-size:9px;font-weight:700}
-    .hero-band{background:linear-gradient(115deg,#21477f,#28569a);color:white;min-height:118px}.hero-inner{max-width:760px;margin:auto;padding:24px 0 23px;display:flex;align-items:center;justify-content:space-between;gap:24px}.eyebrow{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:#d2e2fa}.hero-band h1{margin:3px 0 2px;font:800 23px/1.2 var(--display);letter-spacing:0}.hero-band p{margin:0;color:#b8cbe5;font-size:10px}.hero-stats{display:flex;gap:8px}.hero-stat{min-width:78px;padding:8px 12px;border:1px solid #ffffff30;border-radius:11px;background:#ffffff12;text-align:center}.hero-stat strong{display:block;font:800 19px/1.2 var(--display)}.hero-stat span{font-size:8px;color:#d4e1f4;white-space:nowrap}
-    .content{width:min(calc(100% - 32px),760px);margin:20px auto 50px}.view{display:none}.view.active{display:block}.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:19px}.metric,.panel,.project-card,.report-card{background:var(--white);border:1px solid #edf0f4;border-radius:11px;box-shadow:0 2px 5px #27384e08}.metric{padding:12px 13px 11px;min-height:88px}.metric-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}.metric-icon{width:26px;height:26px;border-radius:9px;background:#edf3ff;color:#3c68aa;display:grid;place-items:center;font-size:13px}.metric-icon.green{background:#e9fbf4;color:#2bb480}.metric-icon.amber{background:#fff8e9;color:#ed9d17}.metric-icon.sky{background:#edf7ff;color:#4e9eea}.trend{width:16px;height:16px;border-radius:50%;background:#eff4ff;color:#5076b3;display:grid;place-items:center;font-size:10px}.metric strong{display:block;font:800 19px/1.1 var(--display)}.metric-label{font-size:9px;color:#758195}.metric-note{font-size:8px;color:#a0aaba;margin-top:1px}
-    .section-row{display:flex;align-items:center;justify-content:space-between;margin:15px 0 9px}.section-title{font:700 12px var(--display);margin:0}.section-subtitle{font-size:8px;color:#96a0b0;margin:1px 0 0}.plain-link{border:0;background:none;color:var(--blue);font-size:9px;font-weight:700;padding:5px}.dashboard-grid{display:grid;grid-template-columns:1.8fr 1fr;gap:12px;align-items:start}.project-stack{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.project-card{overflow:hidden;cursor:pointer;transition:transform .18s,box-shadow .18s}.project-card:hover{transform:translateY(-2px);box-shadow:0 7px 18px #21385818}.project-cover{height:80px;position:relative;background-size:cover;background-position:center;display:flex;align-items:flex-end;padding:9px 11px;color:white}.project-cover:after{content:"";position:absolute;inset:0;background:linear-gradient(0deg,#102743c9,transparent 85%)}.project-cover strong,.project-cover .status-pill{position:relative;z-index:1}.project-cover strong{font:700 10px var(--display);text-shadow:0 1px 3px #0008}.status-pill{position:absolute;z-index:2;right:7px;top:7px;border-radius:20px;background:#f4f8ff;color:#2672d5;font-size:8px;font-weight:700;padding:3px 7px}.project-info{padding:8px 10px 10px}.project-location,.project-owner{font-size:8px;color:#8b97a9;display:flex;align-items:center;gap:4px}.project-progress{display:flex;justify-content:space-between;margin:7px 0 4px;font-size:8px;color:#687588}.project-progress strong{color:var(--green)}.progress-track{height:5px;border-radius:10px;background:#e9edf3;overflow:hidden}.progress-fill{height:100%;background:var(--green);border-radius:inherit}.project-area{display:flex;justify-content:space-between;color:#8b97a9;font-size:9px;margin-top:7px}.alert-panel{padding:12px;min-height:112px}.alert-item{display:flex;gap:9px;align-items:flex-start;padding:8px 0;border-bottom:1px solid #f0f2f5}.alert-item:last-child{border-bottom:0}.alert-dot{width:22px;height:22px;border-radius:8px;background:#fff7e8;color:#e8a121;display:grid;place-items:center;flex:0 0 auto}.alert-dot.ok{background:#eafaf3;color:#28b77d}.alert-item strong{display:block;font-size:9px}.alert-item p{margin:1px 0 0;color:#929cad;font-size:8px}
-    .chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px}.chart-panel{padding:13px 14px;min-height:225px}.panel-heading{display:flex;align-items:center;gap:8px;margin-bottom:13px}.panel-heading .metric-icon{width:22px;height:22px}.panel-heading strong{font:700 10px var(--display);display:block}.panel-heading span{font-size:8px;color:#98a2b2;display:block}.bar-chart{height:150px;display:flex;flex-direction:column;justify-content:space-evenly;padding:0 5px}.bar-row{display:grid;grid-template-columns:100px 1fr 35px;align-items:center;gap:8px;font-size:9px}.bar-name{text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.bar-track{height:15px;border-left:1px dashed #e7edf5;background:repeating-linear-gradient(90deg,transparent 0,transparent calc(25% - 1px),#edf1f6 calc(25% - 1px),#edf1f6 25%)}.bar-value{height:100%;border-radius:0 6px 6px 0;background:#0da579;min-width:2px}.bar-value.empty{background:#d6deea}.axis{display:flex;justify-content:space-between;margin:5px 38px 0 113px;color:#9aa5b6;font-size:8px}.donut-wrap{height:160px;display:flex;align-items:center;justify-content:center;gap:20px}.donut{width:124px;height:124px;border-radius:50%;background:conic-gradient(#21477f 0 54%,#438ae8 54% 78%,#20b782 78% 91%,#efb34e 91%);position:relative;display:grid;place-items:center}.donut:after{content:"";position:absolute;inset:31px;border-radius:50%;background:white}.donut-center{position:relative;z-index:1;text-align:center}.donut-center strong{display:block;font:800 19px var(--display)}.donut-center span{font-size:7px;color:#8e9aab}.legend{display:grid;gap:9px;font-size:8px;color:#768397}.legend-row{display:flex;align-items:center;gap:6px}.legend-dot{width:7px;height:7px;border-radius:50%;background:#21477f}.legend-dot.blue{background:#438ae8}.legend-dot.green{background:#20b782}.legend-dot.amber{background:#efb34e}
-    .toolbar{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:18px 0 12px}.searchbox{height:34px;display:flex;align-items:center;gap:7px;padding:0 10px;background:white;border:1px solid #dfe5ed;border-radius:8px;flex:1;min-width:190px;max-width:310px;color:#9aa5b4}.searchbox input{border:0;outline:0;width:100%;font-size:9px;color:var(--ink);background:transparent}.filter-chip,.view-toggle button{height:28px;border:1px solid #e1e6ed;border-radius:20px;padding:0 11px;background:#fff;color:#667388;font-size:8px}.filter-chip.active,.view-toggle button.active{background:var(--blue);border-color:var(--blue);color:#fff}.toolbar-spacer{flex:1}.view-toggle{display:flex;background:white;border:1px solid #e1e6ed;border-radius:8px;padding:2px;gap:2px}.view-toggle button{border:0;border-radius:6px;height:24px;padding:0 9px}.results-count{font-size:8px;color:#96a0b0;margin:0 0 8px}.works-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.works-grid .project-card .project-cover{height:120px}.works-grid .project-info{padding:10px 12px}.work-footer{display:flex;justify-content:space-between;border-top:1px solid #edf0f4;margin-top:9px;padding-top:8px;font-size:8px;color:#8792a3}.open-project{border:0;background:none;color:var(--blue);font-size:8px;font-weight:700;padding:0}.map-board{height:350px;border:1px solid #e3e9f1;border-radius:11px;position:relative;overflow:hidden;background-color:#e9eef2;background-image:linear-gradient(25deg,transparent 47%,#fff 48%,#fff 50%,transparent 51%),linear-gradient(145deg,transparent 44%,#fff 45%,#fff 47%,transparent 48%),linear-gradient(90deg,#e1e8e8 1px,transparent 1px),linear-gradient(#e1e8e8 1px,transparent 1px);background-size:100% 100%,100% 100%,52px 52px,52px 52px}.map-label{position:absolute;color:#86949e;font-size:8px;background:#ffffffae;padding:3px 6px;border-radius:4px}.map-pin{position:absolute;transform:translate(-50%,-100%);border:0;background:var(--blue);color:white;border-radius:9px;padding:6px 9px;font-size:8px;box-shadow:0 3px 10px #17375b30}.map-pin:after{content:"";position:absolute;bottom:-5px;left:calc(50% - 5px);border-width:5px 5px 0;border-style:solid;border-color:var(--blue) transparent transparent}
-    .report-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:20px 0 14px}.select-field{height:32px;min-width:180px;border:1px solid #dfe5ed;border-radius:7px;background:white;padding:0 9px;color:#4d5a6d;font-size:9px}.action-button{height:32px;padding:0 11px;border:1px solid #dfe5ed;border-radius:7px;background:white;color:#47566b;font-size:9px;font-weight:600}.action-button:hover{border-color:#9eb5d8;color:var(--blue)}.report-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}.report-metric{padding:10px 8px;text-align:center;border-radius:8px;background:#edf3ff;color:var(--blue)}.report-metric:nth-child(2){background:#edfbf4;color:#17a66f}.report-metric:nth-child(3){background:#eef8ff;color:#347eca}.report-metric:nth-child(4){background:#f0f0ff;color:#615ee6}.report-metric strong{font:800 16px var(--display);display:block}.report-metric span{font-size:8px;color:#718096}.total-progress{padding:11px 12px;background:white;border:1px solid var(--line);border-radius:9px;margin-bottom:16px}.total-progress-head{display:flex;justify-content:space-between;font-size:8px;margin-bottom:7px}.total-progress .progress-track{height:6px;background:#e7edf5}.total-progress .progress-fill{background:#2671ef}.report-heading{display:flex;align-items:center;gap:6px;font-size:9px;font-weight:700;margin:13px 0 8px}.report-card{overflow:hidden;margin-bottom:11px}.report-card-head{background:linear-gradient(110deg,#21477f,#28599f);color:#fff;padding:11px 13px}.report-card-title{display:flex;justify-content:space-between;align-items:center;gap:10px}.report-card-title strong{font-size:9px}.report-card-head small{display:block;color:#c5d5eb;font-size:8px;margin-top:3px}.report-card-head .progress-track{height:4px;margin-top:9px;background:#ffffff44}.report-card-head .progress-fill{background:#38c993}.report-breakdown{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid #edf0f4}.report-breakdown div{text-align:center;padding:8px 4px;border-right:1px solid #edf0f4}.report-breakdown div:last-child{border:0}.report-breakdown strong{display:block;font-size:9px}.report-breakdown span{color:#8b97a9;font-size:8px}.report-card-toggle{width:100%;border:0;background:#fff;text-align:left;padding:8px 12px;color:#58667a;font-size:8px;display:flex;justify-content:space-between}.floor-list{padding:0 12px 10px}.floor-row{display:grid;grid-template-columns:1.2fr .7fr .7fr .7fr;gap:8px;align-items:center;padding:8px 2px;border-top:1px solid #eff2f6;font-size:8px;color:#748095}.floor-row strong{color:#37465c}.floor-row .done{color:#16a971}.floor-row .pending{color:#e49a25}.history-list{background:#fff;border:1px solid var(--line);border-radius:10px}.history-row{display:grid;grid-template-columns:26px 1fr auto;align-items:start;gap:9px;padding:12px;border-bottom:1px solid #eff2f5}.history-row:last-child{border:0}.history-symbol{width:23px;height:23px;border-radius:50%;display:grid;place-items:center;background:#edf3ff;color:#3565a7}.history-row strong{display:block;font-size:9px}.history-row p{margin:2px 0 0;color:#8793a5;font-size:8px}.history-row time{font-size:8px;color:#9da7b5;white-space:nowrap}.empty-state{background:white;border:1px solid var(--line);border-radius:10px;padding:32px 16px;text-align:center;color:#8b97a8;font-size:10px;grid-column:1/-1}.empty-state strong{display:block;color:#3f4d60;font-size:11px;margin-bottom:4px}
-    dialog{width:min(440px,calc(100% - 28px));border:0;border-radius:12px;padding:0;box-shadow:0 24px 80px #13243b40;color:var(--ink)}dialog::backdrop{background:#14223870;backdrop-filter:blur(2px)}.dialog-head{padding:16px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}.dialog-head h2{font:700 15px var(--display);margin:0}.dialog-close{border:0;background:#f0f3f7;border-radius:50%;width:27px;height:27px;color:#657287}.dialog-body{padding:16px 18px 18px}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px}.form-field{display:grid;gap:5px}.form-field.full{grid-column:1/-1}.form-field label{font-size:9px;font-weight:700;color:#59677b}.form-field input,.form-field select{width:100%;height:34px;border:1px solid #dfe5ed;border-radius:7px;padding:0 9px;color:#38475c;background:#fff;font-size:10px}.dialog-actions{display:flex;justify-content:flex-end;gap:7px;margin-top:16px}.button-primary{height:33px;border:0;border-radius:7px;background:var(--blue);color:#fff;padding:0 13px;font-size:9px;font-weight:700}.button-secondary{height:33px;border:1px solid #dfe5ed;border-radius:7px;background:#fff;color:#647186;padding:0 13px;font-size:9px}.detail-cover{height:126px;background-size:cover;background-position:center;position:relative}.detail-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:13px 0}.detail-summary div{background:#f4f6f9;border-radius:7px;padding:9px}.detail-summary strong{display:block;font:800 14px var(--display)}.detail-summary span{font-size:8px;color:#8b97a8}.detail-note{font-size:9px;color:#778497;margin:0}
-    @media(max-width:800px){.topbar{padding:0 16px;gap:10px}.brand{min-width:154px}.user-box{min-width:auto}.user-copy{display:none}.hero-inner{width:calc(100% - 32px)}.content{width:min(calc(100% - 28px),760px)}}
-    @media(max-width:600px){.topbar{height:auto;min-height:62px;flex-wrap:wrap;padding:8px 13px 0;gap:5px}.brand{min-width:0;flex:1}.user-box{border:0;min-width:0;padding:0}.main-nav{order:3;width:100%;height:34px;justify-content:flex-start;overflow-x:auto;scrollbar-width:none}.main-nav::-webkit-scrollbar{display:none}.nav-button{padding:6px 9px}.hero-band{min-height:110px}.hero-inner{padding:19px 0}.hero-band h1{font-size:20px}.hero-stats{gap:5px}.hero-stat{min-width:62px;padding:7px 8px}.hero-stat strong{font-size:16px}.hero-stat span{font-size:7px}.content{margin-top:14px}.metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.metric{min-height:82px}.dashboard-grid{grid-template-columns:1fr}.project-stack{grid-template-columns:repeat(2,minmax(0,1fr))}.chart-grid{grid-template-columns:1fr}.chart-panel{min-height:210px}.works-grid{grid-template-columns:1fr}.works-grid .project-card .project-cover{height:150px}.toolbar{gap:6px}.searchbox{max-width:none;flex-basis:100%}.toolbar-spacer{display:none}.view-toggle{margin-left:auto}.report-metrics{grid-template-columns:repeat(2,1fr)}.report-toolbar{align-items:flex-start;flex-direction:column}.report-breakdown{grid-template-columns:repeat(2,1fr)}.report-breakdown div:nth-child(2){border-right:0}.floor-row{grid-template-columns:1.1fr .7fr .7fr}.floor-row span:last-child{display:none}.hero-inner{align-items:flex-start}.user-box .avatar{width:22px;height:22px}}
-    @media(max-width:380px){.hero-inner{gap:8px}.hero-stats{flex-direction:column}.hero-stat{padding:4px 7px}.project-stack{grid-template-columns:1fr}.brand-name{font-size:10px}.bar-row{grid-template-columns:76px 1fr 30px}.axis{margin-left:89px}}
-    @media print{body{background:white}.topbar,.hero-band,.toolbar,.report-toolbar,.plain-link,.action-button{display:none!important}.content{width:100%;margin:0}.view{display:none!important}#reportsView{display:block!important}.panel,.report-card,.total-progress{box-shadow:none;break-inside:avoid}}
-    .detail-actions{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}.detail-actions .button-primary,.detail-actions .button-secondary{height:36px}.detail-reports{display:grid;gap:8px;margin-top:15px}.photo-report-card{border:1px solid var(--line);border-radius:8px;padding:9px}.photo-report-head{display:flex;justify-content:space-between;gap:8px;font-size:9px;font-weight:700}.photo-report-card p{font-size:8px;color:#7d899b;margin:4px 0}.photo-thumbs{display:flex;gap:6px;overflow-x:auto}.photo-thumbs img{width:120px;height:90px;object-fit:contain;background:#f2f5f9;border-radius:5px}.photo-item{position:relative;flex:0 0 auto}.photo-item button{display:block;width:100%;min-height:36px;margin-top:3px;padding:5px;border:0;border-radius:5px;background:#edf3ff;color:#245da2;font-size:11px}.photo-manage-label{display:inline-flex;align-items:center;min-height:42px;cursor:pointer}.photo-zoom-image{display:block;width:100%;max-height:75vh;object-fit:contain}.photo-manage-preview img{display:block;max-width:100%;max-height:45vh;margin:12px auto;object-fit:contain}.sketch-toolbar{display:flex;align-items:end;gap:8px;flex-wrap:wrap;margin-bottom:10px}.sketch-toolbar .form-field{min-width:105px;flex:1}.sketch-toolbar input,.sketch-toolbar select{height:32px}.sketch-readout{display:flex;gap:8px;margin:10px 0}.sketch-readout div{flex:1;background:#f2f6fc;border-radius:7px;padding:8px 10px}.sketch-readout strong{display:block;font:800 14px var(--display)}.sketch-readout span{font-size:8px;color:#7d899b}.sketch-canvas{width:100%;height:300px;display:block;border:1px solid #dce4ef;border-radius:9px;background:#f8fafc;cursor:crosshair;touch-action:none}.sketch-tools{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}.sketch-tip{font-size:8px;color:#8793a4;margin:8px 0 0}.sketch-error{font-size:9px;color:#c34646;min-height:15px;margin:5px 0 0}.photo-upload{border:1px dashed #b7c4d5;border-radius:8px;padding:14px;background:#f8fafc}.photo-upload input{font-size:9px;width:100%}.photo-upload small{display:block;color:#8a96a8;font-size:8px;margin-top:5px}.photo-preview-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:9px}.photo-preview-grid img{width:100%;height:80px;object-fit:cover;border-radius:6px}
-  </style>
-  <style>
-    .floor-row{grid-template-columns:1.2fr .7fr .7fr .7fr auto}.floor-croqui{border:0;border-radius:5px;background:#edf3ff;color:var(--blue);padding:5px 7px;font-size:8px;white-space:nowrap}
-    @media(max-width:600px){.floor-row{grid-template-columns:1.1fr .7fr .7fr auto}.floor-row span:last-of-type{display:none}.floor-croqui{font-size:7px;padding:5px}}
-  </style>
-  <style>
-    .detail-mode-switch{display:flex;gap:3px;padding:3px;background:#eef2f7;border-radius:8px;margin:15px 0 10px}.detail-mode-switch button{flex:1;border:0;border-radius:6px;background:transparent;color:#718096;padding:9px 7px;font-size:9px;font-weight:700}.detail-mode-switch button[aria-selected="true"]{background:#fff;color:var(--blue);box-shadow:0 1px 4px #18355718}.detail-mode-pane[hidden]{display:none}.detail-floor-list{display:grid;gap:7px}.detail-floor-item{display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid var(--line);border-radius:8px;padding:9px}.detail-floor-item strong{display:block;font-size:9px}.detail-floor-item span{font-size:8px;color:#8995a7}
-    .floor-row{grid-template-columns:minmax(85px,.8fr) minmax(70px,.5fr) minmax(150px,2fr) auto;grid-template-areas:"name area status action"}.floor-row strong{grid-area:name}.floor-row .floor-area{grid-area:area}.floor-row .floor-status{grid-area:status;font-size:7px;line-height:1.4}.floor-row .floor-croqui{grid-area:action}
-    @media(max-width:600px){.floor-row{grid-template-columns:1fr auto;grid-template-areas:"name action" "area action" "status action";gap:4px 8px}.floor-row .floor-status{font-size:7px}}
-  </style>
-  <style>
-    .detail-floor-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:15px 0 10px}.detail-floor-heading h3{font:700 12px var(--display);margin:0}.detail-floor-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.detail-floor-item{display:grid;grid-template-columns:34px minmax(0,1fr) 20px;grid-template-areas:"icon identity edit" "progress progress progress" "summary summary summary" "actions actions actions";gap:7px 8px;align-items:center;padding:11px;border-color:#e1e6ed;border-radius:9px;box-shadow:0 1px 2px #24364a0c}.detail-floor-icon{grid-area:icon;width:30px;height:30px;border-radius:9px;background:#eaf2ff;color:#2370ef;display:grid;place-items:center;font-size:14px}.detail-floor-identity{grid-area:identity;min-width:0}.detail-floor-identity strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:9px}.detail-floor-identity span{display:block;font-size:8px;color:#8190a3}.detail-floor-edit{grid-area:edit;border:0;background:transparent;color:#7c8ba0;font-size:13px;padding:2px}.detail-floor-progress{grid-area:progress;height:6px;border-radius:6px;background:#dce8ff;overflow:hidden}.detail-floor-progress i{display:block;height:100%;background:#2671ef;border-radius:inherit}.detail-floor-summary{grid-area:summary;font-size:8px;color:#738096}.quick-status-list{display:grid;gap:5px;margin:8px 0}.quick-status-list label{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px}.quick-status-list select{min-height:40px;max-width:56%;border:1px solid #ccd6e4;border-radius:6px;background:#fff;padding:5px 8px;color:#33445a}.detail-floor-actions{grid-area:actions;display:flex;justify-content:flex-end;gap:6px}.detail-floor-actions button{border:0;background:transparent;color:#66758b;font-size:8px;padding:3px 5px}.detail-floor-actions button:hover{color:var(--blue)}.detail-floor-actions .floor-delete:hover{color:#cb4c4c}
-    .detail-floor-item{display:block}.detail-floor-main{width:100%;display:grid;grid-template-columns:34px minmax(0,1fr) 20px;gap:7px 8px;align-items:center;border:0;background:transparent;text-align:left;color:inherit;padding:0;cursor:pointer}.detail-floor-main:focus-visible{outline:2px solid #2671ef;outline-offset:3px;border-radius:5px}.detail-floor-main .detail-floor-icon{grid-row:1/3}.detail-floor-main .detail-floor-identity{grid-column:2;grid-row:1/3}.detail-floor-main .detail-floor-edit{grid-column:3;grid-row:1/3}.detail-floor-main .detail-floor-progress,.detail-floor-main .detail-floor-summary{grid-column:1/-1}.sketch-edit-tools{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:8px;margin-top:8px;border:1px solid #e2e8f1;border-radius:8px;background:#f8fafc}.sketch-edit-tools .edit-hint{font-size:8px;color:#78879b;flex:1;min-width:130px}.sketch-edit-tools button[aria-pressed="true"]{background:#eaf2ff;color:#1f63c0;border-color:#b9d0f3}.sketch-edit-tools button:disabled{opacity:.5;cursor:not-allowed}
-    @media(max-width:600px){.detail-floor-list{grid-template-columns:1fr}}
-  </style>
-  <style>
-    .plan-import{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 10px;padding:8px;border:1px solid #e3e9f1;border-radius:8px;background:#f8fafc}.plan-import label{display:inline-flex;align-items:center;gap:6px;cursor:pointer}.plan-import input{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden}.plan-file-name{font-size:8px;color:#7b899c;flex:1;min-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.status-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:8px 0}.status-chip{display:flex;align-items:center;gap:6px;background:#f7f9fc;border-radius:6px;padding:7px;font-size:8px;color:#627186;min-width:0}.status-chip strong{color:#303e52}.status-swatch{width:8px;height:8px;border-radius:50%;flex:0 0 auto}.status-help{font-size:8px;color:#8190a3;margin:6px 0}.status-help b{color:#4a5d75}
-    @media(max-width:600px){.status-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.plan-import .action-button{flex:1;justify-content:center}}
-  </style>
-  <style>
-    .region-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.region-form-grid .full{grid-column:1/-1}.region-preview{width:100%;height:122px;border:1px dashed #cbd5e2;border-radius:8px;background:#fafbfd;touch-action:none}.region-coordinates{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}.region-coordinates .form-field{min-width:0}.region-total{background:#f2f5f9!important;color:#394960!important}.region-total[readonly]{font-weight:700}.region-editor-actions{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:14px}.floor-selection-tools{display:flex;align-items:center;gap:7px}.floor-selection-tools button{font-size:8px}.detail-floor-list.selection-mode .detail-floor-item{position:relative;padding-left:31px}.floor-select-checkbox{position:absolute;left:10px;top:13px;accent-color:#2671ef}.region-preview-hint{font-size:8px;color:#8290a2;margin:4px 0 0}
-    @media(max-width:480px){.region-form-grid{grid-template-columns:1fr}.region-form-grid .full{grid-column:auto}.region-coordinates{grid-template-columns:repeat(2,1fr)}}
-  </style>
-  <style>
-    /* ===== Autenticação, cargos e histórico protegido ===== */
-    .auth-overlay{position:fixed;inset:0;z-index:5000;background:linear-gradient(140deg,#13294d,#21477f);display:grid;place-items:center;padding:18px;overflow-y:auto}
-    .auth-overlay[hidden]{display:none}
-    .auth-card{width:min(370px,100%);background:#fff;border-radius:14px;padding:20px 20px 22px;box-shadow:0 22px 60px #08182f66}
-    .auth-card h2{font:800 17px var(--display);margin:0 0 3px}
-    .auth-card p.auth-lead{font-size:10px;color:#7a8698;margin:0 0 14px}
-    .auth-card .form-field{margin-bottom:10px}
-    .auth-card .form-field input,.auth-card .form-field select{height:44px;font-size:12px}
-    .auth-card .button-primary{width:100%;height:46px;font-size:11px}
-    .auth-brand{display:flex;align-items:center;gap:9px;margin-bottom:14px}
-    .auth-env{margin:12px 0 0;font-size:9px;color:#8b96a7;text-align:center}
-    .auth-feedback{min-height:16px;font-size:10px;margin:4px 0 8px;color:#c34646}
-    .auth-feedback.ok{color:#17935f}
-    .app-shell[hidden]{display:none}
-    .user-box{cursor:pointer}
-    .user-menu{display:flex;align-items:center;gap:7px}
-    .user-menu button{border:1px solid var(--line);border-radius:7px;background:#fff;color:#64718a;font-size:9px;padding:6px 8px;min-height:32px}
-    .user-menu button:hover{border-color:#9eb5d8;color:var(--blue)}
-    .role-tag{display:inline-block;border-radius:20px;background:var(--blue-3);color:var(--blue);font-size:8px;font-weight:700;padding:2px 7px}
-    .nav-button[hidden],[data-requires][hidden]{display:none!important}
-    .lock-panel{background:#fff;border:1px solid var(--line);border-radius:11px;padding:22px 18px;text-align:center;max-width:380px;margin:10px auto}
-    .lock-panel .lock-icon{font-size:26px;color:var(--blue)}
-    .lock-panel h3{font:700 13px var(--display);margin:7px 0 4px}
-    .lock-panel p{font-size:10px;color:#7c8899;margin:0 0 13px}
-    .lock-panel input{width:100%;height:44px;border:1px solid #dfe5ed;border-radius:8px;padding:0 10px;font-size:12px;color:#38475c}
-    .lock-panel .button-primary{width:100%;height:44px;margin-top:9px;font-size:11px}
-    .lock-panel .auth-feedback{text-align:left}
-    .users-table{display:grid;gap:7px}
-    .users-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;border:1px solid var(--line);border-radius:9px;padding:10px}
-    .users-row strong{display:block;font-size:10px}
-    .users-row span{font-size:8px;color:#8995a7}
-    .users-row .floor-delete{min-height:38px;padding:0 10px}
-    /* ===== Avisos (toasts) ===== */
-    .toast-stack{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:6000;display:grid;gap:7px;width:min(380px,calc(100% - 24px));pointer-events:none}
-    .toast{background:#20304a;color:#fff;border-radius:9px;padding:11px 13px;font-size:10px;font-weight:600;box-shadow:0 10px 26px #0b182c45;display:flex;align-items:center;gap:8px;animation:toast-in .18s ease-out}
-    .toast.ok{background:#15845c}.toast.error{background:#b63f3f}.toast.loading{background:#2a4a7d}
-    @keyframes toast-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-    /* ===== Situação rápida (otimizado para toque) ===== */
-    .quick-status{border-top:1px dashed #e4e9f0;margin-top:9px;padding-top:9px;display:grid;gap:9px}
-    /* O painel do local reaproveita `.paint-bar`/`.paint-swatches` da barra da planta:
-       mesma amostra, mesmo anel de selecao, mesmo "✓". Só muda a separacao do bloco. */
-    .local-status{border-top:1px dashed #e4e9f0;margin:11px 0 0;padding-top:11px}
-    .local-status .paint-bar-label{margin-bottom:8px}
-    .quick-status-item{display:grid;gap:6px}
-    .quick-status-head{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:9px}
-    .quick-status-head strong{font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .quick-status-head .local-open{display:flex;align-items:center;gap:7px;min-width:0;min-height:34px;border:0;background:transparent;padding:0;color:inherit;text-align:left;text-decoration:underline;text-underline-offset:3px;text-decoration-color:#c3cfdf}
-    .quick-status-head .local-open span{font-size:8px;color:#8b97a9;white-space:nowrap}
-    .quick-status-head .local-open:hover strong{color:var(--blue)}
-    .quick-status-head .quick-feedback{font-size:8px;font-weight:700;color:#8b97a9;white-space:nowrap}
-    .quick-status-head .quick-feedback.ok{color:#17935f}
-    .quick-status-head .quick-feedback.error{color:#c34646}
-    .status-switch{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
-    .status-switch button{min-height:46px;border:1px solid #dde3ec;border-radius:9px;background:#fff;color:#5a6779;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px;padding:4px 6px;line-height:1.2;text-align:center}
-    .status-switch button i{width:9px;height:9px;border-radius:50%;flex:0 0 auto;display:block}
-    .status-switch button[aria-pressed="true"]{color:#fff;border-color:#00000026;box-shadow:inset 0 0 0 2px #ffffff55;font-weight:800}
-    .status-switch button[aria-pressed="true"] i{background:#fff!important}
-    .status-switch button:disabled{opacity:.55}
-    @media(min-width:620px){.status-switch{grid-template-columns:repeat(4,minmax(0,1fr))}.status-switch button{min-height:42px;font-size:9px}}
-    /* ===== Galeria de fotografias nos relatórios ===== */
-    .report-floor{border-top:1px solid #eff2f6;padding:11px 2px}
-    .report-floor:first-child{border-top:0}
-    .report-floor-head{display:flex;align-items:flex-start;justify-content:space-between;gap:9px;flex-wrap:wrap}
-    .report-floor-head strong{font-size:10px}
-    .report-floor-head .report-floor-meta{font-size:8px;color:#8b97a9}
-    .status-legend{display:flex;flex-wrap:wrap;gap:5px;margin:7px 0 0}
-    .status-legend span{display:inline-flex;align-items:center;gap:5px;background:#f7f9fc;border-radius:20px;padding:4px 9px;font-size:8px;color:#5f6d82}
-    .status-legend i{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
-    .photo-group{margin-top:9px}
-    .photo-group-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:8px;color:#8290a2;margin-bottom:5px}
-    .photo-group-head strong{color:#44536a;font-size:9px}
-    .photo-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:7px}
-    .photo-gallery .gallery-cell{position:relative;border:0;padding:0;border-radius:8px;overflow:hidden;background:#eef1f6;aspect-ratio:4/3;min-height:84px;cursor:zoom-in}
-    .photo-gallery .gallery-cell img{width:100%;height:100%;object-fit:contain;background:#e8ecf3;display:block}
-    img[data-broken="true"]{visibility:hidden}
-    .gallery-cell:has(img[data-broken="true"]):after,.photo-item:has(img[data-broken="true"]):after{content:"Imagem indisponível";position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:6px;background:#eef1f6;color:#8b97a9;font-size:8px;border-radius:8px}
-    .photo-gallery .gallery-cell .gallery-caption{position:absolute;left:0;right:0;bottom:0;background:#0f2338cc;color:#fff;font-size:7px;padding:3px 5px;text-align:left}
-    .photo-gallery .gallery-more{display:grid;place-items:center;background:#eaf0fa;color:var(--blue);font-size:9px;font-weight:700;border-radius:8px;min-height:84px;border:1px dashed #b9cbe6}
-    .floor-empty-note{font-size:8px;color:#9aa5b6;margin:6px 0 0}
-    /* ===== Visor do croqui: zoom, deslocamento e opacidade ===== */
-    .sketch-viewport{position:relative}
-    /* o elemento acompanha a proporção do viewBox (1000x650) para a planta não distorcer
-       e para o mapeamento tela <-> planta continuar linear em qualquer tamanho de tela */
-    .sketch-canvas{width:100%;height:auto;aspect-ratio:1000 / 650;touch-action:none}
-    @supports not (aspect-ratio:1/1){.sketch-canvas{height:min(58vh,420px)}}
-    .sketch-canvas.mode-pan{cursor:grab}
-    .sketch-canvas.mode-draw{cursor:crosshair}
-    .sketch-canvas.mode-edit{cursor:default}
-    .sketch-zoom{position:absolute;right:8px;bottom:8px;display:grid;gap:5px}
-    .sketch-zoom button{width:40px;height:40px;border:1px solid #ccd7e6;border-radius:9px;background:#ffffffee;color:#3d5878;font-size:15px;font-weight:700;display:grid;place-items:center;box-shadow:0 2px 6px #17375b22}
-    .sketch-mode{display:flex;gap:4px;padding:3px;background:#eef2f7;border-radius:9px;margin:0 0 8px}
-    .sketch-mode button{flex:1;border:0;border-radius:7px;background:transparent;color:#6c7a90;min-height:42px;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:5px}
-    .sketch-mode button[aria-pressed="true"]{background:#fff;color:var(--blue);box-shadow:0 1px 4px #18355720}
-    .sketch-opacity{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:8px;color:#78879b}
-    .sketch-opacity input{flex:1;min-width:110px;accent-color:var(--blue);height:30px}
-    .sketch-zoom-readout{font-size:8px;color:#78879b;min-width:62px;text-align:right;white-space:nowrap}
-    .sketch-handle{cursor:nwse-resize}
-    /* ===== Tela da planta: pintar setores (igual ao aplicativo de campo) ===== */
-    .plan-dialog{width:min(620px,calc(100% - 20px));max-height:94vh;background:#f9fafc}
-    .plan-topbar{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#fff;border-bottom:1px solid #eceff4}
-    .plan-topbar h2{flex:1;min-width:0;margin:0;font:800 17px/1.25 var(--display);color:#1b2330;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .plan-back,.plan-topbar-icon{width:40px;height:40px;flex:none;border:0;border-radius:10px;background:transparent;color:#1b2330;font-size:19px;display:grid;place-items:center}
-    .plan-back:hover,.plan-topbar-icon:hover{background:#f1f3f7}
-    .plan-body{background:#f9fafc;padding-top:12px}
-    .paint-bar{margin:0 0 10px}
-    .paint-bar-label{display:block;font-size:11px;font-weight:600;letter-spacing:.02em;color:#7d8794;margin-bottom:9px}
-    /* Cada cor leva o próprio nome: a paleta se explica sozinha e o cargo de campo não
-       precisa decorar o significado dos quadradinhos. A cor ativa é marcada por anel na
-       própria cor mais um "✓" dentro do quadrado — antes o estado selecionado pintava o
-       botão de verde, que se confundia com a cor "Executado". */
-    .paint-swatches{display:flex;gap:9px;flex-wrap:wrap}
-    .paint-swatches button{flex:1 1 78px;max-width:132px;min-height:68px;padding:8px 6px;border:2px solid transparent;border-radius:15px;background:#f3f5f8;display:grid;justify-items:center;align-content:center;gap:5px;transition:border-color .12s,background .12s,box-shadow .12s}
-    .paint-swatches button:hover{background:#eceff4}
-    .paint-swatches i{display:block;width:26px;height:26px;border-radius:5px;box-shadow:inset 0 0 0 1px #0000001a}
-    .paint-swatches i.round{border-radius:50%}
-    .paint-swatches span{font-size:9px;font-weight:700;line-height:1.15;text-align:center;color:#5c6878}
-    .paint-swatches i.tool{display:grid;place-items:center;color:#fff;font-size:15px;line-height:1}
-    /* `.sketch-tools` e `.sketch-edit-tools` declaram `display:flex`, que ganha do
-       `display:none` embutido no atributo [hidden]. Sem isto a fileira do desenho
-       aparecia fora do modo de desenho. */
-    .sketch-tools[hidden],.sketch-edit-tools[hidden]{display:none}
-    .paint-swatches button:disabled{opacity:.45}
-    /* A grade da folha acomoda as quatro situações mais o total sem apertar. */
-    .rf-breakdown{grid-template-columns:repeat(auto-fit,minmax(84px,1fr))}
-    .paint-swatches button[aria-pressed="true"]{background:#fff;border-color:var(--sw,#1877f2);box-shadow:0 1px 8px #1b23301f}
-    .paint-swatches button[aria-pressed="true"] span{color:#1b2330}
-    .paint-swatches button[aria-pressed="true"] i{display:grid;place-items:center}
-    .paint-swatches button[aria-pressed="true"] i:after{content:"✓";font:800 15px/1 var(--display);color:var(--ink,#fff)}
-    .plan-progress{margin-top:12px;background:#fff;border:1px solid #eceff4;border-radius:14px;padding:14px 15px;box-shadow:0 2px 10px #1b233008}
-    .plan-progress-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
-    .plan-progress-head strong{font:800 14px/1 var(--display);color:#1b2330}
-    .plan-progress-head b{font:800 26px/1 var(--display);color:#1877f2}
-    .plan-progress-track{height:9px;border-radius:99px;background:#e9edf3;overflow:hidden;margin:12px 0 13px}
-    .plan-progress-track i{display:block;height:100%;border-radius:99px;background:#1367fb}
-    .plan-progress-legend{display:grid;grid-template-columns:1fr 1fr;gap:7px 14px}
-    .plan-progress-legend span{display:flex;align-items:center;gap:7px;font-size:12px;color:#6b7280;min-width:0}
-    .plan-progress-legend i{width:14px;height:14px;flex:none;border-radius:3px}
-    .plan-progress-legend b{color:#1b2330;font-weight:700}
-    .plan-progress-total{margin:12px 0 0;font-size:12px;color:#6b7280}
-    .plan-tools{margin-top:12px;border:1px solid #e6eaf1;border-radius:12px;background:#fff;padding:0 11px}
-    .plan-tools[open]{padding-bottom:11px}
-    .plan-tools>summary{list-style:none;cursor:pointer;padding:12px 2px;font-size:11px;font-weight:700;color:#5a6879;display:flex;align-items:center;gap:7px}
-    .plan-tools>summary::-webkit-details-marker{display:none}
-    .plan-dialog .sketch-zoom{right:10px;bottom:10px;gap:8px}
-    .plan-dialog .sketch-zoom button{width:44px;height:44px;border:0;border-radius:13px;background:#eceff4ee;color:#1b2330;font-size:17px;box-shadow:0 1px 4px #1b233014}
-    .region-label{font:800 13px var(--display);fill:#111827;paint-order:stroke;stroke:#fff;stroke-width:4px;stroke-linejoin:round;pointer-events:none}
-    .region-label.area{font-size:12px}
-    /* ===== Relatórios por pavimento ===== */
-    .report-floor-card{background:#fff;border:1px solid #e8ecf2;border-radius:14px;overflow:hidden;margin-bottom:16px;box-shadow:0 2px 10px #1b233008}
-    .report-floor-card>header{background:linear-gradient(100deg,#1d4ed8,#2563eb 55%,#3b82f6);color:#fff;padding:13px 16px}
-    .report-floor-card .rf-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
-    .report-floor-card .rf-work{display:block;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#cfe0ff}
-    .report-floor-card .rf-name{display:block;margin-top:3px;font:700 14px/1.3 var(--display);word-break:break-word}
-    .report-floor-card .rf-pct{text-align:right;flex:none}
-    .report-floor-card .rf-pct strong{display:block;font:800 22px/1 var(--display)}
-    .report-floor-card .rf-pct span{font-size:9px;color:#cfe0ff}
-    .report-floor-card .rf-track{height:6px;border-radius:99px;background:#ffffff38;overflow:hidden;margin-top:11px}
-    .report-floor-card .rf-track i{display:block;height:100%;border-radius:99px;background:#fff}
-    .rf-breakdown{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-bottom:1px solid #eef1f6}
-    .rf-breakdown div{padding:12px 6px;text-align:center;border-right:1px solid #eef1f6}
-    .rf-breakdown div:last-child{border-right:0}
-    .rf-breakdown strong{display:block;font:700 13px/1.2 var(--display);color:#1b2330}
-    .rf-breakdown span{font-size:8px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#8e99a8}
-    .rf-toggle{width:100%;border:0;background:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:10px;font-weight:600;color:#45526a;text-align:left}
-    .rf-body{padding:0 16px 16px;border-top:1px solid #eef1f6}
-    .rf-sub{margin:14px 0 8px;font-size:8px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#98a2b1}
-    .rf-plan{border:1px solid #eef1f6;border-radius:10px;background:#f8fafc;min-height:120px;display:grid;place-items:center;padding:10px}
-    .rf-plan img{max-height:190px;width:auto;max-width:100%;border-radius:6px}
-    .rf-table-wrap{overflow-x:auto;border:1px solid #eef1f6;border-radius:10px}
-    .rf-table{width:100%;border-collapse:collapse;font-size:9px;min-width:460px}
-    .rf-table th{background:#f8fafc;color:#8e99a8;font-size:8px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:9px 8px;text-align:left;white-space:nowrap}
-    .rf-table th:not(:first-child),.rf-table td:not(:first-child){text-align:center}
-    .rf-table td{padding:10px 8px;border-top:1px solid #f1f4f8;color:#44506a}
-    .rf-table td:first-child{font-weight:700;color:#1b2330}
-    .rf-chip{display:inline-block;padding:3px 9px;border-radius:99px;font-size:8px;font-weight:700;white-space:nowrap}
-    /* Cabeçalho exclusivo da folha impressa: na tela essas informações já estão na barra
-       de ferramentas, que não vai para o papel. Sem ele a folha saía sem título, sem data
-       e sem dizer a que obra se refere. */
-    .print-header{display:none}
-    .rf-empty{margin:10px 0 0;font-size:9px;color:#909bab}
-    /* ===== Ajustes gerais para telas pequenas ===== */
-    @media(max-width:600px){
-      dialog{width:calc(100% - 14px);max-height:92vh}
-      .dialog-body{padding:13px 13px 16px}
-      .dialog-head{padding:13px 14px}
-      .dialog-close{width:38px;height:38px;font-size:17px}
-      .form-field input,.form-field select{height:44px;font-size:12px}
-      .button-primary,.button-secondary,.action-button{min-height:44px;font-size:10px;padding:0 13px}
-      .select-field{height:44px;font-size:11px}
-      .photo-thumbs img{width:138px;height:104px}
-      .photo-item button{min-height:44px;font-size:10px}
-      .detail-floor-actions button{min-height:42px;font-size:9px;padding:0 9px}
-      .sketch-toolbar{gap:7px}
-      .sketch-toolbar .form-field{flex-basis:100%}
-      .sketch-tools{gap:6px}
-      .sketch-tools button{flex:1 1 calc(50% - 6px);min-height:44px}
-      .plan-import{gap:7px}
-      .main-nav{height:auto;padding:0 0 7px}
-      .nav-button{min-height:42px;padding:0 13px;font-size:11px;border-radius:9px}
-      .nav-icon{font-size:14px}
-      .user-menu button{min-height:40px;padding:0 10px;font-size:10px}
-      .toolbar .filter-chip{min-height:38px;font-size:9px}
-      .searchbox{height:44px}
-      .searchbox input{font-size:12px}
-      .photo-gallery{grid-template-columns:repeat(auto-fill,minmax(102px,1fr))}
-      .report-card-toggle{min-height:44px;align-items:center;font-size:9px}
-      .users-row{grid-template-columns:1fr}
-    }
-    /* Resolve a sobreposição entre nome, barra de progresso e resumo do pavimento:
-       as regras antigas misturavam grid-area nomeada com grid-row numérica. */
-    .detail-floor-main{grid-template-areas:"icon identity edit" "progress progress progress" "summary summary summary";row-gap:6px;align-items:center}
-    .detail-floor-main .detail-floor-icon{grid-area:icon;align-self:center}
-    .detail-floor-main .detail-floor-identity{grid-area:identity}
-    .detail-floor-main .detail-floor-edit{grid-area:edit;justify-self:end}
-    .detail-floor-main .detail-floor-progress{grid-area:progress}
-    .detail-floor-main .detail-floor-summary{grid-area:summary}
-    .report-breakdown{grid-template-columns:repeat(5,minmax(0,1fr))}
-    @media(max-width:600px){.report-breakdown{grid-template-columns:repeat(2,minmax(0,1fr))}.report-breakdown div{border-right:1px solid #edf0f4;border-top:1px solid #edf0f4}.report-breakdown div:nth-child(2n){border-right:0}.report-breakdown div:nth-child(-n+2){border-top:0}.report-breakdown div:last-child{grid-column:1/-1;border-right:0}}
-    @media(hover:none){.project-card:hover{transform:none;box-shadow:0 2px 5px #27384e08}}
-    /* ===== Aviso de inatividade ===== */
-    .idle-card{text-align:center}
-    .idle-card .lock-icon{font-size:30px}
-    .idle-countdown{font:800 26px var(--display);color:var(--blue);margin:6px 0 2px}
-    .idle-actions{display:grid;gap:7px;margin-top:14px}
-    .idle-actions button{min-height:46px;font-size:11px}
-    /* ===== Painel do local (área demarcada) ===== */
-    .local-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
-    .local-head h3{font:700 13px var(--display);margin:0}
-    .local-head p{margin:2px 0 0;font-size:9px;color:#808d9f}
-    .local-facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:7px;margin:10px 0}
-    .local-facts div{background:#f4f6f9;border-radius:8px;padding:9px}
-    .local-facts strong{display:block;font:800 13px var(--display)}
-    .local-facts span{font-size:8px;color:#8b97a8}
-    .local-photo-actions{display:flex;gap:7px;flex-wrap:wrap;margin:12px 0 8px}
-    .local-photo-actions .photo-manage-label,.local-photo-actions button{flex:1 1 150px;justify-content:center;min-height:46px;font-size:11px;text-align:center}
-    .photo-item-meta{display:block;font-size:7px;color:#8b97a9;line-height:1.3;margin-top:3px;text-align:center}
-    .photo-include{display:flex;align-items:center;justify-content:center;gap:4px;font-size:8px;color:#5f6d82;min-height:34px;cursor:pointer}
-    .photo-include input{accent-color:#2671ef;width:16px;height:16px}
-    /* ===== Equipe: presença e cadastro ===== */
-    .team-switch{display:flex;gap:4px;padding:3px;background:#eef2f7;border-radius:9px;margin:16px 0 12px}
-    .team-switch button{flex:1;border:0;border-radius:7px;background:transparent;color:#6c7a90;min-height:44px;font-size:10px;font-weight:700}
-    .team-switch button[aria-selected="true"]{background:#fff;color:var(--blue);box-shadow:0 1px 4px #18355720}
-    .team-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px}
-    .team-filters .form-field label{font-size:8px}
-    .team-filters input,.team-filters select{height:42px;border:1px solid #dfe5ed;border-radius:8px;padding:0 9px;background:#fff;color:#38475c;font-size:11px;width:100%}
-    .team-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:12px}
-    .team-summary div{background:#fff;border:1px solid var(--line);border-radius:10px;padding:11px}
-    .team-summary strong{display:block;font:800 19px var(--display)}
-    .team-summary span{font-size:8px;color:#8b97a8}
-    .team-list{display:grid;gap:8px}
-    .team-row{background:#fff;border:1px solid var(--line);border-left:4px solid #d7dde6;border-radius:10px;padding:11px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:9px;align-items:center}
-    .team-row.present{border-left-color:var(--green);background:#f6fdfa}
-    .team-row.inactive{opacity:.72}
-    .team-row strong{display:block;font-size:11px}
-    .team-row .team-meta{font-size:8px;color:#8995a7;margin-top:2px;line-height:1.5}
-    .team-badge{display:inline-flex;align-items:center;gap:4px;border-radius:20px;padding:2px 8px;font-size:8px;font-weight:700;background:#eef1f6;color:#64748b}
-    .team-badge.present{background:#e6f9f1;color:#108257}
-    .team-badge.absent{background:#f1f4f8;color:#6b7a8d}
-    .team-badge.off{background:#fdeeee;color:#b14343}
-    .team-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
-    .team-actions button{min-height:44px;padding:0 13px;border-radius:8px;border:1px solid #dfe5ed;background:#fff;color:#4a5a70;font-size:10px;font-weight:700}
-    .team-actions button.primary{background:var(--green);border-color:transparent;color:#fff}
-    .team-actions button.danger{background:#fff;border-color:#eccccc;color:#b14343}
-    .team-history{display:grid;gap:6px;margin-top:10px}
-    .team-history article{background:#fff;border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:9px;color:#5f6d82}
-    .team-history strong{display:block;font-size:10px;color:#37465c}
-    .team-history .correction{font-size:8px;color:#9aa5b6;margin-top:3px}
-    .import-preview{max-height:230px;overflow:auto;border:1px solid var(--line);border-radius:9px;margin:10px 0}
-    .import-preview table{width:100%;border-collapse:collapse;font-size:9px}
-    .import-preview th,.import-preview td{text-align:left;padding:6px 8px;border-bottom:1px solid #eff2f6;white-space:nowrap}
-    .import-preview th{background:#f6f8fb;position:sticky;top:0;font-size:8px;color:#64748b}
-    .import-preview tr.skip td{color:#b14343;background:#fdf6f6}
-    .import-preview tr.update td{background:#fffaf0}
-    .import-counts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:10px 0}
-    .import-counts div{border-radius:8px;padding:9px;text-align:center;background:#eef3fb;color:#2c4e85}
-    .import-counts strong{display:block;font:800 17px var(--display)}
-    .import-counts span{font-size:8px}
-    .import-counts div.update{background:#fff6e6;color:#8a5d11}
-    .import-counts div.skip{background:#fdeeee;color:#a63f3f}
-    @media(max-width:600px){
-      .team-row{grid-template-columns:1fr}
-      .team-actions{justify-content:stretch}
-      .team-actions button{flex:1}
-      .import-counts{grid-template-columns:1fr}
-    }
-    /* ===== Relatório em folha A4 =====
-       Folha A4 retrato com margens de 12mm/10mm deixa 190mm de largura útil. Planta e
-       fotografias passam a ser medidas em milímetros, com largura acompanhando a coluna
-       e altura livre (`height:auto`) — é o que amplia a imagem sem deformá-la. O teto em
-       mm existe para a quebra de página sair limpa.
-
-       Fundos coloridos e texto branco não são usados aqui: o navegador só imprime fundo
-       quando "gráficos de segundo plano" está ligado, e sem ele o texto branco sairia
-       invisível. Os indicadores em que a cor é a informação (chips de situação, amostras)
-       pedem `print-color-adjust:exact` para sobreviver de qualquer modo. */
-    @media print{
-      @page{size:A4 portrait;margin:12mm 10mm}
-      .auth-overlay,.toast-stack,.user-menu,.sketch-zoom{display:none!important}
-      .content{max-width:none!important;padding:0!important}
-      /* Botões que só fazem sentido na tela. */
-      .rf-toggle,.floor-croqui,.gallery-more,.report-filter{display:none!important}
-      .print-header{display:block;border-bottom:2px solid #1d4ed8;padding-bottom:3mm;margin-bottom:5mm}
-      .print-header strong{display:block;font:800 14pt/1.2 var(--display);color:#12306b}
-      .print-header span{display:block;margin-top:1.5mm;font-size:8.5pt;color:#5b6678}
-      /* Pavimento ou galeria recolhidos na tela ainda saem inteiros no papel. */
-      .rf-body[hidden]{display:block!important}
-      #reportsView img{max-width:100%}
-      #reportsView{color:#1b2330}
-
-      .report-metrics{gap:4mm}
-      .report-metric{border:1px solid #d7dce4;border-radius:0;background:#fff!important}
-      .report-metric strong{font-size:13pt}
-      .report-metric span{font-size:7pt;color:#5b6678}
-      .total-progress{border:1px solid #d7dce4;border-radius:0;break-inside:avoid}
-      .total-progress-head{font-size:8pt}
-      .total-progress .progress-track{background:#e4e9f0!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-      .total-progress .progress-fill{background:#1d4ed8!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-      .report-heading{font-size:9pt}
-
-      .report-floor-card{border:1px solid #d7dce4;border-radius:0;box-shadow:none;margin:0 0 8mm;break-inside:auto}
-      .report-floor-card>header{background:#fff!important;color:#1b2330!important;border-bottom:2px solid #1d4ed8;padding:0 0 3mm;margin:0 4mm;break-inside:avoid;break-after:avoid}
-      .report-floor-card .rf-work,.report-floor-card .rf-pct span{color:#5b6678!important}
-      .report-floor-card .rf-name{font-size:13pt}
-      .report-floor-card .rf-pct strong{font-size:16pt;color:#1d4ed8}
-      .report-floor-card .rf-track{height:4px;background:#e4e9f0!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-      .report-floor-card .rf-track i{background:#1d4ed8!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-      .rf-breakdown{break-inside:avoid;margin:0 4mm;border-bottom:1px solid #e4e9f0}
-      .rf-breakdown div{padding:2.5mm 2mm}
-      .rf-breakdown strong{font-size:10pt}
-      .rf-breakdown span{font-size:6.5pt}
-      .rf-body{padding:0 4mm 4mm;border-top:0}
-      .rf-sub{font-size:8pt;margin:5mm 0 2mm;color:#5b6678;break-after:avoid}
-
-      /* Planta do ambiente: largura da coluna inteira, até 150mm de altura. */
-      .rf-plan{min-height:0;padding:0;border:1px solid #d7dce4;border-radius:0;background:#fff;break-inside:avoid}
-      .rf-plan img{width:auto;height:auto;max-width:100%;max-height:150mm;border-radius:0}
-      .rf-empty{font-size:8pt}
-
-      /* Setores: cabeçalho repetido a cada página quando a tabela atravessa a folha. */
-      .rf-table-wrap{overflow:visible!important;border:1px solid #d7dce4;border-radius:0;break-inside:auto}
-      .rf-table{min-width:0!important;font-size:8.5pt}
-      .rf-table thead{display:table-header-group}
-      .rf-table tr{break-inside:avoid}
-      .rf-table th{background:#f1f4f9!important;color:#44506a!important;font-size:7.5pt;padding:2mm 1.5mm;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-      .rf-table td{padding:2mm 1.5mm;font-size:8.5pt}
-      .rf-chip{background:#fff!important;border:1px solid currentColor;font-size:7.5pt;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-
-      /* Fotografias: duas por linha (≈88mm cada), altura livre para não achatar retrato. */
-      .photo-group{margin-top:4mm;break-inside:auto}
-      .photo-group-head{font-size:7.5pt;break-after:avoid}
-      .photo-group-head strong{font-size:9pt}
-      .photo-gallery{grid-template-columns:repeat(2,1fr)!important;gap:5mm;align-items:start}
-      .photo-gallery .gallery-cell{display:block;aspect-ratio:auto;min-height:0;background:#fff;border:1px solid #d7dce4;border-radius:0;overflow:visible;break-inside:avoid;page-break-inside:avoid}
-      .photo-gallery .gallery-cell img{width:100%;height:auto;max-height:92mm;object-fit:contain;background:#fff}
-      /* A legenda desce para baixo da foto: sobreposta em 7px era ilegível no papel e
-         cobria justamente o detalhe fotografado. */
-      .photo-gallery .gallery-cell .gallery-caption{position:static;background:none;color:#5b6678;font-size:7.5pt;padding:1.5mm 2mm;text-align:left}
-      .floor-empty-note{font-size:8pt}
-      .status-swatch,.status-chip i{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    }
-  </style>
+  <!-- Folhas de estilo em src/estilos/, numeradas porque a ordem de carga é
+       significativa: regras de arquivos posteriores sobrepõem as anteriores. -->
+  <link rel="stylesheet" href="src/estilos/01-base.css">
+  <link rel="stylesheet" href="src/estilos/02-cabecalho.css">
+  <link rel="stylesheet" href="src/estilos/03-painel.css">
+  <link rel="stylesheet" href="src/estilos/04-obras.css">
+  <link rel="stylesheet" href="src/estilos/05-relatorios.css">
+  <link rel="stylesheet" href="src/estilos/06-dialogos.css">
+  <link rel="stylesheet" href="src/estilos/07-telas-pequenas.css">
+  <link rel="stylesheet" href="src/estilos/08-fotos.css">
+  <link rel="stylesheet" href="src/estilos/09-pavimentos.css">
+  <link rel="stylesheet" href="src/estilos/10-acesso.css">
+  <link rel="stylesheet" href="src/estilos/11-situacoes-e-galeria.css">
+  <link rel="stylesheet" href="src/estilos/12-planta.css">
+  <link rel="stylesheet" href="src/estilos/13-folha-pavimento.css">
+  <link rel="stylesheet" href="src/estilos/14-toque.css">
+  <link rel="stylesheet" href="src/estilos/15-local-e-equipe.css">
+  <link rel="stylesheet" href="src/estilos/16-impressao-a4.css">
 </head>
 <body>
   <div id="testEnvironmentBanner" role="status" hidden style="position:sticky;top:0;z-index:1000;background:#8b3d15;color:white;text-align:center;padding:10px;font-weight:800">AMBIENTE DE TESTES · dados isolados neste navegador</div>
@@ -544,6 +161,25 @@
   <dialog id="usersDialog"><div class="dialog-head"><h2>Usuários e cargos</h2><button class="dialog-close" type="button" data-close-dialog aria-label="Fechar">×</button></div><div class="dialog-body"><p class="detail-note">Cada cargo libera apenas as seções e ações previstas. Os acessos valem para este navegador/ambiente.</p><div class="users-table" id="usersList"></div><h3 style="font:700 11px var(--display);margin:16px 0 8px">Adicionar usuário</h3><form id="newUserForm"><div class="form-grid"><div class="form-field full"><label for="newUserName">Nome</label><input id="newUserName" required maxlength="60"></div><div class="form-field"><label for="newUserLogin">Usuário</label><input id="newUserLogin" required maxlength="40" autocomplete="off"></div><div class="form-field"><label for="newUserRole">Cargo</label><select id="newUserRole"></select></div><div class="form-field full"><label for="newUserPassword">Senha provisória (mínimo 8 caracteres)</label><input id="newUserPassword" type="password" required minlength="8" maxlength="120" autocomplete="new-password"></div></div><p class="auth-feedback" id="newUserFeedback" role="status"></p><div class="dialog-actions"><button class="button-primary" type="submit">Cadastrar usuário</button></div></form><h3 style="font:700 11px var(--display);margin:16px 0 8px">Alterar minha senha</h3><form id="changePasswordForm"><div class="form-grid"><div class="form-field"><label for="currentPassword">Senha atual</label><input id="currentPassword" type="password" required maxlength="120" autocomplete="current-password"></div><div class="form-field"><label for="newPassword">Nova senha</label><input id="newPassword" type="password" required minlength="8" maxlength="120" autocomplete="new-password"></div></div><p class="auth-feedback" id="changePasswordFeedback" role="status"></p><div class="dialog-actions"><button class="button-secondary" type="submit">Salvar nova senha</button></div></form><div class="dialog-actions"><button class="button-secondary" type="button" data-close-dialog>Fechar</button></div></div></dialog>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <!-- Endereço do Worker, no atributo content da meta abaixo.
+
+       Vazio = painel inteiro no navegador, como antes de existir API: é o que
+       mantém o sistema utilizável enquanto o servidor não está no ar.
+
+       Preencha depois de `npm run publicar`, com o endereço que o comando
+       imprime (algo como https://nbz-obras-api.SUA-CONTA.workers.dev). Para
+       testar contra o servidor local, use http://127.0.0.1:8787.
+
+       O exemplo fica em texto, e não como tag comentada, de propósito: uma
+       segunda meta com este nome dentro de comentário já confundiu a
+       substituição feita pela suíte de testes. -->
+  <meta name="nbz-api" content="">
+  <!-- Camada de mídia (IndexedDB) e cliente da API. Scripts comuns, não módulos,
+       para que o painel continue abrindo direto do disco por file:// quando
+       preciso conferir algo sem servidor. -->
+  <script src="src/db.js"></script>
+  <script src="src/api.js"></script>
+  <script src="src/sincronizar.js"></script>
   <script>
     /* Rede de segurança: se a inicialização falhar, mostra o motivo em vez de uma tela vazia. */
     window.addEventListener('error', (event) => {
@@ -785,10 +421,16 @@
           migrationApplied = true;
           return [{ id: newId(), data: photo, date: report.date || new Date().toISOString(), author: '', includeInReport: true }];
         }
-        if (!photo || typeof photo.data !== 'string' || !photo.data) return [];
+        if (!photo) return [];
+        /* Foto gravada depois da migração não tem `data`: o binário está no
+           IndexedDB sob `photo.id` e a URL é refeita por reidratarFotos(). Antes
+           desta checagem, uma foto sem `data` era descartada na leitura — o que
+           apagaria todas as fotos migradas na primeira abertura. */
+        const temDados = typeof photo.data === 'string' && photo.data;
+        if (!temDados && !photo.id) return [];
         return [{
           id: photo.id || newId(),
-          data: photo.data,
+          data: temDados ? photo.data : '',
           date: photo.date || report.date || new Date().toISOString(),
           author: typeof photo.author === 'string' ? photo.author : '',
           includeInReport: photo.includeInReport !== false
@@ -858,6 +500,29 @@
     function restoreRawValue(key, raw) {
       try { if (raw === null) localStorage.removeItem(key); else localStorage.setItem(key, raw); } catch {}
     }
+    /* Remove da gravação o `data` que é object URL.
+
+       Um `blob:` só vale enquanto a página está aberta: gravá-lo deixaria o
+       estado cheio de referências mortas na próxima abertura, e é justamente
+       esse campo que tirava a cota do localStorage. O binário correspondente
+       está no IndexedDB sob o id da foto, e `reidratarFotos()` refaz a URL no
+       carregamento.
+
+       O `data:` em base64 continua sendo gravado: é o estado de quem ainda não
+       passou pela migração, e descartá-lo apagaria a foto. */
+    function semObjectUrl(chave, valor) {
+      if (chave === 'data' && typeof valor === 'string' && valor.startsWith('blob:')) return undefined;
+      return valor;
+    }
+    /* Controlam o gancho de replicação no fim de `saveState()`.
+
+       São declarados aqui, e não junto do bloco de sincronização, porque
+       `saveState()` é definido antes dele: ler a constante `comServidor` daqui
+       daria ReferenceError se alguma gravação acontecesse durante a carga.
+       `replicarAoGravar` é ligado depois, quando a API é configurada. */
+    let replicarAoGravar = false;
+    let replicacaoSuspensa = false;
+
     function saveState() {
       /* O corte do histórico vem antes da gravação: é ele que alivia a cota cheia.
          Depois de gravar, não serviria para nada na tentativa que acabou de falhar. */
@@ -865,10 +530,14 @@
       const previousProjects = readRawValue(storageKey);
       const previousHistory = readRawValue(historyKey);
       try {
-        localStorage.setItem(storageKey, JSON.stringify(projects));
+        localStorage.setItem(storageKey, JSON.stringify(projects, semObjectUrl));
         localStorage.setItem(historyKey, JSON.stringify(activities));
         pendingChanges = false;
         updateSyncIndicator();
+        /* Replicar vem depois de gravar, nunca antes: se a gravação local
+           falhar não há o que replicar — e o aparelho é a fonte da verdade
+           enquanto não há sinal. */
+        if (replicarAoGravar && !replicacaoSuspensa) agendarSincronizacao();
         return true;
       } catch (error) {
         restoreRawValue(storageKey, previousProjects);
@@ -1086,7 +755,7 @@
         note.textContent = rejected.length ? `Não adicionadas — ${rejected.join('; ')}.` : 'Confira a prévia e confirme para salvar no local.';
       }
     }
-    function saveLocalPhotos() {
+    async function saveLocalPhotos() {
       if (!localTarget || !pendingLocalPhotos.length) return;
       if (!requirePermission('photos.edit', 'Seu cargo não permite adicionar fotografias.')) return;
       const project = projects.find((item) => item.id === localTarget.projectId);
@@ -1097,7 +766,11 @@
       const createdReport = report.photos.length === 0 && !localReportOf(project, floor, region).photos.length;
       const previousPhotos = report.photos.slice();
       const previousReports = project.photoReports.slice();
-      report.photos = report.photos.concat(pendingLocalPhotos.map((item) => newPhoto(item.data)));
+      /* As fotos são criadas antes de mexer no relatório: `newPhoto` grava o
+         binário no IndexedDB, e falhar com o array já alterado deixaria o
+         estado apontando para imagem que não existe. */
+      const novas = await Promise.all(pendingLocalPhotos.map((item) => newPhoto(item.data)));
+      report.photos = report.photos.concat(novas);
       report.description = region.name || report.description;
       const activityCount = activities.length;
       addActivity('Fotografias adicionadas ao local', `${project.name} · ${floor.name} · ${region.name || 'local sem nome'} · ${pendingLocalPhotos.length} foto(s)`);
@@ -1339,7 +1012,14 @@
       return Number.isNaN(date.getTime()) ? 'sem data' : new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(date);
     }
     function reportPhotos(report) { return report.photos.filter((photo) => photo.includeInReport !== false); }
-    function newPhoto(data) { return { id: newId(), data, date: new Date().toISOString(), author: currentUser ? currentUser.name : '', includeInReport: true }; }
+    /* Assíncrona porque gravar no IndexedDB é assíncrono. Quem chama já estava
+       dentro de um `await compressPhoto(...)`, então o custo de esperar aqui não
+       muda o fluxo da tela. */
+    async function newPhoto(origem) {
+      const id = newId();
+      const data = await persistirFoto(id, origem);
+      return { id, data, date: new Date().toISOString(), author: currentUser ? currentUser.name : '', includeInReport: true };
+    }
     function regionNameOfReport(project, report) {
       if (!report.regionId) return '';
       const floor = project.floorPlans.find((item) => item.id === report.floorId);
@@ -2330,6 +2010,112 @@
       return data;
     }
 
+    /* ----------------------------------------------- binário das fotografias
+
+       As fotos saíram do JSON do localStorage e passaram a morar no IndexedDB
+       como binário (src/db.js). O motivo é a cota: o localStorage tem ~5 MB por
+       domínio e cada foto ocupava ~250 KB em base64, então por volta de 15 a 20
+       fotos a gravação começava a falhar.
+
+       O que ficou no estado é só a referência. `photo.data` passou a guardar um
+       object URL — que também é string aceita em `<img src>`, e é por isso que
+       os nove pontos que usam `photo.data` não precisaram mudar.
+
+       O object URL vale apenas enquanto a página está aberta, então ele é
+       removido na gravação (ver saveState) e refeito no carregamento
+       (reidratarFotos). Quando o IndexedDB não existe — modo privado de alguns
+       navegadores, origem não segura — cai-se no base64 de antes: perder a
+       capacidade é melhor que deixar o engenheiro sem registrar a visita. */
+
+    let midiaDisponivel = null;
+
+    async function temMidia() {
+      if (midiaDisponivel !== null) return midiaDisponivel;
+      midiaDisponivel = Boolean(window.NBZMidia) && await window.NBZMidia.disponivel();
+      return midiaDisponivel;
+    }
+
+    /* Guarda o binário e devolve o que vai em `photo.data`: object URL quando há
+       IndexedDB, ou o próprio data-URI como antes. */
+    async function persistirFoto(id, origem) {
+      const dataUri = typeof origem === 'string' ? origem : '';
+      if (!await temMidia()) return dataUri;
+
+      const blob = dataUri ? window.NBZMidia.dataUriParaBlob(dataUri) : origem;
+      if (!blob) return dataUri;
+      const gravou = await window.NBZMidia.guardarFoto(id, blob);
+      if (!gravou) return dataUri;
+      return window.NBZMidia.urlDaFoto(id);
+    }
+
+    /* Refaz os object URL das fotos gravadas em sessões anteriores. Sem isto a
+       galeria abriria com as imagens vazias depois de recarregar a página. */
+    async function reidratarFotos() {
+      if (!await temMidia()) return 0;
+      const pendentes = [];
+      for (const project of projects) {
+        for (const report of project.photoReports || []) {
+          for (const photo of report.photos || []) {
+            if (!photo.data) pendentes.push(photo);
+          }
+        }
+      }
+      if (!pendentes.length) return 0;
+      const urls = await window.NBZMidia.urlsDasFotos(pendentes.map((photo) => photo.id));
+      let resolvidas = 0;
+      pendentes.forEach((photo) => {
+        const url = urls.get(photo.id);
+        if (url) {
+          photo.data = url;
+          resolvidas += 1;
+        }
+      });
+      return resolvidas;
+    }
+
+    /* Move para o IndexedDB as fotos que ainda estão em base64 no estado.
+       Roda uma vez por aparelho: depois da primeira passagem não sobra base64
+       para converter. É o que libera a cota de quem já usa o sistema hoje. */
+    async function migrarFotosParaMidia() {
+      if (!await temMidia()) return 0;
+      const antigas = [];
+      for (const project of projects) {
+        for (const report of project.photoReports || []) {
+          for (const photo of report.photos || []) {
+            if (typeof photo.data === 'string' && photo.data.startsWith('data:')) antigas.push(photo);
+          }
+        }
+      }
+      if (!antigas.length) return 0;
+
+      let movidas = 0;
+      for (const photo of antigas) {
+        const url = await persistirFoto(photo.id, photo.data);
+        /* Só troca a referência se o binário realmente entrou: em caso de falha
+           a foto continua em base64 e é tentada de novo na próxima abertura. */
+        if (url && url.startsWith('blob:')) {
+          photo.data = url;
+          movidas += 1;
+        }
+      }
+      if (movidas) saveState();
+      return movidas;
+    }
+
+    /* Apaga do IndexedDB o binário que o estado não referencia mais — foto
+       excluída, relatório removido, obra apagada. Sem isto o binário ficaria
+       órfão ocupando cota para sempre. */
+    async function limparFotosOrfas() {
+      if (!await temMidia()) return 0;
+      const emUso = [];
+      for (const project of projects) {
+        for (const report of project.photoReports || []) {
+          for (const photo of report.photos || []) emUso.push(photo.id);
+        }
+      }
+      return window.NBZMidia.removerOrfas(emUso);
+    }
+
     let photoManageTarget = null;
     let photoManageFileData = null;
     function openPhotoManager(projectId, reportId, photoIndex = null) {
@@ -2509,7 +2295,7 @@
         error.textContent = 'Confira a prévia e confirme para gravar. A imagem atual só é trocada depois da gravação.';
       } catch (imageError) { error.textContent = imageError.message || 'Não foi possível abrir a imagem.'; }
     }));
-    document.querySelector('#photoManageSave').addEventListener('click', () => {
+    document.querySelector('#photoManageSave').addEventListener('click', async () => {
       if (!photoManageTarget || !photoManageFileData) return;
       if (!requirePermission('photos.edit', 'Seu cargo não permite alterar fotografias.')) return;
       const project = projects.find((item) => item.id === photoManageTarget.projectId);
@@ -2518,10 +2304,15 @@
       const replacing = photoManageTarget.photoIndex !== null;
       if (replacing && !window.confirm('Substituir a fotografia atual por esta nova imagem?')) return;
       const previous = report.photos.slice();
-      if (!replacing) {
-        if (report.photos.length >= 12) { document.querySelector('#photoManageError').textContent = 'O registro já atingiu o limite de 12 fotos.'; return; }
-        report.photos.push(newPhoto(photoManageFileData));
-      } else report.photos[photoManageTarget.photoIndex] = { ...report.photos[photoManageTarget.photoIndex], ...newPhoto(photoManageFileData) };
+      /* O limite é conferido antes de gravar o binário: criar a foto para
+         depois recusar deixaria o IndexedDB com um blob que ninguém referencia. */
+      if (!replacing && report.photos.length >= 12) {
+        document.querySelector('#photoManageError').textContent = 'O registro já atingiu o limite de 12 fotos.';
+        return;
+      }
+      const nova = await newPhoto(photoManageFileData);
+      if (!replacing) report.photos.push(nova);
+      else report.photos[photoManageTarget.photoIndex] = { ...report.photos[photoManageTarget.photoIndex], ...nova };
       const activityCount = activities.length;
       addActivity(replacing ? 'Fotografia substituída' : 'Fotografia adicionada', `${project.name} · ${report.floorName} · ${report.description}`);
       if (!saveState()) {
@@ -3001,7 +2792,8 @@
       error.textContent = 'Comprimindo e salvando as imagens…';
       beginBusy();
       try {
-        const photos = (await Promise.all(files.map(compressPhoto))).map(newPhoto);
+        const comprimidas = await Promise.all(files.map((file) => compressPhoto(file)));
+        const photos = await Promise.all(comprimidas.map((imagem) => newPhoto(imagem)));
         const report = { id: newId(), floorIndex, floorId: floor.id, floorName: floor.name, regionId: floor.regions.some((region) => region.id === regionId) ? regionId : '', description: String(new FormData(form).get('description')).trim(), date: new Date().toISOString(), author: currentUser ? currentUser.name : '', photos };
         project.photoReports.unshift(report);
         const previousActivities = activities.length;
@@ -3650,9 +3442,65 @@
     });
 
     /* ===== Login, cargos e proteção do histórico =====
-       Atenção: esta aplicação é estática e guarda tudo no navegador. As regras abaixo
-       controlam efetivamente a interface e todos os pontos de gravação de dados, mas não
-       substituem autenticação e autorização em servidor/API, que esta arquitetura não possui. */
+
+       O painel opera em dois modos, e o que decide é a meta `nbz-api`:
+
+       - SEM servidor (meta vazia): tudo fica no navegador, como sempre foi. O
+         PBKDF2 confere a senha localmente e o cadastro vale só neste aparelho.
+         É o modo que mantém o sistema utilizável enquanto o Worker não subiu.
+       - COM servidor: login, cargos e cadastro passam pelo Worker. O cadastro
+         vale para todo mundo em qualquer aparelho, a trava de tentativas conta
+         no servidor — e não no navegador de quem tenta entrar — e desativar
+         alguém derruba a sessão dele na hora.
+
+       As regras de interface (`can()`, `roleOf()`) são as mesmas nos dois modos:
+       o que muda é de onde vem o cargo. No modo com servidor elas deixam de ser
+       a única defesa, porque o Worker confere a permissão de novo em cada rota. */
+
+    /* Liga a API se houver endereço configurado. A meta vem primeiro; a chave do
+       localStorage serve para apontar o painel a outro servidor sem editar o
+       arquivo, o que ajuda a testar contra `wrangler dev`. */
+    function configurarApi() {
+      if (!window.NBZApi) return false;
+      const meta = document.querySelector('meta[name="nbz-api"]');
+      const endereco = (meta && meta.content.trim()) || '';
+      if (endereco) window.NBZApi.configurar(endereco);
+      return window.NBZApi.configurado();
+    }
+    const comServidor = configurarApi();
+    /* Só agora o gancho de `saveState()` pode disparar: antes disto não havia
+       nem endereço de servidor nem as funções de sincronização carregadas. */
+    replicarAoGravar = comServidor;
+
+    /* Traduz o usuário do servidor para o formato que o painel usa.
+
+       O servidor chama o cargo de `nivelAcesso` e o painel de `role`; manter os
+       dois nomes é de propósito, para que fique explícito onde um vira o outro
+       em vez de os dois se confundirem no meio do código. */
+    function usuarioDoServidor(dados) {
+      if (!dados) return null;
+      return {
+        id: dados.id,
+        name: dados.nome,
+        username: dados.usuario,
+        email: dados.email || '',
+        role: dados.nivelAcesso,
+        precisaTrocarSenha: Boolean(dados.precisaTrocarSenha),
+        remoto: true
+      };
+    }
+
+    /* Mostra ao usuário o motivo de uma falha de rede sem transformar "sem
+       sinal" em "senha errada", que é o erro de diagnóstico mais comum em app
+       de campo. */
+    function mensagemDeFalha(erro) {
+      if (!erro) return 'Falha inesperada.';
+      if (erro.offline || erro.status === 0) {
+        return 'Sem conexão com o servidor. Verifique a internet e tente de novo.';
+      }
+      return erro.message || 'Falha inesperada.';
+    }
+
     const loginGateKey = `${historyGateKey}-login`;
     const maxAttempts = 5;
     const gateLockMs = 5 * 60 * 1000;
@@ -3739,13 +3587,40 @@
       document.querySelectorAll('dialog').forEach((dialog) => { if (dialog.open) dialog.close(); });
     }
     function showAuthOverlay() {
-      const needsSetup = users.length === 0;
+      /* Com servidor, quem decide entre cadastro inicial e login é o D1, não a
+         lista local — senão cada aparelho novo mostraria a tela de "criar
+         primeiro administrador" e abriria um sistema paralelo, que é exatamente
+         o problema que a API vem resolver.
+
+         Mostra-se o login enquanto a resposta não chega: é o caso quase sempre
+         certo, e `ajustarTelaDeEntrada()` corrige em seguida se for preciso. */
+      const needsSetup = comServidor ? false : users.length === 0;
       document.querySelector('#authOverlay').hidden = false;
       document.querySelector('#authSetupForm').hidden = !needsSetup;
       document.querySelector('#authLoginForm').hidden = needsSetup;
       document.querySelector('#setupFeedback').textContent = '';
       document.querySelector('#loginFeedback').textContent = '';
       window.setTimeout(() => document.querySelector(needsSetup ? '#setupName' : '#loginUser')?.focus(), 80);
+      if (comServidor) ajustarTelaDeEntrada();
+    }
+
+    /* Pergunta ao servidor se ainda não há administrador e troca a tela se for o
+       caso. Falha de rede não altera nada: fica o login, e a mensagem explica
+       que o servidor não respondeu — melhor que oferecer um cadastro inicial
+       que o servidor vai recusar. */
+    async function ajustarTelaDeEntrada() {
+      const nota = document.querySelector('#loginFeedback');
+      try {
+        const estado = await window.NBZApi.estadoDoServidor();
+        if (!estado.precisaSetup) return;
+        document.querySelector('#authSetupForm').hidden = false;
+        document.querySelector('#authLoginForm').hidden = true;
+        document.querySelector('#setupFeedback').textContent =
+          'Nenhum administrador cadastrado ainda. Crie o seu para começar.';
+        document.querySelector('#setupName')?.focus();
+      } catch (falha) {
+        nota.textContent = mensagemDeFalha(falha);
+      }
     }
     function applySession() {
       document.querySelector('#authOverlay').hidden = true;
@@ -3815,12 +3690,37 @@
       }
       currentUser = null;
       historyUnlockedUntil = 0;
+      /* Encerra também no servidor, para que a linha da sessão saia do D1 em vez
+         de ficar válida até expirar. Sem rede, limpa-se só o aparelho: a sessão
+         remota vence sozinha em 12 h. */
+      if (comServidor) window.NBZApi.sair().catch(() => {});
       try { sessionStorage.removeItem(sessionKey); } catch {}
       window.clearTimeout(inactivityTimer);
       closeAllDialogs();
       document.querySelector('#appShell').hidden = true;
       showAuthOverlay();
       if (reason) notify(reason, 'info', 5000);
+    }
+    /* Retoma a sessão pelo token guardado. Difere de `restoreSession()` em dois
+       pontos: é assíncrona, porque confirma o token no servidor, e não registra
+       "Acesso ao painel" no histórico — retomar não é entrar de novo. */
+    async function restaurarSessaoRemota() {
+      if (!window.NBZApi.token()) return false;
+      try {
+        currentUser = usuarioDoServidor(await window.NBZApi.eu());
+        historyUnlockedUntil = 0;
+        applySession();
+        /* Primeira sincronização logo após abrir, sem esperar uma gravação:
+           é ela que traz o que os outros registraram desde a última vez. */
+        agendarSincronizacao(1500);
+        return true;
+      } catch (falha) {
+        /* Token vencido ou revogado: o cliente já limpou a sessão no 401. Sem
+           rede, não se derruba o acesso — mas também não se pode liberar o
+           painel sem confirmar quem é, então pede-se login. */
+        if (!falha.offline) window.NBZApi.limparSessao();
+        return false;
+      }
     }
     function restoreSession() {
       let saved = null;
@@ -3847,6 +3747,24 @@
       if (!validUsername(username)) { feedback.textContent = 'Usuário: 3 a 40 caracteres, apenas letras minúsculas, números, ponto, hífen ou sublinhado.'; return; }
       if (password.length < 8) { feedback.textContent = 'A senha precisa de ao menos 8 caracteres.'; return; }
       if (password !== document.querySelector('#setupPasswordConfirm').value) { feedback.textContent = 'As senhas não coincidem.'; return; }
+
+      if (comServidor) {
+        feedback.textContent = 'Criando o administrador no servidor…';
+        try {
+          const criado = await window.NBZApi.primeiroAdministrador({ nome: name, usuario: username, senha: password });
+          /* O setup não devolve sessão: entra-se em seguida com a mesma senha,
+             pelo mesmo caminho de qualquer outro login. */
+          await window.NBZApi.entrar(username, password);
+          form.reset();
+          feedback.textContent = '';
+          startSession(usuarioDoServidor(criado));
+          notify(`Administrador criado. Bem-vindo, ${criado.nome}.`, 'ok');
+        } catch (falha) {
+          feedback.textContent = mensagemDeFalha(falha);
+        }
+        return;
+      }
+
       feedback.textContent = 'Protegendo a senha…';
       const salt = randomSalt();
       const user = { id: newId(), name, username, role: 'administrador', salt, hash: await hashPassword(password, salt), createdAt: new Date().toISOString() };
@@ -3872,6 +3790,33 @@
       const username = document.querySelector('#loginUser').value.trim().toLocaleLowerCase('pt-BR');
       const password = document.querySelector('#loginPassword').value;
       feedback.textContent = 'Verificando credenciais…';
+
+      if (comServidor) {
+        try {
+          const autenticado = await window.NBZApi.entrar(username, password);
+          document.querySelector('#loginPassword').value = '';
+          feedback.textContent = '';
+          const user = usuarioDoServidor(autenticado);
+          startSession(user);
+          /* Aparelho novo começa sem nada: `completo` traz a base inteira em
+             vez de só o que mudou desde uma marca que ele não tem. */
+          sincronizarComServidor({ completo: true })
+            .catch((falha) => console.warn('Primeira sincronização adiada:', falha.message));
+          if (user.precisaTrocarSenha) {
+            /* Senha definida pelo administrador: o servidor recusa as outras
+               rotas com 428 até a troca, então avisar aqui evita o usuário
+               bater numa parede sem explicação. */
+            notify('Defina uma senha sua em "Usuários e cargos" antes de continuar.', 'info', 8000);
+          } else {
+            notify(`Sessão iniciada · ${roleOf(user.role).label}`, 'ok');
+          }
+        } catch (falha) {
+          document.querySelector('#loginPassword').value = '';
+          feedback.textContent = mensagemDeFalha(falha);
+        }
+        return;
+      }
+
       const user = users.find((item) => item.username === username);
       if (passwordCheckUnavailable(user)) {
         feedback.textContent = 'Este navegador não oferece o recurso de criptografia necessário para conferir a senha. Abra o painel por https:// ou use um navegador atual.';
@@ -4046,13 +3991,140 @@
     if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
       window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
     }
+    /* ===================== Sincronização com o servidor =====================
+
+       Quando há servidor, o painel continua gravando primeiro no aparelho e só
+       depois replica. A ordem não é estilo: é o que mantém o sistema utilizável
+       dentro da obra, onde quase sempre não há sinal. A tela nunca espera rede.
+
+       A ordem das etapas também importa, e por um motivo concreto: `POST /fotos`
+       recusa com 404 se o relatório não existir no D1. Por isso o estado sobe
+       antes das imagens — primeiro existe onde pendurar, depois se pendura. */
+
+    let sincronizacaoAgendada = null;
+    let sincronizando = false;
+
+    /* Agrupa as gravações: pintar cinco setores seguidos dispara cinco
+       `saveState()`, e subir cinco vezes gastaria requisição à toa. */
+    function agendarSincronizacao(atraso = 4000) {
+      if (!comServidor) return;
+      window.clearTimeout(sincronizacaoAgendada);
+      sincronizacaoAgendada = window.setTimeout(() => {
+        sincronizarComServidor().catch((falha) => {
+          console.warn('Sincronização adiada:', falha.message);
+        });
+      }, atraso);
+    }
+
+    async function sincronizarComServidor({ completo = false } = {}) {
+      if (!comServidor || sincronizando) return null;
+      if (!window.NBZApi.token() || !window.NBZApi.online()) return null;
+
+      sincronizando = true;
+      try {
+        /* 1. Sobe obras, pavimentos, setores e relatórios. */
+        await window.NBZApi.subirEstado(window.NBZSync.paraServidor(projects));
+
+        /* 2. Enfileira as fotos que ainda não subiram. A varredura parte do
+              estado em vez de depender de quem criou a foto ter lembrado de
+              enfileirar — foto perdida por esquecimento é pior que uma
+              varredura barata. */
+        const enviadas = window.NBZApi.fotosEnviadas();
+        for (const pendente of window.NBZSync.fotosParaEnviar(projects, enviadas)) {
+          window.NBZApi.enfileirarFoto(pendente.fotoId, pendente.relatorioId, { legenda: pendente.legenda });
+        }
+        const envio = await window.NBZApi.escoarFila();
+
+        /* 3. Traz o que mudou noutros aparelhos. */
+        const pacote = await window.NBZApi.baixarEstado({ completo });
+        const vindos = window.NBZSync.paraPainel(pacote);
+        if (vindos.length) {
+          projects = window.NBZSync.fundir(projects, vindos);
+          saveStateSemReplicar();
+          await baixarFotosFaltantes();
+          if (currentUser) renderAll();
+        }
+        return { enviadas: envio.enviadas, recebidas: vindos.length };
+      } finally {
+        sincronizando = false;
+      }
+    }
+
+    /* Grava sem reagendar sincronização: o que acabou de chegar do servidor não
+       precisa voltar para ele, e reagendar aqui criaria um vaivém sem fim. */
+    function saveStateSemReplicar() {
+      replicacaoSuspensa = true;
+      try {
+        return saveState();
+      } finally {
+        replicacaoSuspensa = false;
+      }
+    }
+
+    /* Busca o binário das fotos que o aparelho não tem.
+
+       É isto que faz a foto tirada por outra pessoa aparecer aqui. Baixa-se uma
+       vez e guarda-se no IndexedDB, então a galeria continua abrindo offline.
+       O limite por rodada evita que abrir uma obra antiga puxe centenas de
+       imagens de uma vez no 4G da obra. */
+    async function baixarFotosFaltantes(limite = 20) {
+      if (!comServidor || !await temMidia()) return 0;
+      const faltando = [];
+      for (const project of projects) {
+        for (const report of project.photoReports || []) {
+          for (const photo of report.photos || []) {
+            if (!photo.data && photo.id) faltando.push(photo);
+          }
+        }
+      }
+      if (!faltando.length) return 0;
+
+      let baixadas = 0;
+      for (const photo of faltando.slice(0, limite)) {
+        const url = await window.NBZApi.baixarFoto(photo.id);
+        if (url) {
+          photo.data = url;
+          baixadas += 1;
+        }
+      }
+      return baixadas;
+    }
+
+    /* Preparo da mídia, fora do arranque síncrono.
+
+       O IndexedDB é assíncrono e não pode atrasar a tela de login: o painel
+       abre primeiro e as fotos aparecem em seguida. Por isso o `renderAll()` no
+       fim — as imagens já desenhadas sem URL precisam de uma segunda passada.
+
+       Falha aqui não derruba o painel: sem IndexedDB tudo segue no base64 de
+       antes, e é só a cota que volta a ser o limite. */
+    async function prepararMidia() {
+      if (!await temMidia()) return;
+      const reidratadas = await reidratarFotos();
+      const migradas = await migrarFotosParaMidia();
+      if (migradas) {
+        console.info(`Fotografias movidas para o armazenamento local: ${migradas}.`);
+      }
+      await limparFotosOrfas();
+      if ((reidratadas || migradas) && currentUser) renderAll();
+    }
+
     try {
       initializeSketchControls();
       renderUsersList();
-      if (!restoreSession()) {
+      if (comServidor) {
+        /* Com servidor a retomada é assíncrona: o painel fica oculto até o token
+           ser confirmado, e só então se decide entre abrir ou pedir login. */
+        document.querySelector('#appShell').hidden = true;
+        restaurarSessaoRemota()
+          .then((retomou) => { if (!retomou) showAuthOverlay(); })
+          .catch(() => showAuthOverlay());
+        window.NBZApi.iniciar();
+      } else if (!restoreSession()) {
         document.querySelector('#appShell').hidden = true;
         showAuthOverlay();
       }
+      prepararMidia().catch((falha) => console.error('Falha ao preparar a mídia local.', falha));
     } catch (bootError) {
       console.error('Falha ao iniciar o painel.', bootError);
       document.querySelector('#appShell').hidden = true;

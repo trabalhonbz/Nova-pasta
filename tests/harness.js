@@ -1,9 +1,9 @@
 /* Harness de testes do Painel NBZ.
 
-   O painel é um arquivo único (index.html) que roda inteiramente no navegador, sem
-   servidor nem API. Para testá-lo fora do navegador, carregamos o próprio index.html
-   em jsdom e dirigimos a interface de verdade: preenchemos campos, disparamos submit
-   e lemos o que ficou no localStorage.
+   O painel é uma página (index.html) com os estilos em src/estilos/ e os scripts em
+   src/, e roda inteiramente no navegador. Para testá-lo fora do navegador, carregamos
+   o próprio index.html em jsdom e dirigimos a interface de verdade: preenchemos
+   campos, disparamos submit e lemos o que ficou no localStorage.
 
    Dois ajustes são indispensáveis e explicam quase todo o código daqui:
 
@@ -20,20 +20,79 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { JSDOM, VirtualConsole } from 'jsdom';
+import { IDBFactory } from 'fake-indexeddb';
 
 const testsDir = path.dirname(fileURLToPath(import.meta.url));
 /* NBZ_INDEX aponta a suíte para outra cópia do painel — é como se confere que um
    teste de correção realmente falha na versão anterior. */
 export const indexPath = process.env.NBZ_INDEX || path.join(testsDir, '..', 'index.html');
 
+/* Devolve todo o CSS do painel, na ordem exata em que o index.html o carrega.
+
+   Serve a testes que conferem a presença de uma regra — caso da folha A4, que o jsdom
+   não sabe calcular. O texto vem compactado (sem comentários, sem espaço em volta de
+   `{`, `}` e `;`) justamente para que esses testes falem sobre a regra e não sobre a
+   formatação do arquivo: reindentar um CSS não deve quebrar teste nenhum.
+
+   De quebra, isto confere que cada <link rel="stylesheet"> aponta para um arquivo que
+   existe de verdade — a leitura falha se o caminho estiver errado. */
+export function estilosDoPainel() {
+  const html = fs.readFileSync(indexPath, 'utf8');
+  const arquivos = [...html.matchAll(/<link rel="stylesheet" href="(src\/[^"]+)">/g)].map(([, arquivo]) => arquivo);
+  if (!arquivos.length) throw new Error('o index.html não aponta nenhuma folha de estilo em src/');
+  const css = arquivos
+    .map((arquivo) => fs.readFileSync(path.join(testsDir, '..', arquivo), 'utf8'))
+    .join('\n');
+  return css
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\s+/g, ' ')
+    .replace(/ ?([{};]) ?/g, '$1')
+    .trim();
+}
+
 /* Sobe uma instância do painel.
    `comCryptoSubtle: false` simula navegador antigo ou origem não segura (http:// de
    rede local, arquivo aberto do disco), onde `crypto.subtle` não existe. */
-export async function boot({ query = '', seed = null, comCryptoSubtle = true } = {}) {
+/* `api` liga o painel a um servidor. Recebe `{ endereco, atender }`, onde
+   `atender(Request)` devolve uma Response — na prática, o `fetch` do Worker de
+   verdade com D1 em memória (ver tests/integracao.test.js). Sem ele o painel
+   roda no modo local, que é o estado de antes de existir API. */
+export async function boot({
+  query = '', seed = null, comCryptoSubtle = true, comIndexedDB = true, api = null
+} = {}) {
   const html = fs.readFileSync(indexPath, 'utf8')
     /* As bibliotecas de CDN (pdf.js, xlsx) não são baixadas no teste: o painel já
        trata a ausência delas, e depender da rede tornaria a suíte instável. */
-    .replace(/<script src="https:\/\/[^"]*"><\/script>/g, '');
+    .replace(/<script src="https:\/\/[^"]*"><\/script>/g, '')
+    /* Os scripts locais, ao contrário, são indispensáveis e precisam ser
+       embutidos: sem `resources: 'usable'` o jsdom ignora `src` relativo, e o
+       painel abriria sem a camada de mídia nem o cliente da API. Embutir em vez
+       de ligar o carregamento de recursos mantém a suíte sem acesso a rede. */
+    .replace(
+      /<script src="(src\/[^"]+)"><\/script>/g,
+      (_, arquivo) => `<script>${fs.readFileSync(path.join(testsDir, '..', arquivo), 'utf8')}</script>`
+    )
+    /* As folhas de estilo entram pelo mesmo motivo, e não só por capricho: há
+       teste que confere exibição por estilo calculado, porque `.sketch-tools`
+       declara `display:flex` e precisa vencer o `display:none` do atributo
+       [hidden]. Sem embutir o CSS, esse teste passaria por outro caminho — o
+       estilo padrão do jsdom — e pararia de medir a regra que existe para
+       isso. */
+    .replace(
+      /<link rel="stylesheet" href="(src\/[^"]+)">/g,
+      (_, arquivo) => `<style>${fs.readFileSync(path.join(testsDir, '..', arquivo), 'utf8')}</style>`
+    )
+    /* Define a meta que liga o painel ao servidor.
+
+       O padrão `content="[^"]*"` casa com QUALQUER valor, de propósito: o
+       endereço gravado no arquivo é conveniência de quem desenvolve e muda com
+       frequência. Se o teste dependesse de ele estar vazio, deixar um endereço
+       local salvo faria a suíte inteira bootar em modo remoto contra uma porta
+       que não existe no jsdom — que foi exatamente o que aconteceu. */
+    .replace(
+      /<meta name="nbz-api" content="[^"]*">/,
+      `<meta name="nbz-api" content="${api ? api.endereco : ''}">`
+    );
 
   const errors = [];
   const virtualConsole = new VirtualConsole();
@@ -59,6 +118,12 @@ export async function boot({ query = '', seed = null, comCryptoSubtle = true } =
       window.cancelAnimationFrame = (id) => clearTimeout(id);
       window.scrollTo = () => {};
       window.HTMLCanvasElement.prototype.getContext = () => null;
+      /* O shim precisa entrar ANTES do script do painel: a camada de mídia
+         guarda em cache se o IndexedDB existe na primeira consulta, e remover o
+         `indexedDB` depois do arranque não desfaz esse cache. Por isso simular
+         modo privado é opção de boot, e não algo que o teste faça depois. */
+      instalarShimDeMidia(window, comIndexedDB);
+      if (api) instalarFetchDoWorker(window, api);
       if (seed) for (const [key, value] of Object.entries(seed)) window.localStorage.setItem(key, value);
     }
   });
@@ -93,6 +158,78 @@ function instalarShimDeDialogo(window) {
     this.open = false;
     if (valor !== undefined) this.returnValue = valor;
     this.dispatchEvent(new window.Event('close'));
+  };
+}
+
+/* IndexedDB e object URL para o painel.
+
+   As fotografias saíram do localStorage e passaram a morar no IndexedDB como
+   binário, com `photo.data` guardando um object URL. O jsdom não implementa
+   nenhum dos dois: `window.indexedDB` é undefined e `URL.createObjectURL` não
+   existe. Sem estes substitutos o painel cairia no modo de reserva em base64 e
+   a suíte deixaria de exercitar o caminho que roda no navegador.
+
+   A URL devolvida é sintética. O que se verifica fora do navegador é que a
+   referência certa chega ao `<img src>`; se a imagem aparece continua sendo
+   conferência manual. */
+function instalarShimDeMidia(window, comIndexedDB = true) {
+  /* `comIndexedDB: false` reproduz modo privado de alguns navegadores e origem
+     não segura, onde o painel tem de voltar ao base64 em vez de falhar. */
+  window.indexedDB = comIndexedDB ? new IDBFactory() : undefined;
+
+  const blobsPorUrl = new Map();
+  let sequencia = 0;
+  window.URL.createObjectURL = (blob) => {
+    sequencia += 1;
+    const url = `blob:http://localhost/foto-${sequencia}`;
+    blobsPorUrl.set(url, blob);
+    return url;
+  };
+  window.URL.revokeObjectURL = (url) => { blobsPorUrl.delete(url); };
+  /* Exposto para os testes conferirem vazamento de object URL. */
+  window.__urlsDeBlobVivas = () => blobsPorUrl.size;
+}
+
+/* Entrega as chamadas do painel ao Worker, sem rede no meio.
+
+   O jsdom não tem `fetch`, e o Worker é só uma função que recebe Request e
+   devolve Response — as duas classes existem no Node. Então o caminho inteiro é
+   exercitado de verdade: formulário do painel -> src/api.js -> roteador do
+   Worker -> D1. O que não se cobre é a rede e o limite de CPU do Worker.
+
+   A Response volta embrulhada porque o `src/api.js` lê `.headers.get` e
+   `.json()`, e objeto de outro realm atravessa o jsdom sem problema desde que a
+   interface seja essa. */
+function instalarFetchDoWorker(window, api) {
+  window.fetch = async (url, opcoes = {}) => {
+    /* Blob do jsdom não atravessa para o Request do Node: ele é serializado
+       como o texto "[object Blob]", e o upload chegaria ao Worker com 13 bytes
+       de lixo em vez da imagem — que o `tipoReal()` recusa com 415, como deve.
+       No navegador isso não acontece; aqui os bytes são lidos antes. */
+    let corpoEnviado = opcoes.body ?? undefined;
+    if (corpoEnviado && typeof corpoEnviado.arrayBuffer === 'function') {
+      corpoEnviado = new Uint8Array(await corpoEnviado.arrayBuffer());
+    }
+
+    const pedido = new Request(String(url), {
+      method: opcoes.method || 'GET',
+      headers: opcoes.headers || {},
+      body: corpoEnviado
+    });
+    const resposta = await api.atender(pedido);
+    /* O corpo é lido como bytes, e não como texto: as rotas de fotografia
+       devolvem JPEG, e `text()` o corromperia na decodificação. Texto e JSON
+       saem dos mesmos bytes, decodificados sob demanda. */
+    const bytes = await resposta.arrayBuffer();
+    const comoTexto = () => new TextDecoder().decode(bytes);
+    return {
+      ok: resposta.ok,
+      status: resposta.status,
+      headers: { get: (nome) => resposta.headers.get(nome) },
+      arrayBuffer: async () => bytes,
+      text: async () => comoTexto(),
+      json: async () => JSON.parse(comoTexto() || '{}')
+    };
   };
 }
 
