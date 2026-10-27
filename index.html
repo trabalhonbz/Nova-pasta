@@ -4498,6 +4498,12 @@
       for (const project of projects) {
         for (const floor of project.floorPlans || []) {
           if (floor.id && floor.temPlanta && !floor.planImage) faltando.push(floor);
+          /* Planta apagada noutro aparelho: a fusão já tirou da tela, mas o
+             binário continuaria ocupando o armazenamento deste celular para
+             sempre, sem nada que voltasse a apontar para ele. */
+          if (floor.id && !floor.temPlanta && !floor.planFileName && !floor.planImage) {
+            await window.NBZMidia.removerPlanta(floor.id);
+          }
         }
       }
       if (!faltando.length) return 0;

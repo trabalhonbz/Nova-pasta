@@ -225,13 +225,36 @@
     return Array.from(porId.values());
   }
 
+  /* PRESERVAR A PLANTA LOCAL, MENOS QUANDO ELA FOI APAGADA
+
+     O pacote traz sempre `planImage: ''` — o binário não viaja no JSON. Por isso
+     a cópia local tem de ser preservada, senão cada sincronização apagaria o
+     desenho do aparelho.
+
+     Mas preservar sempre impede a exclusão de propagar: quem apaga a planta num
+     aparelho a vê voltar nos outros, porque lá a cópia local sobrevive a toda
+     sincronização. Foi o que aconteceu assim que a preservação entrou.
+
+     Os dois casos se distinguem pelo nome do arquivo que o servidor devolve:
+
+       apagada no servidor      -> temPlanta false E plantaArquivo vazio
+                                   (o DELETE limpa chave, medidas e nome)
+       importada e não enviada  -> temPlanta false E plantaArquivo preenchido
+                                   (o nome sobe pelo /sync/subir, que roda antes
+                                    da descida no mesmo ciclo)
+
+     Só o primeiro caso descarta a cópia local. Confundir os dois significaria
+     ou planta que ressuscita, ou planta apagada antes de conseguir subir. */
+  function plantaFoiApagadaNoServidor(vindo) {
+    return vindo.temPlanta === false && !vindo.planFileName;
+  }
+
   function mesclarPavimento(local, vindo) {
     return {
       ...vindo,
-      /* O pacote traz sempre `planImage: ''`: o binário não viaja no JSON. Sem
-         esta linha, cada sincronização apagaria a planta que o aparelho tem, e
-         o engenheiro veria o desenho sumir no meio da visita. */
-      planImage: vindo.planImage || local.planImage || '',
+      planImage: plantaFoiApagadaNoServidor(vindo)
+        ? ''
+        : (vindo.planImage || local.planImage || ''),
       regions: mesclarPorId(local.regions, vindo.regions)
     };
   }

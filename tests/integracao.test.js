@@ -588,6 +588,46 @@ teste('fusão delta não apaga setor que o pacote não trouxe', () => {
   igual(obra.floorPlans[0].planImage, 'blob:x', 'e a planta local também');
 });
 
+teste('planta apagada no servidor some também nos outros aparelhos', () => {
+  /* A preservação da planta local, se for incondicional, impede a exclusão de
+     propagar: quem apaga num aparelho a vê voltar nos outros. O servidor nunca
+     manda binário, então "planImage vazio" não distingue nada por si só — o
+     DELETE também limpa o nome do arquivo, e é esse o sinal. */
+  const local = [{
+    id: 'obra-1',
+    floorPlans: [{ id: 'pav-1', planImage: 'blob:local/planta', planFileName: 'planta.jpg', temPlanta: true, regions: [] }],
+    photoReports: []
+  }];
+  const doServidor = [{
+    id: 'obra-1',
+    floorPlans: [{ id: 'pav-1', planImage: '', planFileName: '', temPlanta: false, regions: [] }],
+    photoReports: []
+  }];
+
+  const [obra] = NBZSync.fundir(local, doServidor);
+  igual(obra.floorPlans[0].planImage, '', 'a planta apagada no servidor tem de sumir daqui também');
+});
+
+teste('planta importada e ainda não enviada sobrevive à sincronização', () => {
+  /* O contrário, e o erro que seria pior: apagar a planta de quem acabou de
+     importá-la, antes de ela conseguir subir. Aqui `temPlanta` também é falso,
+     mas o nome do arquivo já subiu pelo /sync/subir — e é o que diferencia. */
+  const local = [{
+    id: 'obra-1',
+    floorPlans: [{ id: 'pav-1', planImage: 'blob:local/recem-importada', planFileName: 'planta.jpg', temPlanta: false, regions: [] }],
+    photoReports: []
+  }];
+  const doServidor = [{
+    id: 'obra-1',
+    floorPlans: [{ id: 'pav-1', planImage: '', planFileName: 'planta.jpg', temPlanta: false, regions: [] }],
+    photoReports: []
+  }];
+
+  const [obra] = NBZSync.fundir(local, doServidor);
+  igual(obra.floorPlans[0].planImage, 'blob:local/recem-importada',
+    'planta esperando envio não pode ser apagada pela sincronização');
+});
+
 teste('fusão delta aplica o que o servidor de fato mandou', () => {
   /* Contraprova: preservar não pode virar ignorar. O que vem no pacote tem de
      substituir o local, senão alteração feita noutro aparelho nunca chegaria. */
