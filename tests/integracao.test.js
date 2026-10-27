@@ -523,6 +523,82 @@ teste('quando o R2 aparece, a fila acumulada sobe sozinha', async () => {
   ctx.fechar();
 });
 
+/* --------------------------------------------------- busca periódica */
+
+teste('quem só consulta recebe a demarcação feita noutro aparelho', async () => {
+  /* A pergunta que isto responde: "demarquei uma área aqui, aparece no celular
+     dele?". Antes aparecia só se ele recarregasse ou entrasse de novo — a
+     sincronização era disparada por gravação local e por login, e nunca por
+     passar o tempo. Quem abriu o painel de manhã via a obra de manhã. */
+  const { api } = servidorDeTeste();
+
+  const engenheiro = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(engenheiro, { nome: 'Richard', usuario: 'richard', senha: 'senhaforte1' });
+  await criarObraComFoto(engenheiro);
+  await engenheiro.eval('sincronizarComServidor()');
+  await pausa(400);
+
+  /* O fiscal entra e vê o que existe até agora: um setor. */
+  const fiscal = await boot({ api });
+  await pausa(600);
+  await preencherLogin(fiscal, { usuario: 'richard', senha: 'senhaforte1' });
+  await pausa(1500);
+  igual(
+    fiscal.eval('projects.find((p) => p.id === "obra-1").floorPlans[0].regions.length'), 1,
+    'pré-condição: o fiscal começa com o setor que já existia'
+  );
+
+  /* O engenheiro demarca outra área e grava. */
+  await engenheiro.eval(`(() => {
+    projects[0].floorPlans[0].regions.push({
+      id: 'set-2', name: 'Setor B', status: 'inProgress',
+      points: [{x:40,y:40},{x:60,y:40},{x:60,y:60},{x:40,y:60}], area: 80
+    });
+    saveState();
+  })()`);
+  await engenheiro.eval('sincronizarComServidor()');
+  await pausa(400);
+  engenheiro.fechar();
+
+  /* O fiscal NÃO toca em nada — é esse o ponto. Só o tempo passa, e é a busca
+     periódica que tem de trazer a novidade. */
+  await fiscal.eval('sincronizarComServidor({ apenasBaixar: true })');
+  await pausa(600);
+
+  const setores = await fiscal.eval(
+    'projects.find((p) => p.id === "obra-1").floorPlans[0].regions.map((r) => r.id).sort()'
+  );
+  igual(setores, ['set-1', 'set-2'], 'a demarcação nova deveria ter chegado sozinha');
+  fiscal.fechar();
+});
+
+teste('a busca periódica não reescreve o servidor, para não estourar a cota', async () => {
+  /* O passo de subida manda o estado INTEIRO, não só o que mudou. Se a busca
+     periódica empurrasse, trinta pessoas consultando de minuto em minuto
+     passariam de dois milhões de gravações por dia contra as cem mil do plano
+     gratuito — e o banco pararia de aceitar escrita no meio do expediente. */
+  const { api, db } = servidorDeTeste();
+  const ctx = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(ctx, { nome: 'Richard', usuario: 'richard', senha: 'senhaforte1' });
+  await criarObraComFoto(ctx);
+  await ctx.eval('sincronizarComServidor()');
+  await pausa(400);
+
+  const antes = db.prepare('select atualizado_em from obras where id = ?').get('obra-1').atualizado_em;
+
+  /* Muitas buscas seguidas, sem nenhuma alteração local. */
+  for (let i = 0; i < 3; i += 1) {
+    await ctx.eval('sincronizarComServidor({ apenasBaixar: true })');
+    await pausa(200);
+  }
+
+  const depois = db.prepare('select atualizado_em from obras where id = ?').get('obra-1').atualizado_em;
+  igual(depois, antes, 'buscar não pode ter reescrito a obra no servidor');
+  ctx.fechar();
+});
+
 /* ----------------------------------------------------- armazenamento */
 
 teste('a barra de armazenamento mostra o uso real das fotografias', async () => {

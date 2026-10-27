@@ -4357,14 +4357,24 @@
       }, atraso);
     }
 
-    async function sincronizarComServidor({ completo = false } = {}) {
+    /* `apenasBaixar` existe por causa da cota, não por elegância.
+
+       O passo 1 sobe o estado INTEIRO, não só o que mudou. Numa busca periódica
+       isso reescreveria todas as obras, pavimentos e setores a cada ciclo: com
+       trinta pessoas consultando de minuto em minuto, passa de dois milhões de
+       gravações por dia contra as cem mil do plano gratuito — e o banco pararia
+       de aceitar escrita no meio do expediente.
+
+       Subir continua acontecendo, só que pelo gatilho certo: `saveState()`
+       agenda sincronização quando ESTE aparelho mudou alguma coisa. */
+    async function sincronizarComServidor({ completo = false, apenasBaixar = false } = {}) {
       if (!comServidor || sincronizando) return null;
       if (!window.NBZApi.token() || !window.NBZApi.online()) return null;
 
       sincronizando = true;
       try {
         /* 1. Sobe obras, pavimentos, setores e relatórios. */
-        await window.NBZApi.subirEstado(window.NBZSync.paraServidor(projects));
+        if (!apenasBaixar) await window.NBZApi.subirEstado(window.NBZSync.paraServidor(projects));
 
         /* 2. Enfileira as fotos que ainda não subiram. A varredura parte do
               estado em vez de depender de quem criou a foto ter lembrado de
@@ -4531,9 +4541,49 @@
       if ((reidratadas || plantas || migradas) && currentUser) renderAll();
     }
 
+    /* Busca periódica do que mudou noutros aparelhos.
+
+       Sem isto, quem só CONSULTA nunca recebe nada: a sincronização era
+       disparada apenas por gravação local e pelo login. O fiscal que abriu o
+       painel de manhã continuaria vendo a obra de manhã, e a demarcação feita
+       pelo engenheiro às dez horas só apareceria para ele no dia seguinte.
+
+       Três gatilhos, e cada um cobre uma situação real de campo:
+
+       - o intervalo, enquanto a tela está visível;
+       - voltar para o aplicativo, porque em celular o navegador congela a aba
+         em segundo plano e o intervalo simplesmente não dispara;
+       - recuperar a conexão, que dentro de obra acontece o tempo todo.
+
+       Com a aba escondida não se busca nada: seria gastar bateria e dados do
+       celular de quem está com o aplicativo fechado no bolso. */
+    const INTERVALO_DE_BUSCA = 60000;
+
+    function iniciarBuscaPeriodica() {
+      if (!comServidor) return;
+
+      window.setInterval(() => {
+        if (document.visibilityState === 'hidden') return;
+        sincronizarComServidor({ apenasBaixar: true })
+          .catch((falha) => console.warn('Busca periódica adiada:', falha.message));
+      }, INTERVALO_DE_BUSCA);
+
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState !== 'visible') return;
+        sincronizarComServidor({ apenasBaixar: true })
+          .catch((falha) => console.warn('Busca ao retomar adiada:', falha.message));
+      });
+
+      window.addEventListener('online', () => {
+        sincronizarComServidor({ apenasBaixar: true })
+          .catch((falha) => console.warn('Busca ao reconectar adiada:', falha.message));
+      });
+    }
+
     try {
       initializeSketchControls();
       renderUsersList();
+      iniciarBuscaPeriodica();
       if (comServidor) {
         /* Com servidor a retomada é assíncrona: o painel fica oculto até o token
            ser confirmado, e só então se decide entre abrir ou pedir login. */
