@@ -4379,6 +4379,7 @@
         /* 2b. Sobe as plantas pendentes. Vem depois do estado porque
                `POST /plantas` recusa com 404 se o pavimento ainda não existir
                no D1 — mesma dependência que vale para as fotografias. */
+        await enfileirarPlantasPendentes();
         await window.NBZApi.escoarFilaDePlantas();
 
         /* 3. Traz o que mudou noutros aparelhos. */
@@ -4417,6 +4418,46 @@
        vez e guarda-se no IndexedDB, então a galeria continua abrindo offline.
        O limite por rodada evita que abrir uma obra antiga puxe centenas de
        imagens de uma vez no 4G da obra. */
+    /* Recoloca na fila a planta que está no aparelho e não chegou ao servidor.
+
+       É a rede de segurança que as fotografias sempre tiveram e a planta não:
+       `fotosParaEnviar` varre o estado em vez de confiar em quem criou a foto
+       ter lembrado de enfileirar. Sem o equivalente aqui, bastava a planta ter
+       sido importada antes de existir o envio — ou a entrada da fila se perder —
+       para ela ficar no aparelho para sempre, com as dimensões no servidor e o
+       desenho em lugar nenhum. Foi exatamente o que aconteceu com a primeira
+       planta cadastrada.
+
+       `temPlanta` falso com `planImage` presente é a assinatura do problema, e é
+       a mesma condição que o distintivo mostra como "não enviada". */
+    async function enfileirarPlantasPendentes() {
+      if (!comServidor || !window.NBZApi) return 0;
+      let enfileiradas = 0;
+      for (const project of projects) {
+        for (const floor of project.floorPlans || []) {
+          if (!floor.id || !floor.planImage || floor.temPlanta) continue;
+
+          /* Planta importada antes de o envio existir ficou como data-URI no
+             estado e nunca foi para o IndexedDB, que é de onde a fila lê o
+             binário. Sem mover agora, o escoamento acharia a fila com a
+             referência e o armazenamento sem o arquivo, e descartaria a
+             entrada — silenciosamente, que é o pior jeito de falhar. */
+          if (String(floor.planImage).startsWith('data:') && await temMidia()) {
+            const url = await persistirPlanta(floor.id, floor.planImage);
+            if (url) floor.planImage = url;
+          }
+
+          window.NBZApi.enfileirarPlanta(floor.id, {
+            largura: floor.planWidth || 0,
+            altura: floor.planHeight || 0,
+            arquivo: floor.planFileName || ''
+          });
+          enfileiradas += 1;
+        }
+      }
+      return enfileiradas;
+    }
+
     /* Traz do servidor a planta dos pavimentos que ainda não a têm aqui.
 
        `temPlanta` é o que evita pedir em vão: sem ele, todo pavimento sem

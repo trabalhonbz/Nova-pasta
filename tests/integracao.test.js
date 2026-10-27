@@ -771,6 +771,47 @@ teste('a planta importada num aparelho sobe para o servidor', async () => {
   ctx.fechar();
 });
 
+teste('planta que nunca entrou na fila é recuperada pela varredura', async () => {
+  /* Reproduz o que aconteceu com a primeira planta cadastrada em produção: ela
+     foi importada antes de o envio existir, então ficou como data-URI no estado,
+     sem entrada na fila e sem binário no IndexedDB. As dimensões subiram pelo
+     /sync/subir, que sempre as carregou, e o desenho não foi a lugar nenhum —
+     o banco ficou com planta_largura preenchida e planta_r2_key nula.
+
+     Sem a varredura, nenhuma sincronização posterior corrige isso: a fila está
+     vazia e nada volta a olhar para o estado. */
+  const { api, db } = servidorDeTeste();
+  const ctx = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(ctx, { nome: 'André', usuario: 'andre', senha: 'senhaforte1' });
+  await criarObraComFoto(ctx);
+
+  /* Planta no estado como data-URI, sem fila e sem IndexedDB — o estado exato
+     de quem importou antes da mudança. */
+  await ctx.eval(`(() => {
+    const floor = projects[0].floorPlans[0];
+    floor.planImage = ${JSON.stringify(JPEG_1X1)};
+    floor.planWidth = 1800;
+    floor.planHeight = 1272;
+    floor.planFileName = 'N644-23-LOIM-0001-03S-HO-R00.jpg';
+    floor.temPlanta = false;
+    saveState();
+  })()`);
+  igual(ctx.eval('window.NBZApi.plantasPendentes()'), 0, 'pré-condição: a fila está vazia');
+
+  await ctx.eval('sincronizarComServidor()');
+  await pausa(600);
+
+  const pavimento = db.prepare(
+    'select planta_r2_key, planta_largura, planta_arquivo from pavimentos where id = ?'
+  ).get('pav-1');
+  confirmar(pavimento.planta_r2_key,
+    'a varredura deveria ter enviado o binário — sem ela, planta_r2_key fica nula');
+  igual(pavimento.planta_largura, 1800, 'com as dimensões que já estavam no estado');
+  igual(pavimento.planta_arquivo, 'N644-23-LOIM-0001-03S-HO-R00.jpg', 'e o nome do arquivo');
+  ctx.fechar();
+});
+
 teste('outro aparelho recebe a planta e não só os setores', async () => {
   const { api, db } = servidorDeTeste();
   const primeira = await boot({ api });
