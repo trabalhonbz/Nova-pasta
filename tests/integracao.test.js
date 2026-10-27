@@ -604,7 +604,9 @@ teste('planta apagada no servidor some também nos outros aparelhos', () => {
     photoReports: []
   }];
 
-  const [obra] = NBZSync.fundir(local, doServidor);
+  /* Fila vazia: este aparelho não pretende enviar planta nenhuma, logo a cópia
+     local é resto de algo que já foi apagado. */
+  const [obra] = NBZSync.fundir(local, doServidor, { plantaPendente: () => false });
   igual(obra.floorPlans[0].planImage, '', 'a planta apagada no servidor tem de sumir daqui também');
 });
 
@@ -619,11 +621,12 @@ teste('planta importada e ainda não enviada sobrevive à sincronização', () =
   }];
   const doServidor = [{
     id: 'obra-1',
-    floorPlans: [{ id: 'pav-1', planImage: '', planFileName: 'planta.jpg', temPlanta: false, regions: [] }],
+    floorPlans: [{ id: 'pav-1', planImage: '', planFileName: '', temPlanta: false, regions: [] }],
     photoReports: []
   }];
 
-  const [obra] = NBZSync.fundir(local, doServidor);
+  /* Na fila: o aparelho pretende enviar, então a cópia local é o original. */
+  const [obra] = NBZSync.fundir(local, doServidor, { plantaPendente: () => true });
   igual(obra.floorPlans[0].planImage, 'blob:local/recem-importada',
     'planta esperando envio não pode ser apagada pela sincronização');
 });
@@ -1067,6 +1070,50 @@ teste('sincronizar de novo não apaga a planta que o aparelho já tem', async ()
 
   const depois = await ctx.eval('projects[0].floorPlans[0].planImage');
   igual(depois, original, 'a planta local deveria ter sobrevivido à sincronização');
+  ctx.fechar();
+});
+
+teste('aparelho com estado velho não ressuscita a planta apagada', async () => {
+  /* O que de fato aconteceu em produção: alguém apagou a planta, o DELETE
+     limpou os campos no banco, e o aparelho de outra pessoa — que ainda tinha o
+     nome do arquivo e as medidas na memória — empurrou tudo de volta no
+     /sync/subir seguinte. A planta ressuscitava.
+
+     A guarda `excluded.atualizado_em >= pavimentos.atualizado_em` não protegia:
+     o painel carimba TODO registro com a hora da sincronização, não com a hora
+     em que o dado mudou, então o aparelho desatualizado sempre tem o carimbo
+     mais novo. A correção foi tirar os dados da planta do sync: quem os escreve
+     são as rotas de planta, e mais ninguém. */
+  const { api, db } = servidorDeTeste();
+  const ctx = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(ctx, { nome: 'André', usuario: 'andre', senha: 'senhaforte1' });
+  await criarObraComFoto(ctx);
+  await importarPlanta(ctx);
+  await ctx.eval('sincronizarComServidor()');
+  await pausa(400);
+  confirmar(db.prepare('select planta_r2_key from pavimentos where id = ?').get('pav-1').planta_r2_key,
+    'pré-condição: a planta subiu');
+
+  await ctx.eval('(async () => { await window.NBZApi.excluirPlanta("pav-1"); })()');
+  await pausa(300);
+
+  /* Aparelho desatualizado empurra o estado antigo, com nome e medidas. */
+  await ctx.eval(`(async () => {
+    const floor = projects[0].floorPlans[0];
+    floor.planFileName = 'N644-23-LOIM-0001-03S-HO-R00.jpg';
+    floor.planWidth = 1800;
+    floor.planHeight = 1272;
+    await window.NBZApi.subirEstado(window.NBZSync.paraServidor(projects));
+  })()`);
+  await pausa(400);
+
+  const pavimento = db.prepare(
+    'select planta_r2_key, planta_arquivo, planta_largura from pavimentos where id = ?'
+  ).get('pav-1');
+  igual(pavimento.planta_r2_key, null, 'a chave tem de continuar limpa');
+  igual(pavimento.planta_arquivo, '', 'o nome do arquivo NÃO pode ter voltado pelo sync');
+  igual(pavimento.planta_largura, 0, 'nem as medidas');
   ctx.fechar();
 });
 

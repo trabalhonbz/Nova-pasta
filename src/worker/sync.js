@@ -155,20 +155,33 @@ function montarPavimento(env, obraId, pavimento, pavimentoId, ordem, carimbo, in
      e sobrescreve-la com o que veio do cliente apagaria a referencia do arquivo
      no bucket. */
   instrucoes.push(env.DB.prepare(
+    /* OS DADOS DA PLANTA NAO ENTRAM AQUI, E ISSO E DELIBERADO
+
+       `planta_r2_key`, `planta_largura`, `planta_altura` e `planta_arquivo`
+       pertencem a `POST /plantas` e a `DELETE /plantas/:id`. Quem envia ou
+       apaga a planta e quem grava esses campos — ninguem mais.
+
+       Deixa-los no upsert do sync parecia inofensivo e nao era: a guarda
+       `excluded.atualizado_em >= pavimentos.atualizado_em` nao protege nada,
+       porque o painel carimba TODO registro com a hora da sincronizacao, e nao
+       com a hora em que o dado mudou. "Ultima escrita vence" vira "ultimo que
+       sincronizou vence", e qualquer aparelho com estado velho na memoria
+       sobrescreve o servidor com carimbo novo.
+
+       Na pratica: alguem apagava a planta, o DELETE limpava os campos, e o
+       aparelho de outra pessoa — que ainda tinha o nome do arquivo na memoria —
+       empurrava tudo de volta na sincronizacao seguinte. A planta ressuscitava
+       sem ninguem entender por que. */
     `insert into pavimentos
-       (id, obra_id, nome, area_total, ordem, planta_largura, planta_altura,
-        planta_arquivo, atualizado_em, excluido_em)
-     values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       (id, obra_id, nome, area_total, ordem, atualizado_em, excluido_em)
+     values (?, ?, ?, ?, ?, ?, ?)
      on conflict(id) do update set
        nome = excluded.nome, area_total = excluded.area_total, ordem = excluded.ordem,
-       planta_largura = excluded.planta_largura, planta_altura = excluded.planta_altura,
-       planta_arquivo = excluded.planta_arquivo, atualizado_em = excluded.atualizado_em,
+       atualizado_em = excluded.atualizado_em,
        excluido_em = excluded.excluido_em
      where excluded.atualizado_em >= pavimentos.atualizado_em`
   ).bind(
     pavimentoId, obraId, limpar(pavimento.nome, 60), numero(pavimento.areaTotal), ordem,
-    numero(pavimento.plantaLargura), numero(pavimento.plantaAltura),
-    limpar(pavimento.plantaArquivo, 120),
     limpar(pavimento.atualizadoEm, 40) || carimbo,
     pavimento.excluidoEm ? limpar(pavimento.excluidoEm, 40) : null
   ));

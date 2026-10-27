@@ -4411,7 +4411,13 @@
         const pacote = await window.NBZApi.baixarEstado({ completo });
         const vindos = window.NBZSync.paraPainel(pacote);
         if (vindos.length) {
-          projects = window.NBZSync.fundir(projects, vindos);
+          /* A fila de envio é o que distingue "planta apagada no servidor" de
+             "planta importada aqui e ainda não enviada": nos dois o servidor
+             diz que não tem planta, e só este aparelho sabe se pretende mandar
+             uma. */
+          projects = window.NBZSync.fundir(projects, vindos, {
+            plantaPendente: (id) => window.NBZApi.plantaPendente(id)
+          });
           saveStateSemReplicar();
           await baixarPlantasFaltantes();
           await baixarFotosFaltantes();

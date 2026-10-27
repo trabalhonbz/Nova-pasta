@@ -235,26 +235,27 @@
      aparelho a vê voltar nos outros, porque lá a cópia local sobrevive a toda
      sincronização. Foi o que aconteceu assim que a preservação entrou.
 
-     Os dois casos se distinguem pelo nome do arquivo que o servidor devolve:
+     Os dois casos têm `temPlanta` falso e são distinguidos pela FILA DE ENVIO
+     deste aparelho:
 
-       apagada no servidor      -> temPlanta false E plantaArquivo vazio
-                                   (o DELETE limpa chave, medidas e nome)
-       importada e não enviada  -> temPlanta false E plantaArquivo preenchido
-                                   (o nome sobe pelo /sync/subir, que roda antes
-                                    da descida no mesmo ciclo)
+       apagada no servidor      -> não está na fila: ninguém aqui pretende
+                                   enviá-la, então a cópia local é resto
+       importada e não enviada  -> está na fila, esperando conexão
 
-     Só o primeiro caso descarta a cópia local. Confundir os dois significaria
-     ou planta que ressuscita, ou planta apagada antes de conseguir subir. */
-  function plantaFoiApagadaNoServidor(vindo) {
-    return vindo.temPlanta === false && !vindo.planFileName;
-  }
+     O nome do arquivo não serve como sinal: os dados da planta passaram a ser
+     escritos apenas pelas rotas de planta, justamente porque o `/sync/subir`
+     os ressuscitava. Hoje ele vem vazio nos dois casos.
 
-  function mesclarPavimento(local, vindo) {
+     Sem `plantaPendente` informado, preserva — é o comportamento seguro para
+     quem chama a função sem conhecer a fila, como os testes da tradução. */
+  function mesclarPavimento(local, vindo, plantaPendente) {
+    const pendente = typeof plantaPendente === 'function'
+      ? Boolean(plantaPendente(vindo.id))
+      : true;
+    const apagadaNoServidor = vindo.temPlanta === false && !pendente;
     return {
       ...vindo,
-      planImage: plantaFoiApagadaNoServidor(vindo)
-        ? ''
-        : (vindo.planImage || local.planImage || ''),
+      planImage: apagadaNoServidor ? '' : (vindo.planImage || local.planImage || ''),
       regions: mesclarPorId(local.regions, vindo.regions)
     };
   }
@@ -271,10 +272,17 @@
     };
   }
 
-  function fundir(projetosLocais, projetosDoServidor) {
+  /* `opcoes.plantaPendente(pavimentoId)` diz se a planta daquele pavimento está
+     na fila de envio deste aparelho. Quem chama é o painel, que conhece a fila;
+     a tradução em si continua sem depender dela. */
+  function fundir(projetosLocais, projetosDoServidor, opcoes = {}) {
+    const plantaPendente = opcoes && opcoes.plantaPendente;
     return mesclarPorId(projetosLocais, projetosDoServidor, (local, vindo) => ({
       ...vindo,
-      floorPlans: mesclarPorId(local.floorPlans, vindo.floorPlans, mesclarPavimento),
+      floorPlans: mesclarPorId(
+        local.floorPlans, vindo.floorPlans,
+        (pavLocal, pavVindo) => mesclarPavimento(pavLocal, pavVindo, plantaPendente)
+      ),
       photoReports: mesclarPorId(local.photoReports, vindo.photoReports, mesclarRelatorio)
     }));
   }
