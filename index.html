@@ -173,7 +173,7 @@
        O exemplo fica em texto, e não como tag comentada, de propósito: uma
        segunda meta com este nome dentro de comentário já confundiu a
        substituição feita pela suíte de testes. -->
-  <meta name="nbz-api" content="">
+  <meta name="nbz-api" content="/">
   <!-- Camada de mídia (IndexedDB) e cliente da API. Scripts comuns, não módulos,
        para que o painel continue abrindo direto do disco por file:// quando
        preciso conferir algo sem servidor. -->
@@ -512,6 +512,12 @@
        passou pela migração, e descartá-lo apagaria a foto. */
     function semObjectUrl(chave, valor) {
       if (chave === 'data' && typeof valor === 'string' && valor.startsWith('blob:')) return undefined;
+      /* A planta do pavimento segue a mesma regra, e pelo mesmo motivo: o
+         binário vive no IndexedDB sob o id do pavimento e `reidratarPlantas()`
+         refaz a URL ao abrir. Sem esta linha, o estado gravaria um `blob:`
+         morto e o pavimento abriria sem planta — com os setores demarcados
+         flutuando sobre o vazio. */
+      if (chave === 'planImage' && typeof valor === 'string' && valor.startsWith('blob:')) return undefined;
       return valor;
     }
     /* Controlam o gancho de replicação no fim de `saveState()`.
@@ -1316,7 +1322,7 @@
          setor", junto das fotografias. */
       const importBar = document.createElement('div');
       importBar.className = 'plan-import';
-      importBar.innerHTML = '<label class="action-button" for="floorPlanFile">▧ Importar planta<input id="floorPlanFile" type="file" accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf"></label><span id="planFileName" class="plan-file-name">Nenhuma planta importada</span><button id="removePlan" class="action-button" type="button" disabled>Remover planta</button>';
+      importBar.innerHTML = '<label class="action-button" for="floorPlanFile">▧ Importar planta<input id="floorPlanFile" type="file" accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf"></label><span id="planFileName" class="plan-file-name">Nenhuma planta importada</span><span id="planSyncStatus" class="plan-sync-status" role="status" hidden></span><button id="removePlan" class="action-button" type="button" disabled>Remover planta</button>';
       const viewport = document.createElement('div');
       viewport.className = 'sketch-viewport';
       canvas.replaceWith(viewport);
@@ -1451,7 +1457,12 @@
       error.textContent = 'Importando planta…';
       try {
         const imported = await rasterizePlanFile(file);
-        floor.planImage = imported.data;
+        /* O binário vai para o IndexedDB sob o id do pavimento; `planImage`
+           recebe o object URL. Pavimento sem id (estado anterior à migração)
+           continua no data-URI de antes, que funciona embora gaste cota. */
+        floor.planImage = floor.id
+          ? await persistirPlanta(floor.id, imported.data)
+          : imported.data;
         floor.planWidth = imported.width;
         floor.planHeight = imported.height;
         floor.planFileName = file.name;
@@ -1465,23 +1476,35 @@
           error.textContent = 'Sem espaço para salvar a planta. Tente um arquivo menor.';
           return;
         }
+        /* Enfileira o envio DEPOIS de gravar: se a gravação local falhar não há
+           o que enviar, e o aparelho é a fonte da verdade enquanto não há sinal.
+           O `saveState()` acima já agendou a sincronização, que escoa a fila. */
+        if (comServidor && floor.id && window.NBZApi) {
+          window.NBZApi.enfileirarPlanta(floor.id, {
+            largura: imported.width, altura: imported.height, arquivo: file.name
+          });
+        }
         renderSketch();
         renderAll();
       } catch (importError) {
         error.textContent = importError.message || 'Não foi possível importar a planta.';
       }
     }
-    function removeFloorPlan() {
+    async function removeFloorPlan() {
       const project = projects.find((item) => item.id === sketchProjectId);
       const floor = project && selectedFloor(project, sketchFloorIndex);
       if (!floor || !floor.planImage) return;
       if (!requirePermission('regions.edit', 'Seu cargo não permite remover plantas.')) return;
       if (!window.confirm('Remover a planta e as demarcações deste pavimento?')) return;
-      const previous = { planImage: floor.planImage, planWidth: floor.planWidth, planHeight: floor.planHeight, planFileName: floor.planFileName, regions: floor.regions };
+      const previous = { planImage: floor.planImage, planWidth: floor.planWidth, planHeight: floor.planHeight, planFileName: floor.planFileName, regions: floor.regions, temPlanta: floor.temPlanta };
       floor.planImage = '';
       floor.planWidth = 0;
       floor.planHeight = 0;
       floor.planFileName = '';
+      /* Sem zerar isto, `baixarPlantasFaltantes()` veria um pavimento com planta
+         no servidor e sem imagem local, e traria a planta de volta na
+         sincronização seguinte — a remoção duraria até o próximo sync. */
+      floor.temPlanta = false;
       floor.regions = [];
       updateProjectFromFloor(project);
       const activityCount = activities.length;
@@ -1492,6 +1515,17 @@
         activities = activities.slice(0, activityCount);
         document.querySelector('#sketchError').textContent = 'Não foi possível salvar a alteração.';
         return;
+      }
+      /* Apaga no servidor e no IndexedDB. Vem depois da gravação local pelo
+         mesmo motivo do envio: se não deu para registrar a remoção aqui, não há
+         o que remover lá. Sem sinal, `excluirPlanta` resolve a parte local e o
+         servidor só sabe quando a rede voltar. */
+      if (comServidor && floor.id && window.NBZApi) {
+        try {
+          await window.NBZApi.excluirPlanta(floor.id);
+        } catch (falha) {
+          console.error('Não foi possível remover a planta no servidor:', falha);
+        }
       }
       sketchPoints = [];
       renderSketch();
@@ -1625,6 +1659,56 @@
     }
     /* Cartão de progresso do pavimento: percentual executado, barra e as quatro
        situações com a área de cada uma. */
+    /* Diz em que pé está a planta deste pavimento em relação ao servidor.
+
+       Existe para responder uma pergunta prática que a tela não respondia: "já
+       posso fechar o aplicativo?". Sem isto, planta importada sem sinal parecia
+       idêntica a planta já no servidor, e o engenheiro saía da obra sem saber
+       que o arquivo ainda não tinha subido.
+
+       `temPlanta` vem do servidor e `planImage` é local, então os dois juntos
+       distinguem os quatro estados que importam — inclusive o pior deles, que é
+       ter planta aqui, não estar na fila e o servidor não ter: é o caso de envio
+       recusado, e antes ele passava despercebido. */
+    function renderPlanSyncStatus(floor) {
+      const alvo = document.querySelector('#planSyncStatus');
+      if (!alvo) return;
+
+      const local = Boolean(floor.planImage);
+      const noServidor = Boolean(floor.temPlanta);
+
+      let texto = '';
+      let situacao = '';
+      if (!comServidor) {
+        if (local) {
+          texto = '◆ só neste aparelho';
+          situacao = 'local';
+        }
+      } else if (local && noServidor) {
+        texto = '✓ sincronizada';
+        situacao = 'ok';
+      } else if (local && floor.id && window.NBZApi && window.NBZApi.plantaPendente(floor.id)) {
+        texto = '↑ aguardando envio';
+        situacao = 'pendente';
+      } else if (local) {
+        texto = '⚠ não enviada';
+        situacao = 'alerta';
+      } else if (noServidor) {
+        texto = '↓ baixando…';
+        situacao = 'pendente';
+      }
+
+      alvo.hidden = !texto;
+      alvo.textContent = texto;
+      alvo.dataset.situacao = situacao;
+      alvo.title = {
+        ok: 'A planta está no servidor e abre em qualquer aparelho.',
+        pendente: 'A planta sobe sozinha quando houver conexão.',
+        alerta: 'A planta não chegou ao servidor. Tente importar de novo ou verifique a conexão.',
+        local: 'Sem servidor configurado: a planta fica apenas neste navegador.'
+      }[situacao] || '';
+    }
+
     function renderPlanProgress(floor) {
       const holder = document.querySelector('#planProgress');
       if (!holder) return;
@@ -1666,6 +1750,7 @@
       document.querySelector('#planFrame').setAttribute('stroke', hasPlan ? 'none' : '#7990ad');
       document.querySelector('#planTitle').textContent = `Planta - ${floor.name}`;
       renderPlanProgress(floor);
+      renderPlanSyncStatus(floor);
       renderPaintSwatches();
       const canEditRegions = can('regions.edit');
       document.querySelectorAll('[data-sketch-action="clear"],#floorPlanFile,#floorAreaInput').forEach((element) => { element.disabled = !canEditRegions; });
@@ -2046,6 +2131,38 @@
       const gravou = await window.NBZMidia.guardarFoto(id, blob);
       if (!gravou) return dataUri;
       return window.NBZMidia.urlDaFoto(id);
+    }
+
+    /* Guarda o binário da planta e devolve o que vai em `floor.planImage`:
+       object URL quando há IndexedDB, ou o próprio data-URI como antes.
+
+       Espelha `persistirFoto`, e existe pela mesma razão de cota: a planta
+       rasterizada passa de 400 KB, e guardá-la como data-URI dentro do JSON do
+       estado consumia sozinha quase um décimo do localStorage por pavimento. */
+    async function persistirPlanta(pavimentoId, dataUri) {
+      if (!await temMidia()) return dataUri;
+      const blob = window.NBZMidia.dataUriParaBlob(dataUri);
+      if (!blob) return dataUri;
+      const gravou = await window.NBZMidia.guardarPlanta(pavimentoId, blob);
+      if (!gravou) return dataUri;
+      return window.NBZMidia.urlDaPlanta(pavimentoId);
+    }
+
+    /* Refaz os object URL das plantas gravadas em sessões anteriores. */
+    async function reidratarPlantas() {
+      if (!await temMidia()) return 0;
+      let resolvidas = 0;
+      for (const project of projects) {
+        for (const floor of project.floorPlans || []) {
+          if (floor.planImage || !floor.id) continue;
+          const url = await window.NBZMidia.urlDaPlanta(floor.id);
+          if (url) {
+            floor.planImage = url;
+            resolvidas += 1;
+          }
+        }
+      }
+      return resolvidas;
     }
 
     /* Refaz os object URL das fotos gravadas em sessões anteriores. Sem isto a
@@ -3490,6 +3607,37 @@
       };
     }
 
+    /* Traz a lista de usuários do servidor para a tela.
+
+       Sem isto, o painel mostrava apenas quem ESTE navegador cadastrou. Um
+       administrador em outro aparelho abria "Usuários e cargos" e não via
+       ninguém — e, pior, podia cadastrar de novo alguém que já existia, só
+       descobrindo o conflito pelo erro de usuário duplicado.
+
+       A lista local vira cache de exibição: não guarda hash de senha nenhum,
+       porque quem confere senha é o servidor. */
+    async function carregarUsuariosDoServidor() {
+      if (!comServidor || !window.NBZApi) return false;
+      try {
+        const lista = await window.NBZApi.listarUsuarios();
+        users = lista.map((item) => ({
+          id: item.id,
+          name: item.nome,
+          username: item.usuario,
+          email: item.email || '',
+          role: item.nivelAcesso,
+          precisaTrocarSenha: Boolean(item.precisaTrocarSenha),
+          remoto: true
+        }));
+        saveUsers(users);
+        renderUsersList();
+        return true;
+      } catch (falha) {
+        console.warn('Não foi possível carregar os usuários do servidor:', falha.message);
+        return false;
+      }
+    }
+
     /* Mostra ao usuário o motivo de uma falha de rede sem transformar "sem
        sinal" em "senha errada", que é o erro de diagnóstico mais comum em app
        de campo. */
@@ -3841,7 +3989,20 @@
       renderUsersList();
       document.querySelector('#newUserFeedback').textContent = '';
       document.querySelector('#changePasswordFeedback').textContent = '';
+      /* A nota do diálogo dizia que os acessos valem "para este navegador".
+         Com servidor isso deixou de ser verdade, e manter o texto antigo faria
+         o administrador acreditar que precisa recadastrar em cada aparelho. */
+      const nota = document.querySelector('#usersDialog .detail-note');
+      if (nota) {
+        nota.textContent = comServidor
+          ? 'Cada cargo libera apenas as seções e ações previstas. Os acessos valem em qualquer aparelho: quem for cadastrado aqui entra de qualquer celular ou computador.'
+          : 'Cada cargo libera apenas as seções e ações previstas. Sem servidor configurado, os acessos valem somente neste navegador.';
+      }
       document.querySelector('#usersDialog').showModal();
+      /* Atualiza depois de abrir: esperar a rede para mostrar o diálogo faria a
+         tela parecer travada em conexão de obra. A lista em cache aparece na
+         hora e é substituída quando a resposta chega. */
+      carregarUsuariosDoServidor();
     });
     function renderUsersList() {
       const list = document.querySelector('#usersList');
@@ -3849,7 +4010,7 @@
       list.innerHTML = users.map((user) => `<div class="users-row"><div><strong>${escapeHtml(user.name)}</strong><span>@${escapeHtml(user.username)} · <b class="role-tag">${escapeHtml(roleOf(user.role).label)}</b></span></div><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><select data-user-role="${escapeHtml(user.id)}" aria-label="Cargo de ${escapeHtml(user.name)}" style="min-height:38px;border:1px solid #dfe5ed;border-radius:7px;padding:0 7px;font-size:10px;background:#fff;color:#38475c">${roleDefinitions.map((role) => `<option value="${role.value}" ${user.role === role.value ? 'selected' : ''}>${role.label}</option>`).join('')}</select>${user.id === currentUser?.id ? '<span style="font-size:8px;color:#8995a7">sessão atual</span>' : `<button class="button-secondary floor-delete" type="button" data-delete-user="${escapeHtml(user.id)}">Excluir</button>`}</div></div>`).join('') || '<p class="detail-note">Nenhum usuário cadastrado.</p>';
       document.querySelector('#newUserRole').innerHTML = roleDefinitions.map((role) => `<option value="${role.value}">${role.label}</option>`).join('');
     }
-    document.querySelector('#usersList').addEventListener('change', (event) => {
+    document.querySelector('#usersList').addEventListener('change', async (event) => {
       const select = event.target.closest('[data-user-role]');
       if (!select || !requirePermission('users.manage')) return;
       const user = users.find((item) => item.id === select.dataset.userRole);
@@ -3859,6 +4020,26 @@
         notify('Mantenha ao menos um administrador cadastrado.', 'error');
         return;
       }
+
+      /* Com servidor, o cargo vale para todos os aparelhos. Mudá-lo só aqui
+         deixaria a pessoa com uma permissão na tela deste navegador e outra na
+         hora de o servidor conferir — e quem decide é o servidor. */
+      if (comServidor) {
+        const anterior = user.role;
+        try {
+          await window.NBZApi.editarUsuario(user.id, { nivelAcesso: select.value });
+          addActivity('Cargo de usuário alterado', `${user.name} · ${roleOf(anterior).label} → ${roleOf(select.value).label}`);
+          saveState();
+          await carregarUsuariosDoServidor();
+          notify(`${user.name}: ${roleOf(select.value).label}`, 'ok');
+          if (user.id === currentUser?.id) applySession();
+        } catch (falha) {
+          select.value = anterior;
+          notify(mensagemDeFalha(falha), 'error');
+        }
+        return;
+      }
+
       const previous = user.role;
       user.role = select.value;
       if (!saveUsers(users)) {
@@ -3873,12 +4054,30 @@
       renderUsersList();
       if (user.id === currentUser?.id) applySession();
     });
-    document.querySelector('#usersList').addEventListener('click', (event) => {
+    document.querySelector('#usersList').addEventListener('click', async (event) => {
       const button = event.target.closest('[data-delete-user]');
       if (!button || !requirePermission('users.manage')) return;
       const user = users.find((item) => item.id === button.dataset.deleteUser);
       if (!user || user.id === currentUser?.id) return;
       if (!window.confirm(`Excluir o acesso de ${user.name} (@${user.username})?`)) return;
+
+      /* Excluir só no navegador seria pior que não ter o botão: o painel
+         mostraria a pessoa como removida e ela continuaria entrando
+         normalmente de qualquer aparelho. O servidor também derruba as sessões
+         abertas dela, que é o que importa quando alguém sai da empresa. */
+      if (comServidor) {
+        try {
+          await window.NBZApi.excluirUsuario(user.id);
+          addActivity('Usuário removido', `${user.name} · ${roleOf(user.role).label}`);
+          saveState();
+          await carregarUsuariosDoServidor();
+          notify('Usuário removido.', 'ok');
+        } catch (falha) {
+          notify(mensagemDeFalha(falha), 'error');
+        }
+        return;
+      }
+
       const previous = users.slice();
       users = users.filter((item) => item.id !== user.id);
       if (!saveUsers(users)) { users = previous; notify('Não foi possível excluir o usuário.', 'error'); return; }
@@ -3900,6 +4099,40 @@
       if (users.some((item) => item.username === username)) { feedback.textContent = 'Já existe um usuário com esse nome de acesso.'; return; }
       if (password.length < 8) { feedback.textContent = 'A senha provisória precisa de ao menos 8 caracteres.'; return; }
       feedback.textContent = 'Protegendo a senha…';
+
+      /* COM SERVIDOR, QUEM CADASTRA É O SERVIDOR
+
+         Este era o buraco que impedia a pessoa cadastrada de entrar: o usuário
+         ia só para o localStorage deste navegador, e o login — que sempre
+         consultou o servidor — não encontrava ninguém. O sintoma era "usuário ou
+         senha inválidos", mensagem correta do ponto de vista do servidor e
+         completamente enganosa para quem acabara de cadastrar.
+
+         A senha não trafega: `cadastrarUsuario` deriva o clientHash no
+         navegador, como o login faz. E nada de hash fica guardado aqui — com
+         servidor, a autoridade sobre senha é dele. */
+      if (comServidor) {
+        try {
+          const criado = await window.NBZApi.cadastrarUsuario({
+            nome: name,
+            usuario: username,
+            nivelAcesso: document.querySelector('#newUserRole').value,
+            senha: password,
+            exigirTrocaDeSenha: true
+          });
+          addActivity('Usuário cadastrado', `${criado.nome} · ${roleOf(criado.nivelAcesso).label}`);
+          saveState();
+          form.reset();
+          await carregarUsuariosDoServidor();
+          feedback.className = 'auth-feedback ok';
+          feedback.textContent = `${criado.nome} cadastrado como ${roleOf(criado.nivelAcesso).label}.`
+            + ' Já pode entrar de qualquer aparelho e definirá a própria senha no primeiro acesso.';
+        } catch (falha) {
+          feedback.textContent = mensagemDeFalha(falha);
+        }
+        return;
+      }
+
       const salt = randomSalt();
       const user = { id: newId(), name, username, role: document.querySelector('#newUserRole').value, salt, hash: await hashPassword(password, salt), createdAt: new Date().toISOString() };
       const previous = users.slice();
@@ -3921,6 +4154,33 @@
       const next = document.querySelector('#newPassword').value;
       if (next.length < 8) { feedback.textContent = 'A nova senha precisa de ao menos 8 caracteres.'; return; }
       feedback.textContent = 'Verificando…';
+
+      /* Com servidor não há hash local para conferir: `currentUser` veio da
+         sessão e não carrega salt nem hash. Quem valida a senha atual e guarda
+         a nova é o servidor — e é também ele que derruba as outras sessões,
+         para que trocar a senha expulse quem estiver usando a conta. */
+      if (comServidor) {
+        try {
+          const resultado = await window.NBZApi.trocarSenha(
+            document.querySelector('#currentPassword').value, next
+          );
+          addActivity('Senha alterada', currentUser.name);
+          saveState();
+          form.reset();
+          historyUnlockedUntil = 0;
+          feedback.className = 'auth-feedback ok';
+          if (resultado && resultado.reautenticar) {
+            feedback.textContent = 'Senha atualizada. Entre novamente com a nova senha.';
+            endSession('Senha alterada. Entre novamente.');
+          } else {
+            feedback.textContent = 'Senha atualizada.';
+          }
+        } catch (falha) {
+          feedback.textContent = mensagemDeFalha(falha);
+        }
+        return;
+      }
+
       if (!await verifyPassword(currentUser, document.querySelector('#currentPassword').value)) { feedback.textContent = 'Senha atual incorreta.'; return; }
       const previous = { salt: currentUser.salt, hash: currentUser.hash };
       const salt = randomSalt();
@@ -4035,12 +4295,18 @@
         }
         const envio = await window.NBZApi.escoarFila();
 
+        /* 2b. Sobe as plantas pendentes. Vem depois do estado porque
+               `POST /plantas` recusa com 404 se o pavimento ainda não existir
+               no D1 — mesma dependência que vale para as fotografias. */
+        await window.NBZApi.escoarFilaDePlantas();
+
         /* 3. Traz o que mudou noutros aparelhos. */
         const pacote = await window.NBZApi.baixarEstado({ completo });
         const vindos = window.NBZSync.paraPainel(pacote);
         if (vindos.length) {
           projects = window.NBZSync.fundir(projects, vindos);
           saveStateSemReplicar();
+          await baixarPlantasFaltantes();
           await baixarFotosFaltantes();
           if (currentUser) renderAll();
         }
@@ -4067,6 +4333,36 @@
        vez e guarda-se no IndexedDB, então a galeria continua abrindo offline.
        O limite por rodada evita que abrir uma obra antiga puxe centenas de
        imagens de uma vez no 4G da obra. */
+    /* Traz do servidor a planta dos pavimentos que ainda não a têm aqui.
+
+       `temPlanta` é o que evita pedir em vão: sem ele, todo pavimento sem
+       desenho — inclusive os que nunca tiveram — geraria uma requisição a cada
+       sincronização, só para receber 404.
+
+       O limite por rodada existe porque a planta pesa centenas de KB: uma obra
+       com vinte pavimentos baixaria vários MB de uma vez, travando a tela num
+       celular em rede de obra. O resto vem na sincronização seguinte. */
+    async function baixarPlantasFaltantes(limite = 5) {
+      if (!comServidor || !await temMidia()) return 0;
+      const faltando = [];
+      for (const project of projects) {
+        for (const floor of project.floorPlans || []) {
+          if (floor.id && floor.temPlanta && !floor.planImage) faltando.push(floor);
+        }
+      }
+      if (!faltando.length) return 0;
+
+      let baixadas = 0;
+      for (const floor of faltando.slice(0, limite)) {
+        const url = await window.NBZApi.baixarPlanta(floor.id);
+        if (url) {
+          floor.planImage = url;
+          baixadas += 1;
+        }
+      }
+      return baixadas;
+    }
+
     async function baixarFotosFaltantes(limite = 20) {
       if (!comServidor || !await temMidia()) return 0;
       const faltando = [];
@@ -4101,12 +4397,13 @@
     async function prepararMidia() {
       if (!await temMidia()) return;
       const reidratadas = await reidratarFotos();
+      const plantas = await reidratarPlantas();
       const migradas = await migrarFotosParaMidia();
       if (migradas) {
         console.info(`Fotografias movidas para o armazenamento local: ${migradas}.`);
       }
       await limparFotosOrfas();
-      if ((reidratadas || migradas) && currentUser) renderAll();
+      if ((reidratadas || plantas || migradas) && currentUser) renderAll();
     }
 
     try {

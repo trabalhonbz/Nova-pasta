@@ -23,3 +23,12 @@ Microsoft/
 #   - é estado de máquina, recriável com `npm run db:local`;
 #   - o banco guarda a tabela `usuarios`, com hash e salt das senhas.
 .wrangler/
+
+# Pasta publica montada por scripts/montar-site.mjs a cada deploy.
+# E copia derivada do index.html e de src/; versiona-la criaria duas verdades
+# para o mesmo arquivo e um diff enorme a cada build.
+site/
+
+# Copias de backup: o dump do D1 contem os hashes de senha de todo mundo, e a
+# pasta de fotos pesa. Versionar isso publicaria credencial e incharia o repo.
+backups/

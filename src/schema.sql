@@ -294,3 +294,20 @@ create table if not exists atividades (
 );
 
 create index if not exists idx_atividades_data on atividades(data);
+
+/* --------------------------------------------------------- armazenamento */
+/* Contador de bytes gravados no R2, para o teto de 9,5 GB do plano gratuito.
+
+   Existe para nao precisar de `select sum(bytes) from fotos` a cada upload: o
+   SUM varre a tabela inteira, e o D1 cobra isso como linhas lidas. Com 40 mil
+   fotos, cada envio gastaria 40 mil das 5 milhoes de leituras diarias — pouco
+   mais de cem envios por dia. Esta tabela responde em uma linha.
+
+   O valor e incrementado no envio, decrementado na exclusao e recalculado toda
+   madrugada pelo cron, que corrige qualquer desvio acumulado. */
+create table if not exists armazenamento (
+  chave text primary key,
+  valor integer not null default 0
+);
+
+insert or ignore into armazenamento (chave, valor) values ('r2_bytes', 0);

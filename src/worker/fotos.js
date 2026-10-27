@@ -11,6 +11,7 @@
    um unico `list` por prefixo quando ela for excluida.
 */
 import { agora, novoId } from './cripto.js';
+import { TETO_BYTES, cabeNaCota, somarUso } from './retencao.js';
 
 /* 10 MB cobre planta grande; foto comprimida pelo painel fica em ~250 KB. O
    limite existe porque o corpo do request e lido inteiro na memoria do Worker,
@@ -101,6 +102,32 @@ export async function enviar(env, sessao, pedido, parametros) {
   const id = parametros.get('id') || novoId();
   const chave = `obras/${relatorio.obra_id}/${relatorio.id}/${id}.${TIPOS[tipo]}`;
 
+  /* A fila offline do painel pode reenviar a mesma foto, e o `insert or replace`
+     abaixo torna isso inofensivo. O contador de cota, porem, nao pode somar
+     duas vezes o mesmo binario: o que entra nele e a DIFERENCA em relacao ao
+     que a linha ja ocupava. Sem isso, uma rede ruim que faz o aparelho reenviar
+     tres vezes inflaria o uso registrado e o teto barraria envio com espaco
+     sobrando. */
+  const anterior = await env.DB.prepare(
+    'select bytes from fotos where id = ? and excluido_em is null'
+  ).bind(id).first();
+  const diferenca = bytes.byteLength - (Number(anterior && anterior.bytes) || 0);
+
+  /* Teto de 9,5 GB, conferido ANTES de gravar no R2.
+
+     A retencao noturna e que mantem o uso baixo, mas ela roda uma vez por dia:
+     entre duas madrugadas nada impediria uma obra grande de passar dos 10 GB do
+     plano gratuito. Recusar aqui e o que de fato garante o teto. O 507 diz ao
+     painel para manter a foto na fila do aparelho em vez de descarta-la. */
+  if (diferenca > 0 && !(await cabeNaCota(env, diferenca))) {
+    return {
+      erro: `Armazenamento cheio (limite de ${Math.round(TETO_BYTES / 1024 / 1024 / 1024 * 10) / 10} GB). `
+        + 'A fotografia fica guardada no aparelho e sobe sozinha quando a limpeza '
+        + 'semanal liberar espaço.',
+      status: 507
+    };
+  }
+
   await env.FOTOS.put(chave, bytes, {
     httpMetadata: {
       contentType: tipo,
@@ -126,6 +153,8 @@ export async function enviar(env, sessao, pedido, parametros) {
     parametros.get('laudo') === '0' ? 0 : 1,
     id, agora(), sessao.id, agora()
   ).run();
+
+  await somarUso(env, diferenca);
 
   return {
     foto: {
@@ -173,7 +202,7 @@ export async function servir(env, sessao, id, pedido) {
 
 export async function excluir(env, sessao, id) {
   const linha = await env.DB.prepare(
-    'select id, r2_key, autor_id from fotos where id = ? and excluido_em is null'
+    'select id, r2_key, autor_id, bytes from fotos where id = ? and excluido_em is null'
   ).bind(id).first();
   if (!linha) return { erro: 'Fotografia não encontrada.', status: 404 };
 
@@ -196,6 +225,12 @@ export async function excluir(env, sessao, id) {
   } catch {
     /* O objeto fica para a limpeza por prefixo; a foto ja saiu do painel. */
   }
+
+  /* Devolve os bytes a cota. O cron recalcula o total toda madrugada, mas sem
+     este desconto o espaco liberado por uma exclusao manual so apareceria no
+     dia seguinte — e, com a cota perto do teto, o painel recusaria envio
+     apontando para um espaco que ja esta livre. */
+  await somarUso(env, -(Number(linha.bytes) || 0));
 
   return { ok: true };
 }
@@ -260,6 +295,48 @@ export async function enviarPlanta(env, sessao, pedido, parametros) {
   }
 
   return { planta: { pavimentoId: pavimento.id, url: `/plantas/${pavimento.id}`, bytes: bytes.byteLength } };
+}
+
+/* Remove a planta do pavimento.
+
+   Esta rota existe por causa da sincronizacao, nao por simetria: `temPlanta` no
+   pacote de descida faz o aparelho baixar a planta que o servidor tem. Sem um
+   jeito de apagar no servidor, remover a planta num aparelho duraria ate a
+   proxima sincronizacao — e ela voltaria sozinha, sem ninguem entender por que.
+
+   Os setores NAO sao tocados aqui. Quem remove planta pelo painel ja passou
+   pela confirmacao que apaga as demarcacoes, e essa exclusao sobe pelo
+   `/sync/subir` como qualquer outra alteracao de setor. Apagar setor por aqui
+   tambem duplicaria a regra em dois lugares. */
+export async function excluirPlanta(env, sessao, pavimentoId) {
+  if (!podeEnviarFoto(sessao)) {
+    return { erro: 'Seu cargo não permite remover plantas.', status: 403 };
+  }
+
+  const linha = await env.DB.prepare(
+    'select id, planta_r2_key from pavimentos where id = ? and excluido_em is null'
+  ).bind(pavimentoId).first();
+  if (!linha) return { erro: 'Pavimento não encontrado.', status: 404 };
+
+  /* Limpa o D1 primeiro, pela mesma razao de `excluir`: objeto orfao no bucket
+     e incomodo e recuperavel; linha apontando para arquivo inexistente faz o
+     painel mostrar planta quebrada. */
+  await env.DB.prepare(
+    `update pavimentos
+        set planta_r2_key = null, planta_largura = 0, planta_altura = 0,
+            planta_arquivo = '', atualizado_em = ?
+      where id = ?`
+  ).bind(agora(), linha.id).run();
+
+  if (linha.planta_r2_key && env.FOTOS) {
+    try {
+      await env.FOTOS.delete(linha.planta_r2_key);
+    } catch {
+      /* Fica para a limpeza por prefixo; a planta ja saiu do painel. */
+    }
+  }
+
+  return { ok: true };
 }
 
 export async function servirPlanta(env, sessao, pavimentoId, pedido) {

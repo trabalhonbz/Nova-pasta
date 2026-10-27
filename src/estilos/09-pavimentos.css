@@ -321,6 +321,32 @@
   text-overflow:ellipsis;
   white-space:nowrap
 }
+/* Situação da planta em relação ao servidor. `flex:0 0 auto` para o rótulo não
+   disputar espaço com o nome do arquivo, que já encolhe com reticências. */
+.plan-sync-status{
+  font-size:8px;
+  font-weight:600;
+  flex:0 0 auto;
+  padding:2px 6px;
+  border-radius:999px;
+  white-space:nowrap;
+  background:#eef1f6;
+  color:var(--muted)
+}
+.plan-sync-status[data-situacao="ok"]{
+  background:#e4f7f0;
+  color:#128a62
+}
+.plan-sync-status[data-situacao="pendente"]{
+  background:#fff3dd;
+  color:#9a6400
+}
+/* Vermelho só aqui: é o único estado em que algo precisa ser feito. Pintar
+   "aguardando envio" de vermelho treinaria a pessoa a ignorar a cor. */
+.plan-sync-status[data-situacao="alerta"]{
+  background:#fdeaea;
+  color:#b4322f
+}
 .status-summary{
   display:grid;
   grid-template-columns:repeat(4,minmax(0,1fr));

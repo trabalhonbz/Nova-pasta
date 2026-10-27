@@ -3,10 +3,11 @@
   "scripts": {
     "check": "node --check construir_site.js",
     "generate": "node construir_site.js",
-    "test": "node tests/painel.test.js && node tests/midia.test.js && node tests/worker.test.js && node tests/fotos.test.js && node tests/integracao.test.js",
+    "test": "node tests/painel.test.js && node tests/midia.test.js && node tests/worker.test.js && node tests/fotos.test.js && node tests/retencao.test.js && node tests/integracao.test.js",
     "test:fotos": "node tests/fotos.test.js",
     "test:integracao": "node tests/integracao.test.js",
     "test:painel": "node tests/painel.test.js",
+    "test:retencao": "node tests/retencao.test.js",
     "test:midia": "node tests/midia.test.js",
     "test:worker": "node tests/worker.test.js",
     "dev": "wrangler dev --local --port 8787",
@@ -17,7 +18,10 @@
     "login": "wrangler login",
     "quem": "wrangler whoami",
     "publicar": "node scripts/publicar.mjs",
-    "deploy": "wrangler deploy"
+    "backup": "node scripts/backup.mjs",
+    "backup:verificar": "node scripts/backup.mjs --verificar",
+    "site": "node scripts/montar-site.mjs",
+    "deploy": "npm run site && wrangler deploy"
   },
   "dependencies": {
     "dotenv": "^18.0.8",

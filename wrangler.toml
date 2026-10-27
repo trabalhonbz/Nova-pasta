@@ -19,39 +19,81 @@ name = "nbz-obras-api"
 main = "src/worker/index.js"
 compatibility_date = "2026-09-01"
 
-# Sem dominio proprio o Worker atende em https://nbz-obras-api.<conta>.workers.dev,
+# Sem dominio proprio o Worker atende em https://nbz-obras-api.nbzimper.workers.dev,
 # que ja e HTTPS e nao depende de DNS nenhum.
+#
+# Esta chave precisa ficar ANTES de qualquer `[tabela]`. Em TOML tudo que vem
+# depois de um cabecalho pertence aquela tabela, e com ela abaixo de `[assets]`
+# o wrangler recusa a config com "Unexpected fields found in assets field".
 workers_dev = true
+
+# PAINEL SERVIDO PELO PROPRIO WORKER
+#
+# O mesmo Worker entrega o index.html e atende a API. Vantagem que nao e de
+# gosto: painel e API passam a ter a MESMA ORIGEM, e o navegador deixa de exigir
+# CORS. O endereco da API tambem acompanha de onde o painel foi servido, entao o
+# dominio proprio pode entrar depois sem reconfigurar aparelho nenhum.
+#
+# `directory` aponta para `site/`, montado por scripts/montar-site.mjs, e NAO
+# para a raiz do projeto: a raiz contem .pepper-producao.txt, .dev.vars,
+# src/worker/ e os testes, e publica-la exporia o segredo que protege todas as
+# senhas. O script monta a pasta por lista de permissao — so entra o que o
+# index.html referencia. Rode `npm run site` antes de `wrangler deploy`, ou use
+# `npm run deploy`, que ja encadeia os dois.
+#
+# `run_worker_first` lista as rotas que o Worker atende ANTES de procurar
+# arquivo. Sem ela, o roteamento dependeria da deteccao automatica de pedido de
+# navegacao, e abrir /saude no navegador poderia devolver o painel em vez do
+# JSON. Com a lista, a divisao e explicita: estes caminhos sao da API, todo o
+# resto e arquivo estatico.
+[assets]
+directory = "./site"
+run_worker_first = [
+  "/saude",
+  "/armazenamento",
+  "/auth/*",
+  "/usuarios",
+  "/usuarios/*",
+  "/sync/*",
+  "/fotos",
+  "/fotos/*",
+  "/plantas",
+  "/plantas/*"
+]
 
 [[d1_databases]]
 binding = "DB"
 database_name = "nbz-obras"
 database_id = "0ec868e4-8240-4284-bbc7-9ee96b6ba5e0"
 
-# ARMAZENAMENTO DAS FOTOGRAFIAS (R2) — desligado por enquanto.
+# ARMAZENAMENTO DAS FOTOGRAFIAS (R2) — ativo.
 #
-# O R2 exige ativacao no painel da Cloudflare, e essa ativacao pede cartao
-# cadastrado mesmo para o plano gratuito de 10 GB. Enquanto isso nao for feito,
-# manter o binding aqui faria o deploy falhar inteiro — e nao ha razao para o
-# login e os dados de obra esperarem pelas fotos.
+# O R2 foi habilitado na conta (a ativacao pede cartao cadastrado mesmo para o
+# plano gratuito de 10 GB). Antes do primeiro deploy com este bloco, o bucket
+# precisa existir, senao a publicacao falha inteira:
 #
-# Sem este bloco:
-#   - login, usuarios, obras, pavimentos, setores e situacoes funcionam normal;
-#   - as fotografias ficam no IndexedDB do aparelho (centenas de MB, contra os
-#     ~5 MB do localStorage de antes) e entram numa fila de envio;
-#   - as rotas de foto respondem 503 com explicacao, nao "Erro interno".
+#   npx wrangler r2 bucket create nbz-fotos
 #
-# PARA LIGAR, quando o R2 estiver ativo:
-#   1. npx wrangler r2 bucket create nbz-fotos
-#   2. tire o # das tres linhas abaixo
-#   3. npm run deploy
+# O `wrangler dev --local` nao precisa disso: ele simula o R2 num diretorio
+# dentro de .wrangler, e o bucket local nasce sozinho.
 #
-# A fila acumulada sobe sozinha na sincronizacao seguinte: nada se perde no
-# meio-tempo, porque o binario fica guardado no aparelho desde que foi tirado.
+# CABE NOS 10 GB? Quem garante isso e src/worker/retencao.js, nao a esperanca:
+#   - cada obra guarda as quatro semanas mais recentes de relatorio, e o cron
+#     diario apaga o binario das semanas que passaram da janela;
+#   - o upload e recusado com 507 acima de 9,5 GB, e o painel segura a foto no
+#     aparelho em vez de descarta-la;
+#   - GET /armazenamento mostra o uso corrente.
 #
-# [[r2_buckets]]
-# binding = "FOTOS"
-# bucket_name = "nbz-fotos"
+# SE O BUCKET SUMIR ou o binding for removido, o sistema degrada em vez de
+# quebrar: login, obras, pavimentos, setores e situacoes seguem normais; as
+# fotografias ficam no IndexedDB do aparelho e entram na fila de envio; as rotas
+# de foto respondem 503 com explicacao, nao "Erro interno". A fila acumulada
+# sobe sozinha na sincronizacao seguinte — nada se perde no meio-tempo, porque o
+# binario fica guardado no aparelho desde que foi tirado.
+
+[[r2_buckets]]
+binding = "FOTOS"
+bucket_name = "nbz-fotos"
 
 [vars]
 # Origens que podem chamar a API, separadas por virgula. Deliberadamente sem
@@ -61,7 +103,14 @@ database_id = "0ec868e4-8240-4284-bbc7-9ee96b6ba5e0"
 # `localhost` e `127.0.0.1` são origens DIFERENTES para o navegador, e errar qual
 # você digitou na barra de endereço rende um bloqueio de CORS difícil de
 # diagnosticar. Por isso as duas constam.
-ORIGENS = "http://localhost:8788,http://127.0.0.1:8788,https://nbz-obras.pages.dev"
+#
+# Em producao esta lista nao e mais usada: o painel e servido pelo proprio
+# Worker, na mesma origem, e o navegador so exige CORS entre origens distintas.
+# Ela sobreviveu para o caso de servir o painel a parte com `npm run painel`
+# (porta 8788) apontando para a API em `wrangler dev` (porta 8787) — e porque
+# removê-la faria qualquer uso futuro desse tipo falhar com bloqueio de CORS sem
+# explicacao. O endereco `nbz-obras.pages.dev` saiu: nunca existiu.
+ORIGENS = "http://localhost:8787,http://127.0.0.1:8787,http://localhost:8788,http://127.0.0.1:8788"
 
 [triggers]
 # Limpeza diaria das sessoes vencidas, as 3h UTC (meia-noite em Brasilia).

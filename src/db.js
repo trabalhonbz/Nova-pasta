@@ -243,6 +243,49 @@
     ));
   }
 
+  /* ------------------------------------------------------------ plantas */
+
+  /* A planta de pavimento mora na mesma loja, sob a chave `planta:<pavimento>`.
+     O prefixo é o que impede colisão com o id de uma fotografia.
+
+     Estas duas não são apelidos de `guardarFoto`/`urlDaFoto`, e a diferença
+     importa: a fotografia é imutável — substituir uma gera id novo —, então
+     guardar o object URL em cache sob o id é sempre correto. A planta é
+     SUBSTITUÍVEL no mesmo pavimento, e o cache passaria a apontar para o blob
+     anterior. O resultado seria o pior tipo de erro silencioso: o engenheiro
+     demarcando setor sobre o desenho antigo, sem nada na tela indicando isso.
+
+     Por isso `guardarPlanta` libera a URL antes de gravar: a próxima leitura
+     cria uma nova, já sobre o binário novo.
+
+     O prefixo é montado AQUI e em nenhum outro lugar. Quem chama passa o id do
+     pavimento; se cada chamador montasse a chave, bastaria um deles divergir
+     para a planta ser gravada sob um nome e procurada sob outro — e o sintoma
+     seria "a planta sumiu", sem erro nenhum apontando a causa. */
+  const PREFIXO_PLANTA = 'planta:';
+
+  function chaveDaPlanta(pavimentoId) {
+    return `${PREFIXO_PLANTA}${pavimentoId}`;
+  }
+
+  function guardarPlanta(pavimentoId, origem) {
+    const chave = chaveDaPlanta(pavimentoId);
+    liberarUrl(chave);
+    return guardarFoto(chave, origem);
+  }
+
+  function urlDaPlanta(pavimentoId) {
+    return urlDaFoto(chaveDaPlanta(pavimentoId));
+  }
+
+  function registroDaPlanta(pavimentoId) {
+    return lerRegistro(chaveDaPlanta(pavimentoId));
+  }
+
+  function removerPlanta(pavimentoId) {
+    return removerFoto(chaveDaPlanta(pavimentoId));
+  }
+
   /* Devolve um object URL estável para a foto, criando-o na primeira chamada. */
   function urlDaFoto(id) {
     if (!id) return Promise.resolve('');
@@ -301,6 +344,10 @@
     abrir,
     disponivel,
     guardarFoto,
+    guardarPlanta,
+    urlDaPlanta,
+    registroDaPlanta,
+    removerPlanta,
     lerFoto,
     lerRegistro,
     removerFoto,

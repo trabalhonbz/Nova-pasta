@@ -523,4 +523,414 @@ teste('quando o R2 aparece, a fila acumulada sobe sozinha', async () => {
   ctx.fechar();
 });
 
+/* ---------------------------------------------------------- usuarios */
+
+/* Preenche o formulário de novo usuário como o administrador faz na tela.
+   `renderUsersList()` antes porque é ele quem popula as opções de cargo — sem
+   isso o <select> está vazio e o cargo iria em branco. */
+async function cadastrarPeloPainel(ctx, { nome, usuario, senha, cargo = 'engenheiro' }) {
+  await ctx.eval('renderUsersList()');
+  ctx.doc.querySelector('#newUserName').value = nome;
+  ctx.doc.querySelector('#newUserLogin').value = usuario;
+  ctx.doc.querySelector('#newUserRole').value = cargo;
+  ctx.doc.querySelector('#newUserPassword').value = senha;
+  ctx.submit('#newUserForm');
+  await pausa(1600);
+  return ctx.doc.querySelector('#newUserFeedback').textContent;
+}
+
+teste('o usuário cadastrado pelo administrador entra de outro aparelho', async () => {
+  /* O teste que responde à pergunta toda. Antes, o cadastro ia só para o
+     localStorage do navegador do administrador, e a pessoa batia em "usuário ou
+     senha inválidos" — mensagem correta para o servidor, enganosa para quem
+     acabara de cadastrar. */
+  const { api, db } = servidorDeTeste();
+
+  const admin = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(admin, { nome: 'Richard', usuario: 'richard', senha: 'senhaforte1' });
+  const aviso = await cadastrarPeloPainel(admin, {
+    nome: 'Caio Mendonça', usuario: 'caiomdc', senha: 'provisoria123', cargo: 'engenheiro'
+  });
+
+  /* Chegou ao banco do servidor, não só à tela. */
+  const criado = db.prepare(
+    'select usuario, nome, nivel_acesso, precisa_trocar_senha, ativo from usuarios where usuario = ?'
+  ).get('caiomdc');
+  confirmar(criado, `o usuário deveria existir no D1; a tela disse "${aviso}"`);
+  igual(criado.nome, 'Caio Mendonça', 'com o nome digitado');
+  igual(criado.nivel_acesso, 'engenheiro', 'e o cargo escolhido');
+  igual(criado.precisa_trocar_senha, 1, 'com senha provisória a trocar no primeiro acesso');
+  igual(criado.ativo, 1, 'e ativo');
+  admin.fechar();
+
+  /* Aparelho limpo, que nunca viu esse cadastro: localStorage e IndexedDB
+     vazios, só o mesmo servidor em comum. */
+  const dele = await boot({ api });
+  await pausa(600);
+  await preencherLogin(dele, { usuario: 'caiomdc', senha: 'provisoria123' });
+  confirmar(painelAberto(dele), 'o painel deveria ter aberto para quem foi cadastrado');
+  dele.fechar();
+});
+
+teste('a lista de usuários vem do servidor, não do navegador', async () => {
+  /* O administrador precisa enxergar quem já existe, mesmo num aparelho que
+     nunca cadastrou ninguém. Sem isso ele recadastraria gente, e só descobriria
+     pelo erro de usuário duplicado.
+
+     Quem abre a lista aqui é o `richard`, e não o recém-cadastrado: usuário com
+     senha provisória recebe 428 em TODAS as rotas até definir a própria senha —
+     regra do servidor, e é ela que garante que o administrador deixe de
+     conhecer a senha de quem usa o sistema. */
+  const { api } = servidorDeTeste();
+
+  const primeiro = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(primeiro, { nome: 'Richard', usuario: 'richard', senha: 'senhaforte1' });
+  await cadastrarPeloPainel(primeiro, {
+    nome: 'Caio Mendonça', usuario: 'caiomdc', senha: 'provisoria123', cargo: 'engenheiro'
+  });
+  primeiro.fechar();
+
+  /* Aparelho limpo: este navegador nunca viu cadastro nenhum. */
+  const segundo = await boot({ api });
+  await pausa(600);
+  igual(segundo.eval('users.length'), 0, 'o aparelho novo começa sem usuário local');
+  await preencherLogin(segundo, { usuario: 'richard', senha: 'senhaforte1' });
+  confirmar(painelAberto(segundo), 'deveria ter entrado');
+
+  const carregou = await segundo.eval('carregarUsuariosDoServidor()');
+  confirmar(carregou, 'a lista deveria ter vindo do servidor');
+  const nomes = await segundo.eval('users.map((u) => u.username).sort()');
+  igual(nomes, ['caiomdc', 'richard'], 'o aparelho novo deveria ver os dois usuários');
+  segundo.fechar();
+});
+
+teste('usuário com senha provisória é barrado até definir a própria senha', async () => {
+  /* Documenta a regra que derrubou a versão anterior deste teste, e que importa
+     na operação: a pessoa entra, mas o servidor recusa o resto com 428 até ela
+     trocar a senha. É o que faz o registro de obra valer como prova de autoria —
+     enquanto o administrador souber a senha, não vale. */
+  const { api } = servidorDeTeste();
+  const admin = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(admin, { nome: 'Richard', usuario: 'richard', senha: 'senhaforte1' });
+  await cadastrarPeloPainel(admin, {
+    nome: 'Caio Mendonça', usuario: 'caiomdc', senha: 'provisoria123'
+  });
+  admin.fechar();
+
+  const dele = await boot({ api });
+  await pausa(600);
+  await preencherLogin(dele, { usuario: 'caiomdc', senha: 'provisoria123' });
+  confirmar(painelAberto(dele), 'o painel abre — o login em si é válido');
+  confirmar(dele.eval('currentUser.precisaTrocarSenha'),
+    'e o painel sabe que a senha é provisória, para avisar em vez de deixar bater numa parede');
+
+  const recusado = await dele.eval(`(async () => {
+    try { await window.NBZApi.listarUsuarios(); return 0; }
+    catch (erro) { return erro.status; }
+  })()`);
+  igual(recusado, 428, 'o servidor deveria recusar com 428 até a troca de senha');
+  dele.fechar();
+});
+
+teste('excluir o usuário derruba o acesso dele de verdade', async () => {
+  /* Excluir só no navegador seria pior que não ter o botão: a tela mostraria a
+     pessoa como removida e ela continuaria entrando de qualquer aparelho. */
+  const { api, db } = servidorDeTeste();
+
+  const admin = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(admin, { nome: 'Richard', usuario: 'richard', senha: 'senhaforte1' });
+  await cadastrarPeloPainel(admin, {
+    nome: 'Caio Mendonça', usuario: 'caiomdc', senha: 'provisoria123'
+  });
+  const id = db.prepare('select id from usuarios where usuario = ?').get('caiomdc').id;
+
+  await admin.eval(`(async () => { await window.NBZApi.excluirUsuario('${id}'); })()`);
+  await pausa(400);
+  admin.fechar();
+
+  const dele = await boot({ api });
+  await pausa(600);
+  await preencherLogin(dele, { usuario: 'caiomdc', senha: 'provisoria123' });
+  confirmar(!painelAberto(dele), 'o excluído NÃO deveria conseguir entrar');
+  dele.fechar();
+});
+
+/* ----------------------------------------------------------- plantas */
+
+/* Reproduz o que o painel faz ao importar uma planta, sem passar pela tela: o
+   `rasterizePlanFile` depende de canvas, que o jsdom não implementa. O que
+   importa testar está depois disso — guardar o binário, enfileirar e subir. */
+async function importarPlanta(ctx, pavimentoId = 'pav-1') {
+  return ctx.eval(`(async () => {
+    const blob = window.NBZMidia.dataUriParaBlob(${JSON.stringify(JPEG_1X1)});
+    await window.NBZMidia.guardarPlanta('${pavimentoId}', blob);
+    const url = await window.NBZMidia.urlDaPlanta('${pavimentoId}');
+    const floor = projects[0].floorPlans[0];
+    floor.planImage = url;
+    floor.planWidth = 1200;
+    floor.planHeight = 800;
+    floor.planFileName = 'planta-terreo.pdf';
+    window.NBZApi.enfileirarPlanta('${pavimentoId}', {
+      largura: 1200, altura: 800, arquivo: 'planta-terreo.pdf'
+    });
+    saveState();
+    return url;
+  })()`);
+}
+
+teste('a planta importada num aparelho sobe para o servidor', async () => {
+  const { api, db, env } = servidorDeTeste();
+  const ctx = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(ctx, { nome: 'André', usuario: 'andre', senha: 'senhaforte1' });
+  await criarObraComFoto(ctx);
+  await importarPlanta(ctx);
+
+  await ctx.eval('sincronizarComServidor()');
+
+  const pavimento = db.prepare(
+    'select planta_r2_key, planta_largura, planta_altura, planta_arquivo from pavimentos where id = ?'
+  ).get('pav-1');
+  confirmar(pavimento.planta_r2_key, 'a planta deveria ter chave no bucket');
+  confirmar(/^obras\/obra-1\/plantas\/pav-1-/.test(pavimento.planta_r2_key),
+    `a chave deveria ser por obra e pavimento, e é "${pavimento.planta_r2_key}"`);
+  igual(pavimento.planta_largura, 1200, 'a largura deveria ter subido junto');
+  igual(pavimento.planta_altura, 800, 'a altura também');
+  igual(pavimento.planta_arquivo, 'planta-terreo.pdf', 'e o nome do arquivo de origem');
+
+  /* O binário tem de estar no bucket, não só registrado no banco. */
+  const objeto = await env.FOTOS.get(pavimento.planta_r2_key);
+  confirmar(objeto, 'o arquivo deveria estar no R2');
+  ctx.fechar();
+});
+
+teste('outro aparelho recebe a planta e não só os setores', async () => {
+  const { api, db } = servidorDeTeste();
+  const primeira = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(primeira, { nome: 'André', usuario: 'andre', senha: 'senhaforte1' });
+  await criarObraComFoto(primeira);
+  await importarPlanta(primeira);
+  await primeira.eval('sincronizarComServidor()');
+  primeira.fechar();
+
+  /* Aparelho novo: entra e sincroniza do zero. É o caso que motivou tudo isto —
+     antes, ele recebia o pavimento e os setores, e a planta ficava para trás.
+     O login já dispara `sincronizarComServidor({completo: true})`; a espera dá
+     tempo de a descida e o download do binário terminarem. */
+  const segunda = await boot({ api });
+  await pausa(600);
+  await preencherLogin(segunda, { usuario: 'andre', senha: 'senhaforte1' });
+  confirmar(painelAberto(segunda), 'deveria ter entrado');
+  await pausa(1500);
+
+  /* Busca pelo id: o painel nasce com obras de demonstração, então `projects[0]`
+     aqui não é a obra que veio do servidor. */
+  const planta = await segunda.eval(
+    'projects.find((p) => p.id === "obra-1").floorPlans[0].planImage'
+  );
+  confirmar(String(planta).startsWith('blob:'),
+    `o segundo aparelho deveria ter a planta local, e tem "${planta}"`);
+
+  /* E o binário tem de estar no IndexedDB dele, não só uma URL solta: é o que
+     faz a planta continuar abrindo dentro da obra, sem sinal. */
+  const guardada = await segunda.eval(
+    '(async () => Boolean(await window.NBZMidia.registroDaPlanta("pav-1")))()'
+  );
+  confirmar(guardada, 'a planta deveria ter sido gravada no armazenamento local');
+  igual(db.prepare('select count(*) as t from setores').get().t, 1, 'e o setor continua lá');
+  segunda.fechar();
+});
+
+teste('sincronizar de novo não apaga a planta que o aparelho já tem', async () => {
+  /* O pacote do servidor sempre traz `planImage: ''`. Sem a preservação em
+     `fundir`, cada sincronização apagaria a planta local — e o engenheiro veria
+     o desenho sumir sozinho no meio da visita, com os setores flutuando. */
+  const { api } = servidorDeTeste();
+  const ctx = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(ctx, { nome: 'André', usuario: 'andre', senha: 'senhaforte1' });
+  await criarObraComFoto(ctx);
+  const original = await importarPlanta(ctx);
+  await ctx.eval('sincronizarComServidor()');
+
+  await ctx.eval('sincronizarComServidor({ completo: true })');
+  await pausa(400);
+
+  const depois = await ctx.eval('projects[0].floorPlans[0].planImage');
+  igual(depois, original, 'a planta local deveria ter sobrevivido à sincronização');
+  ctx.fechar();
+});
+
+teste('remover a planta apaga no servidor e ela não volta no sync seguinte', async () => {
+  const { api, db } = servidorDeTeste();
+  const ctx = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(ctx, { nome: 'André', usuario: 'andre', senha: 'senhaforte1' });
+  await criarObraComFoto(ctx);
+  await importarPlanta(ctx);
+  await ctx.eval('sincronizarComServidor()');
+  confirmar(
+    db.prepare('select planta_r2_key from pavimentos where id = ?').get('pav-1').planta_r2_key,
+    'pré-condição: a planta deveria estar no servidor'
+  );
+
+  await ctx.eval('(async () => { await window.NBZApi.excluirPlanta("pav-1"); })()');
+
+  const pavimento = db.prepare(
+    'select planta_r2_key, planta_largura, planta_arquivo from pavimentos where id = ?'
+  ).get('pav-1');
+  igual(pavimento.planta_r2_key, null, 'a chave deveria ter sido limpa no banco');
+  igual(pavimento.planta_largura, 0, 'e as dimensões zeradas');
+  igual(pavimento.planta_arquivo, '', 'e o nome do arquivo');
+
+  /* A parte que mais importa: sem limpar no servidor, `temPlanta` seguiria
+     verdadeiro e a próxima descida traria a planta de volta. */
+  await ctx.eval('sincronizarComServidor({ completo: true })');
+  await pausa(400);
+  const voltou = await ctx.eval('projects[0].floorPlans[0].temPlanta');
+  confirmar(!voltou, 'o servidor não deveria mais declarar planta para este pavimento');
+  ctx.fechar();
+});
+
+/* Lê o distintivo de situação da planta como a tela o mostra. */
+function situacaoDaPlanta(ctx, indice = 0) {
+  return ctx.eval(`(() => {
+    renderPlanSyncStatus(projects[0].floorPlans[${indice}]);
+    const el = document.querySelector('#planSyncStatus');
+    return { texto: el.textContent, situacao: el.dataset.situacao, oculto: el.hidden };
+  })()`);
+}
+
+teste('a tela diz se a planta já foi sincronizada', async () => {
+  /* A pergunta que isto responde na obra é "já posso fechar o aplicativo?".
+     Antes, planta importada sem sinal era visualmente idêntica a planta já
+     guardada no servidor. */
+  const { api } = servidorDeTeste();
+  const ctx = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(ctx, { nome: 'André', usuario: 'andre', senha: 'senhaforte1' });
+  await criarObraComFoto(ctx);
+
+  /* Sem planta nenhuma, o distintivo não aparece: rótulo permanente vira ruído. */
+  const semPlanta = await situacaoDaPlanta(ctx);
+  confirmar(semPlanta.oculto, 'sem planta, o distintivo deveria ficar escondido');
+
+  await importarPlanta(ctx);
+  const naFila = await situacaoDaPlanta(ctx);
+  igual(naFila.situacao, 'pendente', `na fila deveria indicar pendência, e indica "${naFila.texto}"`);
+  confirmar(/aguardando/.test(naFila.texto), `o texto deveria falar em espera, e é "${naFila.texto}"`);
+
+  await ctx.eval('sincronizarComServidor()');
+  await pausa(400);
+
+  const depois = await situacaoDaPlanta(ctx);
+  igual(depois.situacao, 'ok', `depois de subir deveria indicar sucesso, e indica "${depois.texto}"`);
+  confirmar(/sincronizada/.test(depois.texto), `o texto deveria confirmar, e é "${depois.texto}"`);
+  ctx.fechar();
+});
+
+teste('planta que ficou sem subir aparece como não enviada, e não como pendente', async () => {
+  /* O estado que antes passava despercebido: há planta no aparelho, ela não
+     está na fila e o servidor não tem — é envio recusado. Mostrar isso como
+     "aguardando" faria a pessoa esperar por algo que não vai acontecer. */
+  const { api } = servidorDeTeste();
+  const ctx = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(ctx, { nome: 'André', usuario: 'andre', senha: 'senhaforte1' });
+  await criarObraComFoto(ctx);
+
+  const estado = await ctx.eval(`(() => {
+    const floor = projects[0].floorPlans[0];
+    floor.planImage = 'blob:http://localhost/planta-falsa';
+    floor.temPlanta = false;
+    renderPlanSyncStatus(floor);
+    const el = document.querySelector('#planSyncStatus');
+    return { texto: el.textContent, situacao: el.dataset.situacao };
+  })()`);
+
+  igual(estado.situacao, 'alerta', `deveria alertar, e indica "${estado.texto}"`);
+  confirmar(/não enviada/.test(estado.texto), `o texto deveria dizer que não subiu, e é "${estado.texto}"`);
+  ctx.fechar();
+});
+
+/* ------------------------------------------------------- mesma origem */
+
+/* O painel passou a ser servido pelo próprio Worker, então painel e API vivem no
+   mesmo endereço e a base da API é vazia — as chamadas saem como `/saude`.
+
+   Isso tem uma armadilha, e é o motivo deste teste: `configurado()` usava string
+   vazia para dizer "não há servidor nenhum", e base vazia é exatamente o que
+   mesma origem produz. Sem a distinção, o painel servido em produção se
+   declararia sem servidor e voltaria ao modo local — gravando tudo só no
+   aparelho, sem sincronizar, e sem nenhum erro na tela que denunciasse isso. */
+/* Registra para onde cada chamada foi, sem precisar expor nada novo no NBZApi.
+   É a evidência que interessa: o endereço que de fato saiu, não o estado
+   interno do cliente. */
+function servidorQueRegistra() {
+  const base = servidorDeTeste();
+  const enderecos = [];
+  return {
+    ...base,
+    enderecos,
+    api: {
+      ...base.api,
+      atender: (pedido) => {
+        enderecos.push(pedido.url);
+        return base.api.atender(pedido);
+      }
+    }
+  };
+}
+
+teste('servido pelo próprio Worker, o painel chama a API na própria origem', async () => {
+  const { api, db, enderecos } = servidorQueRegistra();
+  /* `/` é o marcador de mesma origem; no navegador real é o que a meta
+     `nbz-api` carrega quando o Worker serve o index.html. */
+  const ctx = await boot({ api: { ...api, endereco: '/' } });
+  await pausa(600);
+
+  confirmar(
+    ctx.eval('window.NBZApi.configurado()'),
+    'o painel deveria se declarar COM servidor, mesmo com a base vazia'
+  );
+
+  await preencherCadastroInicial(ctx, { nome: 'André', usuario: 'andre', senha: 'senhaforte1' });
+
+  /* O painel roda em http://localhost no jsdom. Com mesma origem, é para lá que
+     as chamadas têm de ir — e não para um host de API separado. */
+  confirmar(enderecos.length > 0, 'nenhuma chamada chegou ao servidor');
+  const forasteiras = enderecos.filter((url) => !url.startsWith('http://localhost/'));
+  igual(forasteiras, [], 'toda chamada deveria sair na origem do painel');
+
+  /* E o efeito: o cadastro chegou ao banco do servidor, não só ao localStorage. */
+  igual(
+    db.prepare('select count(*) as t from usuarios').get().t, 1,
+    'o administrador deveria ter sido criado no servidor pela chamada relativa'
+  );
+  igual(db.prepare('select count(*) as t from sessoes').get().t, 1, 'e a sessão deveria existir');
+  ctx.fechar();
+});
+
+teste('endereço absoluto continua funcionando, para o painel servido à parte', async () => {
+  /* Mesma origem não pode ter substituído o modo de origem distinta: dá para
+     servir o painel em outra porta apontando para a API, e é assim que roda o
+     `npm run painel` contra o `wrangler dev`. */
+  const { api, db, enderecos } = servidorQueRegistra();
+  const ctx = await boot({ api });
+  await pausa(600);
+
+  await preencherCadastroInicial(ctx, { nome: 'André', usuario: 'andre', senha: 'senhaforte1' });
+
+  confirmar(enderecos.length > 0, 'nenhuma chamada chegou ao servidor');
+  const locais = enderecos.filter((url) => !url.startsWith('https://api-de-teste.workers.dev/'));
+  igual(locais, [], 'toda chamada deveria ir ao host absoluto configurado');
+  igual(db.prepare('select count(*) as t from usuarios').get().t, 1, 'o cadastro chegou ao servidor');
+  ctx.fechar();
+});
+
 await executar('Painel NBZ — integração com o Worker');

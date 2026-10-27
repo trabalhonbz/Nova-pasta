@@ -30,10 +30,28 @@
   const CHAVE_TOKEN = 'nbz-token-v1';
   const CHAVE_USUARIO = 'nbz-usuario-v1';
   const CHAVE_FILA = 'nbz-fila-envio-v1';
+  const CHAVE_FILA_PLANTAS = 'nbz-fila-plantas-v1';
+  /* Etag da planta que esta no aparelho, por pavimento. E o que permite
+     perguntar ao servidor "mudou?" em vez de rebaixar o arquivo inteiro. */
+  const CHAVE_ETAG_PLANTAS = 'nbz-planta-etag-v1';
   const CHAVE_ENVIADAS = 'nbz-fotos-enviadas-v1';
   const CHAVE_BASE = 'nbz-api-base-v1';
 
   const codificador = new TextEncoder();
+
+  /* Valor da meta `nbz-api` que diz "a API esta na mesma origem do painel".
+
+     Nao da para representar isso com string vazia: `configurado()` usa vazio
+     para dizer "sem servidor nenhum", e o painel inteiro cai no modo local. Com
+     o painel servido pelo proprio Worker, a base CORRETA e vazia — as chamadas
+     viram URL relativa — e este marcador e o que distingue "vazia porque e a
+     mesma origem" de "vazia porque ninguem configurou".
+
+     O ganho de usar mesma origem: o navegador nao exige CORS, e o endereco da
+     API acompanha de onde o painel foi servido. Quando o dominio proprio
+     entrar, nada precisa ser reconfigurado em aparelho nenhum. */
+  const MESMA_ORIGEM = '/';
+
   let baseUrl = '';
   let aoMudarFila = null;
   let escoando = false;
@@ -62,20 +80,34 @@
   /* ------------------------------------------------------------ configuracao */
 
   function configurar(endereco) {
-    baseUrl = String(endereco || '').replace(/\/+$/, '');
+    const limpo = String(endereco || '').trim();
+    /* O `replace` tira a barra final de um endereco absoluto, para nao montar
+       `https://host//saude`. Aplicado ao marcador de mesma origem ele o
+       transformaria em string vazia — ou seja, em "sem servidor". */
+    baseUrl = limpo === MESMA_ORIGEM ? MESMA_ORIGEM : limpo.replace(/\/+$/, '');
     gravar(CHAVE_BASE, baseUrl);
     return baseUrl;
   }
 
-  function base() {
+  /* O valor como esta guardado, incluindo o marcador de mesma origem. */
+  function baseBruta() {
     if (!baseUrl) baseUrl = ler(CHAVE_BASE, '') || '';
     return baseUrl;
   }
 
+  /* O prefixo que vai na frente da rota. Vazio na mesma origem, para que
+     `fetch('/saude')` resolva no proprio endereco de onde o painel foi servido. */
+  function base() {
+    const bruta = baseBruta();
+    return bruta === MESMA_ORIGEM ? '' : bruta;
+  }
+
   /* `false` significa "sem servidor configurado": o painel continua inteiro no
-     armazenamento local, como antes de existir API. */
+     armazenamento local, como antes de existir API. Repare que a checagem e
+     sobre a base BRUTA: na mesma origem o prefixo e vazio de proposito, e
+     consultar `base()` aqui faria o painel se declarar sem servidor. */
   function configurado() {
-    return Boolean(base());
+    return Boolean(baseBruta());
   }
 
   function online() {
@@ -460,6 +492,192 @@
     aoMudarFila = callback;
   }
 
+  /* ---------------------------------------------------- plantas no R2 */
+
+  /* A PLANTA NAO E UMA FOTO GRANDE
+
+     Duas diferencas mudam o tratamento. A primeira: a foto e imutavel — trocar
+     uma gera id novo —, entao `baixarFoto` pode devolver a copia local sem
+     tocar na rede. A planta e substituivel no MESMO pavimento, e uma copia
+     local pode estar velha. Servir a planta errada faria o engenheiro demarcar
+     setor sobre o desenho antigo, que e pior que nao ter planta nenhuma.
+
+     Por isso aqui se revalida com `If-None-Match`: o servidor responde 304
+     quando nada mudou, o que custa quase nada, e manda o arquivo novo quando
+     mudou. A rota de planta do Worker ja trata esse cabecalho.
+
+     A segunda: a planta e por pavimento, nao por relatorio. A chave dela no
+     IndexedDB e montada dentro da camada de midia (`guardarPlanta` e companhia
+     recebem o id do pavimento), justamente para o prefixo existir num lugar so. */
+  function filaDePlantas() {
+    const lista = ler(CHAVE_FILA_PLANTAS, []);
+    return Array.isArray(lista) ? lista : [];
+  }
+
+  function salvarFilaDePlantas(lista) {
+    gravar(CHAVE_FILA_PLANTAS, lista);
+  }
+
+  function plantasPendentes() {
+    return filaDePlantas().length;
+  }
+
+  /* Esta planta especifica esta esperando envio? O painel usa isto para dizer
+     ao engenheiro se ele ja pode fechar o aplicativo — a contagem total nao
+     responde isso, porque a planta pendente pode ser de outro pavimento. */
+  function plantaPendente(pavimentoId) {
+    return filaDePlantas().some((item) => item.pavimentoId === pavimentoId);
+  }
+
+  /* Enfileira a planta do pavimento. O binario ja esta no IndexedDB sob
+     `planta:<id>`; aqui entra so a referencia e o que o servidor precisa saber
+     junto (dimensoes e nome do arquivo de origem).
+
+     Reimportar a planta do mesmo pavimento substitui a entrada em vez de somar
+     outra: o que importa subir e a versao atual, e duas entradas fariam o mesmo
+     pavimento subir duas vezes. */
+  function enfileirarPlanta(pavimentoId, meta = {}) {
+    const lista = filaDePlantas().filter((item) => item.pavimentoId !== pavimentoId);
+    lista.push({ pavimentoId, meta, desde: new Date().toISOString() });
+    salvarFilaDePlantas(lista);
+    return lista.length;
+  }
+
+  function removerPlantaDaFila(pavimentoId) {
+    salvarFilaDePlantas(filaDePlantas().filter((item) => item.pavimentoId !== pavimentoId));
+  }
+
+  function etagsDePlanta() {
+    const guardado = ler(CHAVE_ETAG_PLANTAS, {});
+    return guardado && typeof guardado === 'object' ? guardado : {};
+  }
+
+  function gravarEtagDePlanta(pavimentoId, etag) {
+    const atual = etagsDePlanta();
+    if (etag) atual[pavimentoId] = etag;
+    else delete atual[pavimentoId];
+    gravar(CHAVE_ETAG_PLANTAS, atual);
+  }
+
+  async function enviarUmaPlanta(item) {
+    const midia = global.NBZMidia;
+    if (!midia) throw falha('Camada de mídia indisponível.', 0, true);
+
+    const registro = await midia.registroDaPlanta(item.pavimentoId);
+    if (!registro) {
+      /* Sem binario nao ha o que enviar, e manter na fila repetiria a falha
+         para sempre — mesma regra da fila de fotos. */
+      removerPlantaDaFila(item.pavimentoId);
+      return { pavimentoId: item.pavimentoId, descartada: true };
+    }
+
+    const meta = item.meta || {};
+    const consulta = new URLSearchParams({
+      pavimento: item.pavimentoId,
+      largura: String(meta.largura || 0),
+      altura: String(meta.altura || 0)
+    });
+    if (meta.arquivo) consulta.set('arquivo', meta.arquivo);
+
+    const enviada = await chamar(`/plantas?${consulta.toString()}`, {
+      metodo: 'POST',
+      bruto: new global.Blob([registro.dados], { type: registro.tipo || 'image/jpeg' })
+    });
+    removerPlantaDaFila(item.pavimentoId);
+    /* A planta mudou no servidor: o etag guardado nao vale mais, e mante-lo
+       faria a proxima descida aceitar 304 sobre a versao errada. */
+    gravarEtagDePlanta(item.pavimentoId, '');
+    return enviada.planta;
+  }
+
+  /* Escoa a fila de plantas. Mesma politica de erro da fila de fotos: falha de
+     rede para o escoamento e tenta no proximo gatilho; recusa 4xx do servidor
+     nao melhora com repeticao e sai da fila para nao bloquear as outras. */
+  async function escoarFilaDePlantas() {
+    if (!online() || !token()) return { enviadas: 0, pendentes: plantasPendentes() };
+    let enviadas = 0;
+    for (const item of filaDePlantas()) {
+      try {
+        await enviarUmaPlanta(item);
+        enviadas += 1;
+      } catch (erro) {
+        if (erro.offline || erro.status === 0) break;
+        if (erro.status >= 400 && erro.status < 500 && erro.status !== 429) {
+          removerPlantaDaFila(item.pavimentoId);
+        } else {
+          break;
+        }
+      }
+    }
+    return { enviadas, pendentes: plantasPendentes() };
+  }
+
+  /* Remove a planta no servidor e a copia local.
+
+     A ordem e deliberada: tira da fila ANTES de chamar a rede. Se a planta
+     estava esperando para subir, remove-la deve cancelar o envio — sem isso, a
+     fila subiria logo depois a planta que o usuario acabou de apagar. */
+  async function excluirPlanta(pavimentoId) {
+    removerPlantaDaFila(pavimentoId);
+    gravarEtagDePlanta(pavimentoId, '');
+    const midia = global.NBZMidia;
+    if (midia) await midia.removerPlanta(pavimentoId);
+
+    if (!configurado() || !token()) return { ok: true, local: true };
+    try {
+      return await chamar(`/plantas/${encodeURIComponent(pavimentoId)}`, { metodo: 'DELETE' });
+    } catch (erro) {
+      /* Sem sinal, a remocao local ja valeu. O `/sync/subir` nao carrega
+         planta, entao o servidor so sabera disto quando houver rede — e ate la
+         `temPlanta` continua verdadeiro. Por isso a chamada e tentada aqui, e
+         nao delegada a sincronizacao. */
+      if (erro.offline || erro.status === 0) return { ok: true, pendente: true };
+      throw erro;
+    }
+  }
+
+  /* Traz a planta do servidor e a guarda no IndexedDB, devolvendo o object URL.
+
+     `revalidar` falso devolve a copia local sem rede quando ela existe — e o
+     que se quer ao abrir o painel offline. Verdadeiro forca a conferencia com
+     o servidor, que e o que a sincronizacao pede quando o pavimento mudou. */
+  async function baixarPlanta(pavimentoId, { revalidar = false } = {}) {
+    if (!configurado() || !token()) return '';
+    const midia = global.NBZMidia;
+    if (!midia) return '';
+
+    const existente = await midia.registroDaPlanta(pavimentoId);
+    if (existente && !revalidar) return midia.urlDaPlanta(pavimentoId);
+
+    const cabecalhos = { authorization: `Bearer ${token()}` };
+    const etag = etagsDePlanta()[pavimentoId];
+    if (existente && etag) cabecalhos['if-none-match'] = etag;
+
+    let resposta;
+    try {
+      resposta = await global.fetch(
+        `${base()}/plantas/${encodeURIComponent(pavimentoId)}`, { headers: cabecalhos }
+      );
+    } catch {
+      /* Sem rede, a copia local e o melhor que ha — e dentro de obra e o caso
+         normal, nao a excecao. */
+      return existente ? midia.urlDaPlanta(pavimentoId) : '';
+    }
+
+    /* 304: o que esta no aparelho e a versao corrente. */
+    if (resposta.status === 304 && existente) return midia.urlDaPlanta(pavimentoId);
+    if (!resposta.ok) return existente ? midia.urlDaPlanta(pavimentoId) : '';
+
+    const tipo = resposta.headers.get('content-type') || 'image/jpeg';
+    const bytes = await resposta.arrayBuffer();
+    if (!bytes || !bytes.byteLength) return existente ? midia.urlDaPlanta(pavimentoId) : '';
+
+    const gravou = await midia.guardarPlanta(pavimentoId, new global.Blob([bytes], { type: tipo }));
+    if (!gravou) return '';
+    gravarEtagDePlanta(pavimentoId, resposta.headers.get('etag') || '');
+    return midia.urlDaPlanta(pavimentoId);
+  }
+
   /* Gatilhos de escoamento: voltar a ficar online e a cada 2 min, para o caso
      de o evento nao disparar (comum em celular trocando de torre). */
   function iniciar() {
@@ -490,6 +708,12 @@
     excluirUsuario,
     enfileirarFoto,
     escoarFila,
+    enfileirarPlanta,
+    escoarFilaDePlantas,
+    plantasPendentes,
+    plantaPendente,
+    baixarPlanta,
+    excluirPlanta,
     fotosEnviadas,
     pendentes,
     observarFila,

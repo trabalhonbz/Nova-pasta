@@ -12,6 +12,7 @@ import {
   autenticar, desafio, encerrar, limparSessoesExpiradas, login, trocarSenha
 } from './auth.js';
 import * as fotos from './fotos.js';
+import * as retencao from './retencao.js';
 import * as sync from './sync.js';
 import * as usuarios from './usuarios.js';
 
@@ -176,6 +177,12 @@ async function rotear(pedido, env, contexto) {
     return responder(await sync.baixar(env, sessao, parametros), origem);
   }
 
+  /* Medidor da cota do R2. Aberto a qualquer sessao: quem registra fotografia
+     em campo precisa saber se ainda ha espaco antes de subir a visita inteira. */
+  if (caminho === '/armazenamento' && metodo === 'GET') {
+    return json(await retencao.relatorioDeUso(env), 200, origem);
+  }
+
   if (caminho === '/fotos' && metodo === 'POST') {
     return responder(await fotos.enviar(env, sessao, pedido, parametros), origem, 201);
   }
@@ -193,8 +200,11 @@ async function rotear(pedido, env, contexto) {
   }
 
   const plantaId = caminho.match(/^\/plantas\/([^/]+)$/);
-  if (plantaId && metodo === 'GET') {
-    return fotos.servirPlanta(env, sessao, plantaId[1], pedido);
+  if (plantaId) {
+    if (metodo === 'GET') return fotos.servirPlanta(env, sessao, plantaId[1], pedido);
+    if (metodo === 'DELETE') {
+      return responder(await fotos.excluirPlanta(env, sessao, plantaId[1]), origem);
+    }
   }
 
   return erro(`Rota não encontrada: ${metodo} ${caminho}`, 404, origem);
@@ -215,14 +225,52 @@ export default {
     }
   },
 
-  /* Limpeza diaria das sessoes vencidas, agendada no wrangler.toml. Sem ela a
-     tabela cresce para sempre e as leituras do D1 (5M/dia no plano gratuito)
-     passariam a varrer lixo. */
+  /* Manutencao diaria, agendada no wrangler.toml.
+
+     Tres tarefas, nesta ordem:
+
+     1. sessoes vencidas — sem isso a tabela cresce para sempre e as leituras do
+        D1 (5M/dia no plano gratuito) passariam a varrer lixo;
+     2. retencao das fotografias — a janela de 4 semanas por obra, que e o que
+        mantem o R2 abaixo dos 10 GB do plano gratuito;
+     3. recalculo do contador de bytes — depois da retencao, para que o numero
+        mostrado no painel reflita o que acabou de ser liberado, e para corrigir
+        qualquer desvio acumulado pelos incrementos do dia.
+
+     Cada etapa e isolada: uma falha na retencao nao impede o recalculo nem a
+     limpeza de sessoes. O cron roda uma vez por dia, e perder uma noite por
+     causa de um erro em outra tarefa atrasaria a liberacao de cota. */
   async scheduled(evento, env, contexto) {
-    contexto.waitUntil(
-      limparSessoesExpiradas(env)
-        .then((total) => console.log(`Sessões expiradas removidas: ${total}`))
-        .catch((falha) => console.error('Falha na limpeza de sessões:', falha))
-    );
+    contexto.waitUntil((async () => {
+      try {
+        const total = await limparSessoesExpiradas(env);
+        console.log(`Sessões expiradas removidas: ${total}`);
+      } catch (falha) {
+        console.error('Falha na limpeza de sessões:', falha);
+      }
+
+      try {
+        const resumo = await retencao.aplicarRetencao(env);
+        if (!resumo.executada) {
+          console.log(`Retenção não executada: ${resumo.motivo}`);
+        } else {
+          const megabytes = Math.round(resumo.bytes / 1024 / 1024);
+          console.log(
+            `Retenção: ${resumo.fotos} fotografias de ${resumo.semanas} semana(s)`
+            + ` vencida(s), ${megabytes} MB liberados`
+            + (resumo.incompleta ? ' (teto por execução atingido; segue amanhã)' : '')
+          );
+        }
+      } catch (falha) {
+        console.error('Falha na retenção de fotografias:', falha);
+      }
+
+      try {
+        const total = await retencao.recalcularUso(env);
+        console.log(`Uso do R2 recalculado: ${Math.round(total / 1024 / 1024)} MB`);
+      } catch (falha) {
+        console.error('Falha ao recalcular o uso do R2:', falha);
+      }
+    })());
   }
 };

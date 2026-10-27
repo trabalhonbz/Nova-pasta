@@ -211,7 +211,17 @@ function instalarFetchDoWorker(window, api) {
       corpoEnviado = new Uint8Array(await corpoEnviado.arrayBuffer());
     }
 
-    const pedido = new Request(String(url), {
+    /* Resolve endereço relativo contra a página, como o navegador faz.
+
+       Com o painel servido pelo próprio Worker, a base da API é vazia e as
+       chamadas saem como `/saude`. O `Request` do Node exige URL absoluta e
+       lançaria "Invalid URL" — não porque o painel esteja errado, mas porque o
+       harness não fazia a resolução que o navegador faz sozinho. Endereço
+       absoluto passa intacto: o segundo argumento do `URL` só vale como base
+       quando o primeiro é relativo. */
+    const absoluta = new URL(String(url), window.location.href).toString();
+
+    const pedido = new Request(absoluta, {
       method: opcoes.method || 'GET',
       headers: opcoes.headers || {},
       body: corpoEnviado

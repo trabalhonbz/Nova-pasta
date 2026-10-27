@@ -139,7 +139,12 @@
       const convertido = {
         id: pavimento.id, name: pavimento.nome, area: pavimento.areaTotal,
         regions: [], planImage: '', planWidth: pavimento.plantaLargura,
-        planHeight: pavimento.plantaAltura, planFileName: pavimento.plantaArquivo || ''
+        planHeight: pavimento.plantaAltura, planFileName: pavimento.plantaArquivo || '',
+        /* Diz que existe planta NO SERVIDOR para este pavimento. `planImage`
+           vazio sozinho não distingue "o servidor não tem planta" de "tem, mas
+           este aparelho ainda não baixou" — e é essa diferença que faz o painel
+           saber se vale a pena pedir o arquivo. */
+        temPlanta: Boolean(pavimento.temPlanta)
       };
       pavimentosPorId.set(pavimento.id, convertido);
       obra.floorPlans.push(convertido);
@@ -216,6 +221,22 @@
           if (!foto.data && dadosLocais.has(foto.id)) foto.data = dadosLocais.get(foto.id);
         }
       }
+
+      /* A planta precisa da mesma proteção, e por um motivo mais agudo que o das
+         fotos: o pacote do servidor sempre traz `planImage: ''`, então sem isto
+         CADA sincronização apagaria a planta que o aparelho já tem. O pavimento
+         voltaria a abrir sem desenho, com os setores demarcados flutuando — e o
+         engenheiro veria a planta sumir sozinha no meio da visita. */
+      const plantasLocais = new Map();
+      for (const pavimento of local.floorPlans || []) {
+        if (pavimento.planImage) plantasLocais.set(pavimento.id, pavimento.planImage);
+      }
+      for (const pavimento of vindo.floorPlans || []) {
+        if (!pavimento.planImage && plantasLocais.has(pavimento.id)) {
+          pavimento.planImage = plantasLocais.get(pavimento.id);
+        }
+      }
+
       porId.set(vindo.id, vindo);
     }
     return Array.from(porId.values());
