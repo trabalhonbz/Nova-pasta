@@ -1014,6 +1014,61 @@ teste('a tela diz se a planta já foi sincronizada', async () => {
   ctx.fechar();
 });
 
+teste('pavimento com medidas de planta e nenhum desenho acusa perda', async () => {
+  /* O estado que ficou invisível em produção: o `fundir` apagava a planta do
+     aparelho a cada sincronização (antes da correção), e sobravam as dimensões
+     e o nome do arquivo, que viajam pelos dados do pavimento. A barra mostrava
+     o nome como se houvesse planta, o croqui aparecia vazio, e nenhum
+     distintivo surgia — nem "não enviada", porque não há o que enviar.
+
+     Sem este aviso, a pessoa fica sem nada para olhar e sem saber o que fazer. */
+  const { api } = servidorDeTeste();
+  const ctx = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(ctx, { nome: 'André', usuario: 'andre', senha: 'senhaforte1' });
+  await criarObraComFoto(ctx);
+
+  const estado = await ctx.eval(`(() => {
+    const floor = projects[0].floorPlans[0];
+    floor.planImage = '';
+    floor.planWidth = 1800;
+    floor.planHeight = 1272;
+    floor.planFileName = 'N644-23-LOIM-0001-03S-HO-R00.jpg';
+    floor.temPlanta = false;
+    renderPlanSyncStatus(floor);
+    const el = document.querySelector('#planSyncStatus');
+    return { oculto: el.hidden, texto: el.textContent, situacao: el.dataset.situacao, dica: el.title };
+  })()`);
+
+  confirmar(!estado.oculto, 'o distintivo NÃO pode ficar escondido neste estado');
+  igual(estado.situacao, 'alerta', `deveria alertar, e indica "${estado.texto}"`);
+  confirmar(/reimporte/i.test(estado.texto), `deveria dizer o que fazer, e diz "${estado.texto}"`);
+  confirmar(/nem no servidor/.test(estado.dica), `a explicação deveria ser específica, e é "${estado.dica}"`);
+  ctx.fechar();
+});
+
+teste('pavimento que nunca teve planta não mostra distintivo nenhum', async () => {
+  /* Contraprova do caso acima: sem medidas e sem arquivo registrados, não houve
+     planta nenhuma — e alertar aqui transformaria todo pavimento novo num
+     falso alarme. */
+  const { api } = servidorDeTeste();
+  const ctx = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(ctx, { nome: 'André', usuario: 'andre', senha: 'senhaforte1' });
+  await criarObraComFoto(ctx);
+
+  const oculto = await ctx.eval(`(() => {
+    const floor = projects[0].floorPlans[0];
+    floor.planImage = ''; floor.planWidth = 0; floor.planHeight = 0;
+    floor.planFileName = ''; floor.temPlanta = false;
+    renderPlanSyncStatus(floor);
+    return document.querySelector('#planSyncStatus').hidden;
+  })()`);
+
+  confirmar(oculto, 'pavimento sem planta nenhuma não deveria alertar');
+  ctx.fechar();
+});
+
 teste('planta que ficou sem subir aparece como não enviada, e não como pendente', async () => {
   /* O estado que antes passava despercebido: há planta no aparelho, ela não
      está na fila e o servidor não tem — é envio recusado. Mostrar isso como

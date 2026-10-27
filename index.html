@@ -1772,6 +1772,19 @@
       } else if (noServidor) {
         texto = '↓ baixando…';
         situacao = 'pendente';
+      } else if (floor.planFileName || floor.planWidth) {
+        /* Dimensões e nome de arquivo registrados, e desenho em lugar nenhum.
+
+           Estado real, e o pior de todos porque era INVISÍVEL: a barra mostrava
+           o nome do arquivo como se houvesse planta, o croqui aparecia vazio e
+           nenhum distintivo surgia — nem "não enviada", já que não há o que
+           enviar. Aconteceu com a primeira planta cadastrada em produção, que o
+           `fundir` apagava do aparelho a cada sincronização antes da correção.
+
+           Dizer "reimporte" é a única saída honesta: o binário só existia
+           naquele navegador e não há de onde recuperá-lo. */
+        texto = '⚠ planta perdida — reimporte';
+        situacao = 'alerta';
       }
 
       alvo.hidden = !texto;
@@ -1780,7 +1793,9 @@
       alvo.title = {
         ok: 'A planta está no servidor e abre em qualquer aparelho.',
         pendente: 'A planta sobe sozinha quando houver conexão.',
-        alerta: 'A planta não chegou ao servidor. Tente importar de novo ou verifique a conexão.',
+        alerta: local
+          ? 'A planta não chegou ao servidor. Tente importar de novo ou verifique a conexão.'
+          : 'O pavimento tem medidas de planta registradas, mas o desenho não está neste aparelho nem no servidor. Importe a planta novamente.',
         local: 'Sem servidor configurado: a planta fica apenas neste navegador.'
       }[situacao] || '';
     }
