@@ -1600,7 +1600,27 @@
         try {
           await window.NBZApi.excluirPlanta(floor.id);
         } catch (falha) {
-          console.error('Não foi possível remover a planta no servidor:', falha);
+          /* Falha aqui NÃO pode ficar só no console.
+
+             Antes, a exclusão local permanecia mesmo quando o servidor recusava:
+             a planta sumia da tela, e voltava ao reabrir o aplicativo, porque o
+             servidor nunca soubera. Quem usa concluía que o sistema "não apaga",
+             sem nenhuma pista do motivo.
+
+             Desfazer é mais honesto que fingir: se o servidor ainda tem a
+             planta, este aparelho também tem de ter, e a mensagem diz o que
+             aconteceu. Sem sinal não cai aqui — `excluirPlanta` trata a
+             ausência de rede como exclusão local concluída. */
+          Object.assign(floor, previous);
+          syncProjectStats(project);
+          activities = activities.slice(0, activityCount);
+          saveStateSemReplicar();
+          renderSketch();
+          renderAll();
+          const motivo = mensagemDeFalha(falha);
+          document.querySelector('#sketchError').textContent = `A planta não foi removida: ${motivo}`;
+          notify(`A planta não foi removida no servidor: ${motivo}`, 'error', 9000);
+          return;
         }
       }
       sketchPoints = [];
@@ -2313,15 +2333,26 @@
     /* Apaga do IndexedDB o binário que o estado não referencia mais — foto
        excluída, relatório removido, obra apagada. Sem isto o binário ficaria
        órfão ocupando cota para sempre. */
-    async function limparFotosOrfas() {
+    /* Apaga do armazenamento local o binário que nenhum registro referencia.
+
+       Precisa listar fotografias E pavimentos: a planta mora na mesma loja, e
+       esquecê-la aqui fazia a limpeza apagar toda planta baixada logo depois de
+       `reidratarPlantas()` a ter restaurado — deixando o pavimento com o quadro
+       de imagem quebrada, porque o endereço continuava no estado e o arquivo
+       não existia mais. */
+    async function limparMidiaOrfa() {
       if (!await temMidia()) return 0;
-      const emUso = [];
+      const fotos = [];
+      const pavimentos = [];
       for (const project of projects) {
         for (const report of project.photoReports || []) {
-          for (const photo of report.photos || []) emUso.push(photo.id);
+          for (const photo of report.photos || []) fotos.push(photo.id);
+        }
+        for (const floor of project.floorPlans || []) {
+          if (floor.id) pavimentos.push(floor.id);
         }
       }
-      return window.NBZMidia.removerOrfas(emUso);
+      return window.NBZMidia.removerOrfas(fotos, pavimentos);
     }
 
     let photoManageTarget = null;
@@ -4463,10 +4494,16 @@
        a mesma condição que o distintivo mostra como "não enviada". */
     async function enfileirarPlantasPendentes() {
       if (!comServidor || !window.NBZApi) return 0;
+      /* Planta que JÁ subiu por este aparelho e sumiu do servidor foi apagada
+         por alguém — não é envio pendente. Sem esta lista a varredura reenviava
+         o que o colega acabara de apagar, e a planta ressuscitava sozinha a cada
+         sincronização. É a mesma proteção que as fotografias sempre tiveram. */
+      const jaEnviadas = window.NBZApi.plantasEnviadas();
       let enfileiradas = 0;
       for (const project of projects) {
         for (const floor of project.floorPlans || []) {
           if (!floor.id || !floor.planImage || floor.temPlanta) continue;
+          if (jaEnviadas.has(floor.id)) continue;
 
           /* Planta importada antes de o envio existir ficou como data-URI no
              estado e nunca foi para o IndexedDB, que é de onde a fila lê o
@@ -4564,7 +4601,7 @@
       if (migradas) {
         console.info(`Fotografias movidas para o armazenamento local: ${migradas}.`);
       }
-      await limparFotosOrfas();
+      await limparMidiaOrfa();
       if ((reidratadas || plantas || migradas) && currentUser) renderAll();
     }
 

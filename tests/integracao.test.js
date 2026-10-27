@@ -974,6 +974,112 @@ teste('a planta importada num aparelho sobe para o servidor', async () => {
   ctx.fechar();
 });
 
+teste('a varredura não reenvia planta que o colega apagou', async () => {
+  /* O mecanismo de segurança se voltando contra a exclusão: a varredura
+     enfileira toda planta que está no aparelho e não está no servidor, e roda
+     ANTES da descida no mesmo ciclo. Então o aparelho de quem não apagou
+     concluía "falta enviar" e reenviava — a planta ressuscitava, e apagar
+     virava impossível.
+
+     A lista de já enviadas é o que separa "nunca subiu" de "subiu e alguém
+     apagou". É a mesma proteção que as fotografias sempre tiveram. */
+  const { api, db } = servidorDeTeste();
+  const ctx = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(ctx, { nome: 'André', usuario: 'andre', senha: 'senhaforte1' });
+  await criarObraComFoto(ctx);
+  await importarPlanta(ctx);
+  await ctx.eval('sincronizarComServidor()');
+  await pausa(400);
+  confirmar(db.prepare('select planta_r2_key from pavimentos where id = ?').get('pav-1').planta_r2_key,
+    'pré-condição: a planta subiu');
+
+  /* Outra pessoa apaga: mexe-se direto no banco para simular o aparelho dela,
+     sem tocar no estado deste. */
+  db.prepare(
+    "update pavimentos set planta_r2_key = null, planta_arquivo = '', planta_largura = 0, atualizado_em = ? where id = ?"
+  ).run(new Date().toISOString(), 'pav-1');
+
+  /* Este aparelho sincroniza sem saber de nada: ainda tem a planta local e o
+     servidor não tem mais. */
+  await ctx.eval('sincronizarComServidor()');
+  await pausa(600);
+
+  igual(
+    db.prepare('select planta_r2_key from pavimentos where id = ?').get('pav-1').planta_r2_key, null,
+    'a planta NÃO pode ter sido reenviada por este aparelho'
+  );
+  igual(
+    await ctx.eval('projects[0].floorPlans[0].planImage'), '',
+    'e a cópia local tem de ter sumido junto'
+  );
+  ctx.fechar();
+});
+
+teste('a limpeza de órfãos não apaga a planta', async () => {
+  /* O defeito que deixou o pavimento com quadro de imagem quebrada no celular:
+     a planta mora na mesma loja das fotografias, e a limpeza montava a lista do
+     que está em uso só com ids de FOTO. Tudo o mais virava lixo — inclusive a
+     planta recém-baixada.
+
+     No arranque a ordem era cruel: `reidratarPlantas()` restaurava a planta e
+     `limparMidiaOrfa()` a apagava em seguida, revogando o endereço. O estado
+     seguia apontando para um arquivo que não existia mais. */
+  const { api } = servidorDeTeste();
+  const ctx = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(ctx, { nome: 'André', usuario: 'andre', senha: 'senhaforte1' });
+  await criarObraComFoto(ctx);
+  await importarPlanta(ctx);
+
+  confirmar(
+    await ctx.eval('(async () => Boolean(await window.NBZMidia.registroDaPlanta("pav-1")))()'),
+    'pré-condição: a planta está no armazenamento local'
+  );
+
+  await ctx.eval('limparMidiaOrfa()');
+  await pausa(300);
+
+  confirmar(
+    await ctx.eval('(async () => Boolean(await window.NBZMidia.registroDaPlanta("pav-1")))()'),
+    'a limpeza NÃO pode ter apagado a planta do pavimento que existe'
+  );
+  /* E a foto, que sempre foi o caso previsto, continua protegida. */
+  confirmar(
+    await ctx.eval('(async () => Boolean(await window.NBZMidia.lerRegistro("foto-1")))()'),
+    'nem a fotografia em uso'
+  );
+  ctx.fechar();
+});
+
+teste('a limpeza apaga a planta de pavimento que não existe mais', async () => {
+  /* Contraprova: proteger não pode virar nunca apagar, senão o armazenamento do
+     celular cresce para sempre com planta de obra excluída. */
+  const { api } = servidorDeTeste();
+  const ctx = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(ctx, { nome: 'André', usuario: 'andre', senha: 'senhaforte1' });
+  await criarObraComFoto(ctx);
+
+  await ctx.eval(`(async () => {
+    const blob = window.NBZMidia.dataUriParaBlob(${JSON.stringify(JPEG_1X1)});
+    await window.NBZMidia.guardarPlanta('pavimento-que-sumiu', blob);
+  })()`);
+  confirmar(
+    await ctx.eval('(async () => Boolean(await window.NBZMidia.registroDaPlanta("pavimento-que-sumiu")))()'),
+    'pré-condição: o binário órfão está lá'
+  );
+
+  await ctx.eval('limparMidiaOrfa()');
+  await pausa(300);
+
+  confirmar(
+    !await ctx.eval('(async () => Boolean(await window.NBZMidia.registroDaPlanta("pavimento-que-sumiu")))()'),
+    'planta sem pavimento tem de ser removida'
+  );
+  ctx.fechar();
+});
+
 teste('planta que nunca entrou na fila é recuperada pela varredura', async () => {
   /* Reproduz o que aconteceu com a primeira planta cadastrada em produção: ela
      foi importada antes de o envio existir, então ficou como data-URI no estado,

@@ -207,8 +207,17 @@
 
   /* Apaga o que não é mais referenciado pelo estado. O painel remove fotos e
      relatórios inteiros; sem esta limpeza o Blob ficaria órfão ocupando cota. */
-  function removerOrfas(idsEmUso) {
+  /* `pavimentosEmUso` é lista de ID DE PAVIMENTO, não de chave: a montagem do
+     prefixo continua sendo responsabilidade exclusiva daqui.
+
+     Ela existe porque a limpeza apagava as plantas. A loja é a mesma das
+     fotografias, e tudo que não estivesse na lista de fotos em uso era tratado
+     como lixo — inclusive a planta recém-baixada. No arranque, `reidratar`
+     restaurava a planta e a limpeza a apagava em seguida, revogando o endereço
+     da imagem: o pavimento abria com o quadro de imagem quebrada. */
+  function removerOrfas(idsEmUso, pavimentosEmUso) {
     const emUso = new Set(idsEmUso || []);
+    for (const pavimentoId of pavimentosEmUso || []) emUso.add(chaveDaPlanta(pavimentoId));
     return transacao('readwrite').then((loja) => {
       if (!loja) return 0;
       return comoPromessa(loja.getAllKeys()).then((chaves) => {

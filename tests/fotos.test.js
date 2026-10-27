@@ -189,7 +189,7 @@ teste('o binário órfão é apagado quando o estado não o referencia mais', as
 
   /* Remove duas do estado e roda a limpeza, como acontece ao excluir foto. */
   ctx.eval('projects[0].photoReports[0].photos = projects[0].photoReports[0].photos.slice(0, 1)');
-  await ctx.eval('limparFotosOrfas()');
+  await ctx.eval('limparMidiaOrfa()');
 
   const depois = await ctx.eval('window.NBZMidia.ocupacao()');
   igual(depois.fotos, 1, 'só a foto ainda referenciada deveria permanecer');

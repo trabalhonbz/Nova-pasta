@@ -31,6 +31,15 @@
   const CHAVE_USUARIO = 'nbz-usuario-v1';
   const CHAVE_FILA = 'nbz-fila-envio-v1';
   const CHAVE_FILA_PLANTAS = 'nbz-fila-plantas-v1';
+  /* Pavimentos cuja planta JA SUBIU por este aparelho.
+
+     Existe pelo mesmo motivo de `CHAVE_ENVIADAS` nas fotografias, e a falta
+     dela deixava a exclusao impossivel: a varredura enfileira toda planta que
+     esta aqui e nao esta no servidor, e sem esta lista ela nao distingue
+     "nunca foi enviada" de "foi apagada por outra pessoa". Quem apagava a
+     planta num aparelho a via voltar, porque o outro a reenviava na
+     sincronizacao seguinte. */
+  const CHAVE_PLANTAS_ENVIADAS = 'nbz-plantas-enviadas-v1';
   /* Etag da planta que esta no aparelho, por pavimento. E o que permite
      perguntar ao servidor "mudou?" em vez de rebaixar o arquivo inteiro. */
   const CHAVE_ETAG_PLANTAS = 'nbz-planta-etag-v1';
@@ -535,6 +544,28 @@
     return filaDePlantas().some((item) => item.pavimentoId === pavimentoId);
   }
 
+  function plantasEnviadas() {
+    const lista = ler(CHAVE_PLANTAS_ENVIADAS, []);
+    return new Set(Array.isArray(lista) ? lista : []);
+  }
+
+  function marcarPlantaEnviada(pavimentoId) {
+    const lista = ler(CHAVE_PLANTAS_ENVIADAS, []);
+    const atual = Array.isArray(lista) ? lista : [];
+    if (atual.includes(pavimentoId)) return;
+    atual.push(pavimentoId);
+    gravar(CHAVE_PLANTAS_ENVIADAS, atual.length > 2000 ? atual.slice(-2000) : atual);
+  }
+
+  /* Chamado ao apagar: a partir daqui este aparelho nao considera mais que
+     mandou planta alguma para o pavimento, e uma importacao nova volta a poder
+     subir normalmente. */
+  function esquecerPlantaEnviada(pavimentoId) {
+    const lista = ler(CHAVE_PLANTAS_ENVIADAS, []);
+    const atual = Array.isArray(lista) ? lista : [];
+    gravar(CHAVE_PLANTAS_ENVIADAS, atual.filter((item) => item !== pavimentoId));
+  }
+
   /* Enfileira a planta do pavimento. O binario ja esta no IndexedDB sob
      `planta:<id>`; aqui entra so a referencia e o que o servidor precisa saber
      junto (dimensoes e nome do arquivo de origem).
@@ -590,6 +621,10 @@
       bruto: new global.Blob([registro.dados], { type: registro.tipo || 'image/jpeg' })
     });
     removerPlantaDaFila(item.pavimentoId);
+    /* Registra que ESTE aparelho ja mandou a planta deste pavimento. E o que
+       permite a varredura distinguir, depois, "nunca foi enviada" de "foi
+       apagada por outra pessoa" — e parar de reenviar o que alguem apagou. */
+    marcarPlantaEnviada(item.pavimentoId);
     /* A planta mudou no servidor: o etag guardado nao vale mais, e mante-lo
        faria a proxima descida aceitar 304 sobre a versao errada. */
     gravarEtagDePlanta(item.pavimentoId, '');
@@ -625,6 +660,7 @@
      fila subiria logo depois a planta que o usuario acabou de apagar. */
   async function excluirPlanta(pavimentoId) {
     removerPlantaDaFila(pavimentoId);
+    esquecerPlantaEnviada(pavimentoId);
     gravarEtagDePlanta(pavimentoId, '');
     const midia = global.NBZMidia;
     if (midia) await midia.removerPlanta(pavimentoId);
@@ -718,6 +754,7 @@
     escoarFilaDePlantas,
     plantasPendentes,
     plantaPendente,
+    plantasEnviadas,
     baixarPlanta,
     excluirPlanta,
     fotosEnviadas,
