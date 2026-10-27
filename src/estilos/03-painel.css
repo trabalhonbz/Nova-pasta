@@ -367,3 +367,55 @@
 .legend-dot.amber{
   background:#efb34e
 }
+/* Barra de uso do armazenamento de fotografias.
+
+   Mostra quanto dos 9,5 GB do plano gratuito já foi ocupado. Fica no painel
+   inicial porque o teto, quando chega, recusa upload — e descobrir isso na obra,
+   com a visita já registrada, é tarde demais. */
+.storage-card{
+  background:var(--white);
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:13px 14px;
+  margin-bottom:14px
+}
+.storage-head{
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:9px
+}
+.storage-percent{
+  font:700 15px var(--display);
+  color:var(--ink);
+  flex:0 0 auto
+}
+.storage-track{
+  height:7px;
+  border-radius:999px;
+  background:#eef1f6;
+  overflow:hidden
+}
+.storage-fill{
+  display:block;
+  height:100%;
+  width:0;
+  border-radius:999px;
+  background:var(--green);
+  /* A transição existe para a barra não "pular" quando o número é atualizado
+     depois de uma sincronização: o movimento mostra que algo mudou. */
+  transition:width .35s ease
+}
+.storage-fill[data-faixa="atencao"]{
+  background:var(--orange)
+}
+.storage-fill[data-faixa="cheio"]{
+  background:var(--red)
+}
+.storage-note{
+  margin:8px 0 0;
+  font-size:9px;
+  color:var(--muted);
+  line-height:1.5
+}

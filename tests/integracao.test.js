@@ -523,6 +523,69 @@ teste('quando o R2 aparece, a fila acumulada sobe sozinha', async () => {
   ctx.fechar();
 });
 
+/* ----------------------------------------------------- armazenamento */
+
+teste('a barra de armazenamento mostra o uso real das fotografias', async () => {
+  /* O teto de 9,5 GB recusa upload quando chega. Sem esta barra, a pessoa só
+     descobriria o limite na obra, com a visita registrada e a foto recusada. */
+  const { api } = servidorDeTeste();
+  const ctx = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(ctx, { nome: 'Richard', usuario: 'richard', senha: 'senhaforte1' });
+  await criarObraComFoto(ctx);
+  await ctx.eval('sincronizarComServidor()');
+  await pausa(400);
+
+  await ctx.eval('atualizarUsoDoArmazenamento()');
+  await pausa(400);
+
+  const cartao = await ctx.eval(`(() => {
+    const el = document.querySelector('#storageCard');
+    return {
+      oculto: el.hidden,
+      porcentagem: document.querySelector('#storagePercent').textContent,
+      nota: document.querySelector('#storageNote').textContent,
+      faixa: document.querySelector('#storageFill').dataset.faixa,
+      largura: document.querySelector('#storageFill').style.width
+    };
+  })()`);
+
+  confirmar(!cartao.oculto, 'o cartão deveria aparecer para quem registra fotografia');
+  confirmar(/de 9,50 GB/.test(cartao.nota), `a nota deveria citar o teto, e é "${cartao.nota}"`);
+  confirmar(/1 fotografia\b/.test(cartao.nota), `deveria contar a fotografia, e diz "${cartao.nota}"`);
+  confirmar(/4 semanas/.test(cartao.nota), `deveria explicar a retenção, e diz "${cartao.nota}"`);
+  igual(cartao.faixa, 'ok', 'com uma foto o uso é mínimo, então a faixa é a verde');
+
+  /* Com arquivo guardado a barra não pode ficar vazia nem o rótulo dizer "0%":
+     uma foto de 250 KB em 9,5 GB arredonda para zero, e mostrar zero com
+     arquivo no bucket diz exatamente o contrário do que aconteceu. */
+  confirmar(parseFloat(cartao.largura) > 0, `a barra deveria ter largura visível, e tem "${cartao.largura}"`);
+  confirmar(cartao.porcentagem !== '0%',
+    `o rótulo não deveria dizer 0% havendo foto guardada, e diz "${cartao.porcentagem}"`);
+  ctx.fechar();
+});
+
+teste('a barra some para o cargo que não registra fotografia', async () => {
+  /* Cota de armazenamento é informação de quem sofre a consequência. Para o
+     cliente, que só consulta, seria ruído. */
+  const { api } = servidorDeTeste();
+  const ctx = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(ctx, { nome: 'Richard', usuario: 'richard', senha: 'senhaforte1' });
+  await ctx.eval('atualizarUsoDoArmazenamento()');
+  await pausa(300);
+  confirmar(!ctx.eval('document.querySelector("#storageCard").hidden'),
+    'pré-condição: para o administrador o cartão aparece');
+
+  /* Troca o cargo da sessão para 'cliente' e manda renderizar de novo. */
+  await ctx.eval('(async () => { currentUser.role = "cliente"; await atualizarUsoDoArmazenamento(); })()');
+  await pausa(300);
+
+  confirmar(ctx.eval('document.querySelector("#storageCard").hidden'),
+    'para o cliente o cartão deveria sumir');
+  ctx.fechar();
+});
+
 /* ---------------------------------------------------------- usuarios */
 
 /* Preenche o formulário de novo usuário como o administrador faz na tela.

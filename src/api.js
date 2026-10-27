@@ -492,6 +492,12 @@
     aoMudarFila = callback;
   }
 
+  /* Uso do R2 contra o teto de 9,5 GB. O servidor responde pelo contador, nao
+     por varredura, entao chamar isto e barato. */
+  function usoDoArmazenamento() {
+    return chamar('/armazenamento');
+  }
+
   /* ---------------------------------------------------- plantas no R2 */
 
   /* A PLANTA NAO E UMA FOTO GRANDE
@@ -717,6 +723,7 @@
     fotosEnviadas,
     pendentes,
     observarFila,
+    usoDoArmazenamento,
     baixarFoto,
     subirEstado,
     baixarEstado,

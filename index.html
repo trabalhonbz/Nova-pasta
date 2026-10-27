@@ -78,6 +78,14 @@
   <main class="content" id="painel">
     <section class="view active" id="dashboardView" aria-label="Painel">
       <div class="metrics" id="dashboardMetrics"></div>
+      <div class="storage-card" id="storageCard" hidden>
+        <div class="storage-head">
+          <h2 class="section-title">Armazenamento de fotografias</h2>
+          <strong class="storage-percent" id="storagePercent">—</strong>
+        </div>
+        <div class="storage-track" role="progressbar" id="storageTrack" aria-valuemin="0" aria-valuemax="100" aria-label="Uso do armazenamento de fotografias"><i class="storage-fill" id="storageFill"></i></div>
+        <p class="storage-note" id="storageNote">Consultando…</p>
+      </div>
       <div class="dashboard-grid">
         <section><div class="section-row"><div><h2 class="section-title">Obras em andamento</h2><p class="section-subtitle" id="dashboardWorkCount">Projetos cadastrados</p></div><button class="plain-link" type="button" data-go-view="works">Ver todas ↗</button></div><div class="project-stack" id="dashboardProjects"></div></section>
         <section><div class="section-row"><div><h2 class="section-title">Alertas &amp; notificações</h2><p class="section-subtitle">Pendências que requerem atenção</p></div></div><div class="panel alert-panel" id="alertsList"></div></section>
@@ -1129,6 +1137,74 @@
       list.innerHTML = activities.length ? [...activities].sort((left, right) => new Date(right.date) - new Date(left.date)).map((activity) => `<article class="history-row"><span class="history-symbol">◷</span><div><strong>${escapeHtml(activity.text)}</strong><p>${escapeHtml(activity.detail)}${activity.author ? ` · ${escapeHtml(activity.author)}` : ''}</p></div><time datetime="${escapeHtml(activity.date)}">${formatDate(activity.date)}</time></article>`).join('') : '<div class="empty-state"><strong>Histórico vazio</strong>As próximas atividades aparecerão aqui.</div>';
     }
     function renderAll() { renderDashboard(); renderWorks(); renderReports(); renderHistory(); renderTeam(); }
+
+    /* Barra de uso do armazenamento de fotografias.
+
+       Por que ela existe: o plano gratuito do R2 dá 10 GB, e o sistema recusa
+       upload acima de 9,5 GB. Sem a barra, esse teto só apareceria no pior
+       momento possível — a pessoa na obra, com a visita registrada, tentando
+       enviar e recebendo recusa sem saber por quê.
+
+       Aparece para quem registra fotografia, e não só para o administrador: é
+       quem sofre a consequência. O cliente, único cargo que não envia foto,
+       fica de fora.
+
+       O número vem do contador do servidor, não de varredura, então consultar
+       é barato. Ainda assim só se consulta ao abrir e depois de sincronizar:
+       recalcular a cada render seria pedido de rede a cada clique. */
+    async function atualizarUsoDoArmazenamento() {
+      const cartao = document.querySelector('#storageCard');
+      if (!cartao) return;
+      if (!comServidor || !can('photos.edit') || !window.NBZApi || !window.NBZApi.token()) {
+        cartao.hidden = true;
+        return;
+      }
+
+      let uso;
+      try {
+        uso = await window.NBZApi.usoDoArmazenamento();
+      } catch {
+        /* Sem rede não se inventa número: esconder é melhor que mostrar um
+           valor velho como se fosse o atual. */
+        cartao.hidden = true;
+        return;
+      }
+      if (!uso || !uso.tetoBytes) { cartao.hidden = true; return; }
+
+      const gb = (bytes) => `${(bytes / 1024 / 1024 / 1024).toFixed(2).replace('.', ',')} GB`;
+      const bytes = Number(uso.bytes) || 0;
+      const pct = Math.max(0, Math.min(100, Number(uso.porcentagem) || 0));
+      /* A largura mínima depende de HAVER BYTES, não da porcentagem arredondada.
+         Uma foto de 250 KB em 9,5 GB dá 0,0% depois do arredondamento, e barra
+         vazia com arquivo guardado diz a coisa errada: parece que nada subiu. */
+      const largura = bytes > 0 ? Math.max(1.5, pct) : 0;
+
+      cartao.hidden = false;
+      /* Pelo mesmo motivo, "0%" com arquivo guardado soa como "nada aqui". */
+      document.querySelector('#storagePercent').textContent = bytes > 0 && pct === 0
+        ? 'menos de 0,1%'
+        : `${String(pct).replace('.', ',')}%`;
+      const preenchimento = document.querySelector('#storageFill');
+      preenchimento.style.width = `${largura}%`;
+      /* Três faixas, e o vermelho começa em 90% de propósito: é onde ainda dá
+         tempo de agir antes de o upload ser recusado, não depois. */
+      const faixa = pct >= 90 ? 'cheio' : (pct >= 75 ? 'atencao' : 'ok');
+      preenchimento.dataset.faixa = faixa;
+      document.querySelector('#storageTrack').setAttribute('aria-valuenow', String(Math.round(pct)));
+
+      const fotos = Number(uso.fotos) || 0;
+      const partes = [
+        `${gb(uso.bytes)} de ${gb(uso.tetoBytes)}`,
+        `${fotos} ${fotos === 1 ? 'fotografia' : 'fotografias'}`,
+        `mantém as ${uso.semanasGuardadas} semanas mais recentes de cada obra`
+      ];
+      if (!uso.r2Ativo) {
+        partes.push('armazenamento na nuvem ainda não ativado — as fotos ficam no aparelho');
+      } else if (faixa === 'cheio') {
+        partes.push('quase cheio: a limpeza da madrugada libera espaço das semanas vencidas');
+      }
+      document.querySelector('#storageNote').textContent = partes.join(' · ');
+    }
     function addActivity(text, detail) {
       activities.push({ id: newId(), text, detail, date: new Date().toISOString(), author: currentUser ? `${currentUser.name} · ${roleOf(currentUser.role).label}` : 'Sessão não identificada' });
       return activities[activities.length - 1];
@@ -3781,6 +3857,11 @@
       document.querySelectorAll('[data-view]').forEach((button) => { button.hidden = !can(button.dataset.view); });
       document.querySelectorAll('[data-open-new]').forEach((button) => { button.hidden = !can('works.create'); });
       renderAll();
+      /* Esconde na hora para o cargo que não envia fotografia, e consulta o
+         número em seguida. Não se espera a rede aqui: o painel tem de abrir
+         imediatamente, e o cartão aparece quando a resposta chegar. */
+      document.querySelector('#storageCard').hidden = true;
+      atualizarUsoDoArmazenamento();
       const requested = requestedViewFromUrl();
       switchView(requested && can(requested) ? requested : firstAllowedView() || 'dashboard', { silent: true });
       touchSession();
@@ -4310,6 +4391,9 @@
           await baixarFotosFaltantes();
           if (currentUser) renderAll();
         }
+        /* Depois de subir foto é quando o número mudou de verdade; atualizar
+           aqui mantém a barra honesta sem pedir rede a cada clique na tela. */
+        atualizarUsoDoArmazenamento();
         return { enviadas: envio.enviadas, recebidas: vindos.length };
       } finally {
         sincronizando = false;
