@@ -199,47 +199,61 @@
 
   /* Funde o que veio do servidor no estado local, por id. O servidor manda so o
      que mudou, entao o que ele nao citou permanece como esta. */
-  function fundir(projetosLocais, projetosDoServidor) {
-    const porId = new Map((projetosLocais || []).map((projeto) => [projeto.id, projeto]));
-    for (const vindo of projetosDoServidor || []) {
+  /* AUSÊNCIA NUM PACOTE DELTA NÃO É EXCLUSÃO
+
+     Esta é a regra que a versão anterior violava, e o estrago era total.
+
+     O `/sync/baixar` entrega só o que mudou depois de uma marca. Se alguém mexe
+     numa obra e não nos pavimentos dela, o pacote traz a obra e nenhum
+     pavimento — e `paraPainel` monta o projeto com `floorPlans: []`, porque ele
+     só conhece o que veio. Substituir o projeto local por essa versão apagava
+     todos os pavimentos, setores e relatórios do aparelho.
+
+     Exclusão de verdade é sinalizada por `excluidoEm`, e `paraPainel` já
+     descarta essas linhas. Então o que não veio no pacote é o que NÃO MUDOU, e
+     tem de ser mantido.
+
+     Por isso a fusão é por id em cada nível: obra, pavimento, setor, relatório
+     e foto. Em cada um deles, quem veio do servidor ganha dos campos locais, e
+     quem é só local permanece. */
+  function mesclarPorId(locais, vindos, combinar) {
+    const porId = new Map((locais || []).map((item) => [item.id, item]));
+    for (const vindo of vindos || []) {
       const local = porId.get(vindo.id);
-      if (!local) {
-        porId.set(vindo.id, vindo);
-        continue;
-      }
-      /* Preserva as fotos que ja tem binario local: o pacote do servidor traz
-         `data: ''`, e sobrescrever cegamente apagaria a imagem que o aparelho
-         ja possui, forcando baixar tudo de novo. */
-      const dadosLocais = new Map();
-      for (const relatorio of local.photoReports || []) {
-        for (const foto of relatorio.photos || []) {
-          if (foto.data) dadosLocais.set(foto.id, foto.data);
-        }
-      }
-      for (const relatorio of vindo.photoReports || []) {
-        for (const foto of relatorio.photos || []) {
-          if (!foto.data && dadosLocais.has(foto.id)) foto.data = dadosLocais.get(foto.id);
-        }
-      }
-
-      /* A planta precisa da mesma proteção, e por um motivo mais agudo que o das
-         fotos: o pacote do servidor sempre traz `planImage: ''`, então sem isto
-         CADA sincronização apagaria a planta que o aparelho já tem. O pavimento
-         voltaria a abrir sem desenho, com os setores demarcados flutuando — e o
-         engenheiro veria a planta sumir sozinha no meio da visita. */
-      const plantasLocais = new Map();
-      for (const pavimento of local.floorPlans || []) {
-        if (pavimento.planImage) plantasLocais.set(pavimento.id, pavimento.planImage);
-      }
-      for (const pavimento of vindo.floorPlans || []) {
-        if (!pavimento.planImage && plantasLocais.has(pavimento.id)) {
-          pavimento.planImage = plantasLocais.get(pavimento.id);
-        }
-      }
-
-      porId.set(vindo.id, vindo);
+      porId.set(vindo.id, local && combinar ? combinar(local, vindo) : vindo);
     }
     return Array.from(porId.values());
+  }
+
+  function mesclarPavimento(local, vindo) {
+    return {
+      ...vindo,
+      /* O pacote traz sempre `planImage: ''`: o binário não viaja no JSON. Sem
+         esta linha, cada sincronização apagaria a planta que o aparelho tem, e
+         o engenheiro veria o desenho sumir no meio da visita. */
+      planImage: vindo.planImage || local.planImage || '',
+      regions: mesclarPorId(local.regions, vindo.regions)
+    };
+  }
+
+  function mesclarRelatorio(local, vindo) {
+    return {
+      ...vindo,
+      photos: mesclarPorId(local.photos, vindo.photos, (fotoLocal, fotoVinda) => ({
+        ...fotoVinda,
+        /* Mesma razão das plantas: o binário fica no aparelho, não no pacote.
+           Sobrescrever com vazio forçaria baixar tudo de novo. */
+        data: fotoVinda.data || fotoLocal.data || ''
+      }))
+    };
+  }
+
+  function fundir(projetosLocais, projetosDoServidor) {
+    return mesclarPorId(projetosLocais, projetosDoServidor, (local, vindo) => ({
+      ...vindo,
+      floorPlans: mesclarPorId(local.floorPlans, vindo.floorPlans, mesclarPavimento),
+      photoReports: mesclarPorId(local.photoReports, vindo.photoReports, mesclarRelatorio)
+    }));
   }
 
   global.NBZSync = { paraServidor, paraPainel, fundir, fotosParaEnviar };

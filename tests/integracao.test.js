@@ -12,9 +12,16 @@
    - o R2 de verdade (aqui ele é um objeto em memória);
    - latência, DNS e o comportamento do navegador com a rede caindo.
 */
+import { readFileSync } from 'node:fs';
 import { adaptarD1, bancoNovo } from './d1-memoria.mjs';
 import { boot, pausa, teste, confirmar, igual, executar } from './harness.js';
 import worker from '../src/worker/index.js';
+
+/* `src/sincronizar.js` é um IIFE que se pendura no global do navegador. Avaliá-lo
+   aqui dá acesso à tradução e à fusão como funções puras, sem subir um painel em
+   jsdom só para exercitar lógica que não toca em DOM nenhum. */
+new Function(readFileSync(new URL('../src/sincronizar.js', import.meta.url), 'utf8'))();
+const NBZSync = globalThis.NBZSync;
 
 
 const ENDERECO = 'https://api-de-teste.workers.dev';
@@ -521,6 +528,83 @@ teste('quando o R2 aparece, a fila acumulada sobe sozinha', async () => {
   igual(foto.id, 'foto-1', 'com o mesmo id de quando foi tirada');
   confirmar(foto.bytes > 0, 'e com o binário íntegro');
   ctx.fechar();
+});
+
+/* ------------------------------------------------------ fusão delta */
+
+/* O defeito que apagou tudo em produção, isolado na função pura.
+
+   `/sync/baixar` entrega só o que mudou. Se alguém mexe na obra e não nos
+   pavimentos, o pacote traz a obra sozinha, e `paraPainel` monta o projeto com
+   `floorPlans: []` porque só conhece o que veio. A fusão antiga substituía o
+   projeto local por essa versão e levava junto pavimentos, setores e
+   relatórios — o aparelho mostrava "Nenhum pavimento cadastrado" com três
+   pavimentos vivos no servidor.
+
+   Ausência num delta é "não mudou". Exclusão é `excluidoEm`, e `paraPainel` já
+   descarta essas linhas antes de chegar aqui. */
+teste('fusão delta não apaga pavimento que o pacote não trouxe', () => {
+  const local = [{
+    id: 'obra-1', name: 'MEDICAL CENTER',
+    floorPlans: [
+      { id: 'pav-1', name: 'Térreo', planImage: 'blob:local/planta', regions: [{ id: 'set-1', name: 'Setor A' }] },
+      { id: 'pav-2', name: '2º pavimento', planImage: '', regions: [] }
+    ],
+    photoReports: [{ id: 'rel-1', photos: [{ id: 'foto-1', data: 'blob:local/foto' }] }]
+  }];
+
+  /* O que `paraPainel` produz quando só a obra mudou. */
+  const doServidor = [{
+    id: 'obra-1', name: 'MEDICAL CENTER RENOMEADO',
+    floorPlans: [], photoReports: []
+  }];
+
+  const [obra] = NBZSync.fundir(local, doServidor);
+
+  igual(obra.name, 'MEDICAL CENTER RENOMEADO', 'o campo que mudou tem de vir do servidor');
+  igual(obra.floorPlans.length, 2, 'os pavimentos NÃO podem ter sido apagados');
+  igual(obra.floorPlans[0].regions.length, 1, 'nem os setores dentro deles');
+  igual(obra.floorPlans[0].planImage, 'blob:local/planta', 'nem a planta local');
+  igual(obra.photoReports.length, 1, 'nem os relatórios');
+  igual(obra.photoReports[0].photos[0].data, 'blob:local/foto', 'nem o binário da foto');
+});
+
+teste('fusão delta não apaga setor que o pacote não trouxe', () => {
+  /* Um nível abaixo, e o mesmo erro: pacote com o pavimento e sem os setores. */
+  const local = [{
+    id: 'obra-1', floorPlans: [{ id: 'pav-1', name: 'Térreo', planImage: 'blob:x', regions: [
+      { id: 'set-1', name: 'Setor A', status: 'executed' },
+      { id: 'set-2', name: 'Setor B', status: 'pending' }
+    ] }], photoReports: []
+  }];
+  const doServidor = [{
+    id: 'obra-1', floorPlans: [{ id: 'pav-1', name: 'TÉRREO REVISADO', planImage: '', regions: [] }], photoReports: []
+  }];
+
+  const [obra] = NBZSync.fundir(local, doServidor);
+
+  igual(obra.floorPlans[0].name, 'TÉRREO REVISADO', 'o nome novo vem do servidor');
+  igual(obra.floorPlans[0].regions.map((r) => r.id).sort(), ['set-1', 'set-2'], 'os setores permanecem');
+  igual(obra.floorPlans[0].planImage, 'blob:x', 'e a planta local também');
+});
+
+teste('fusão delta aplica o que o servidor de fato mandou', () => {
+  /* Contraprova: preservar não pode virar ignorar. O que vem no pacote tem de
+     substituir o local, senão alteração feita noutro aparelho nunca chegaria. */
+  const local = [{
+    id: 'obra-1', floorPlans: [{ id: 'pav-1', regions: [{ id: 'set-1', status: 'pending' }] }], photoReports: []
+  }];
+  const doServidor = [{
+    id: 'obra-1', floorPlans: [
+      { id: 'pav-1', regions: [{ id: 'set-1', status: 'executed' }] },
+      { id: 'pav-2', regions: [] }
+    ], photoReports: []
+  }];
+
+  const [obra] = NBZSync.fundir(local, doServidor);
+
+  igual(obra.floorPlans.length, 2, 'o pavimento novo do servidor tem de aparecer');
+  igual(obra.floorPlans[0].regions[0].status, 'executed', 'e a situação nova tem de vencer a local');
 });
 
 /* --------------------------------------------------- busca periódica */
