@@ -1016,6 +1016,55 @@ teste('a varredura não reenvia planta que o colega apagou', async () => {
   ctx.fechar();
 });
 
+teste('planta apagada pelo administrador some no aparelho que só a baixou', async () => {
+  /* O caso que o usuário descreveu: o administrador apaga, e no aparelho do
+     colega a planta continua lá — e volta ao servidor.
+
+     A causa era a lista de plantas conhecidas registrar apenas o ENVIO. Quem
+     baixou a planta nunca a enviou, então a varredura dele a tratava como
+     inédita, reenviava, e a exclusão era desfeita por quem só lia. */
+  const { api, db } = servidorDeTeste();
+
+  const admin = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(admin, { nome: 'Richard', usuario: 'richard', senha: 'senhaforte1' });
+  await criarObraComFoto(admin);
+  await importarPlanta(admin);
+  await admin.eval('sincronizarComServidor()');
+  await pausa(400);
+
+  /* O colega entra e recebe a planta. */
+  const colega = await boot({ api });
+  await pausa(600);
+  await preencherLogin(colega, { usuario: 'richard', senha: 'senhaforte1' });
+  await pausa(1500);
+  confirmar(
+    String(await colega.eval('projects.find((p) => p.id === "obra-1").floorPlans[0].planImage')).startsWith('blob:'),
+    'pré-condição: o colega recebeu a planta'
+  );
+
+  /* O administrador apaga. */
+  await admin.eval('(async () => { await window.NBZApi.excluirPlanta("pav-1"); })()');
+  await pausa(300);
+  igual(db.prepare('select planta_r2_key from pavimentos where id = ?').get('pav-1').planta_r2_key, null,
+    'pré-condição: saiu do servidor');
+  admin.fechar();
+
+  /* O colega sincroniza — e não pode nem continuar com a planta, nem repô-la. */
+  await colega.eval('sincronizarComServidor()');
+  await pausa(600);
+
+  igual(
+    await colega.eval('projects.find((p) => p.id === "obra-1").floorPlans[0].planImage'), '',
+    'a planta tem de sumir no aparelho do colega'
+  );
+  igual(
+    db.prepare('select planta_r2_key from pavimentos where id = ?').get('pav-1').planta_r2_key, null,
+    'e ele NÃO pode tê-la reenviado ao servidor'
+  );
+  colega.fechar();
+});
+
 teste('a limpeza de órfãos não apaga a planta', async () => {
   /* O defeito que deixou o pavimento com quadro de imagem quebrada no celular:
      a planta mora na mesma loja das fotografias, e a limpeza montava a lista do

@@ -31,14 +31,18 @@
   const CHAVE_USUARIO = 'nbz-usuario-v1';
   const CHAVE_FILA = 'nbz-fila-envio-v1';
   const CHAVE_FILA_PLANTAS = 'nbz-fila-plantas-v1';
-  /* Pavimentos cuja planta JA SUBIU por este aparelho.
+  /* Pavimentos cuja planta este aparelho SABE que chegou ao servidor — porque
+     ele a enviou OU porque a baixou de la.
 
-     Existe pelo mesmo motivo de `CHAVE_ENVIADAS` nas fotografias, e a falta
-     dela deixava a exclusao impossivel: a varredura enfileira toda planta que
-     esta aqui e nao esta no servidor, e sem esta lista ela nao distingue
-     "nunca foi enviada" de "foi apagada por outra pessoa". Quem apagava a
-     planta num aparelho a via voltar, porque o outro a reenviava na
-     sincronizacao seguinte. */
+     A varredura enfileira toda planta que esta aqui e nao esta no servidor, e
+     sem esta lista ela nao distingue "nunca foi enviada" de "foi apagada por
+     outra pessoa". Quem apagava a planta num aparelho a via voltar, porque o
+     outro a repunha na sincronizacao seguinte.
+
+     REGISTRAR SO O ENVIO NAO BASTA, e essa foi a primeira tentativa falha:
+     o aparelho que BAIXOU a planta nunca a enviou, entao para a varredura dele
+     ela parecia inedita e ele a reenviava. Quem conhece a planta por download
+     tambem sabe que ela existe no servidor, e e isso que a lista guarda. */
   const CHAVE_PLANTAS_ENVIADAS = 'nbz-plantas-enviadas-v1';
   /* Etag da planta que esta no aparelho, por pavimento. E o que permite
      perguntar ao servidor "mudou?" em vez de rebaixar o arquivo inteiro. */
@@ -544,12 +548,12 @@
     return filaDePlantas().some((item) => item.pavimentoId === pavimentoId);
   }
 
-  function plantasEnviadas() {
+  function plantasNoServidor() {
     const lista = ler(CHAVE_PLANTAS_ENVIADAS, []);
     return new Set(Array.isArray(lista) ? lista : []);
   }
 
-  function marcarPlantaEnviada(pavimentoId) {
+  function marcarPlantaNoServidor(pavimentoId) {
     const lista = ler(CHAVE_PLANTAS_ENVIADAS, []);
     const atual = Array.isArray(lista) ? lista : [];
     if (atual.includes(pavimentoId)) return;
@@ -560,7 +564,7 @@
   /* Chamado ao apagar: a partir daqui este aparelho nao considera mais que
      mandou planta alguma para o pavimento, e uma importacao nova volta a poder
      subir normalmente. */
-  function esquecerPlantaEnviada(pavimentoId) {
+  function esquecerPlantaNoServidor(pavimentoId) {
     const lista = ler(CHAVE_PLANTAS_ENVIADAS, []);
     const atual = Array.isArray(lista) ? lista : [];
     gravar(CHAVE_PLANTAS_ENVIADAS, atual.filter((item) => item !== pavimentoId));
@@ -624,7 +628,7 @@
     /* Registra que ESTE aparelho ja mandou a planta deste pavimento. E o que
        permite a varredura distinguir, depois, "nunca foi enviada" de "foi
        apagada por outra pessoa" — e parar de reenviar o que alguem apagou. */
-    marcarPlantaEnviada(item.pavimentoId);
+    marcarPlantaNoServidor(item.pavimentoId);
     /* A planta mudou no servidor: o etag guardado nao vale mais, e mante-lo
        faria a proxima descida aceitar 304 sobre a versao errada. */
     gravarEtagDePlanta(item.pavimentoId, '');
@@ -660,7 +664,7 @@
      fila subiria logo depois a planta que o usuario acabou de apagar. */
   async function excluirPlanta(pavimentoId) {
     removerPlantaDaFila(pavimentoId);
-    esquecerPlantaEnviada(pavimentoId);
+    esquecerPlantaNoServidor(pavimentoId);
     gravarEtagDePlanta(pavimentoId, '');
     const midia = global.NBZMidia;
     if (midia) await midia.removerPlanta(pavimentoId);
@@ -717,6 +721,10 @@
     const gravou = await midia.guardarPlanta(pavimentoId, new global.Blob([bytes], { type: tipo }));
     if (!gravou) return '';
     gravarEtagDePlanta(pavimentoId, resposta.headers.get('etag') || '');
+    /* Quem baixou tambem SABE que a planta existe no servidor. Sem esta linha a
+       varredura deste aparelho a trataria como inedita e a reenviaria — e a
+       planta que o administrador apagou voltaria, reposta por quem so a leu. */
+    marcarPlantaNoServidor(pavimentoId);
     return midia.urlDaPlanta(pavimentoId);
   }
 
@@ -754,7 +762,7 @@
     escoarFilaDePlantas,
     plantasPendentes,
     plantaPendente,
-    plantasEnviadas,
+    plantasNoServidor,
     baixarPlanta,
     excluirPlanta,
     fotosEnviadas,

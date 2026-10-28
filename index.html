@@ -4498,7 +4498,7 @@
          por alguém — não é envio pendente. Sem esta lista a varredura reenviava
          o que o colega acabara de apagar, e a planta ressuscitava sozinha a cada
          sincronização. É a mesma proteção que as fotografias sempre tiveram. */
-      const jaEnviadas = window.NBZApi.plantasEnviadas();
+      const jaEnviadas = window.NBZApi.plantasNoServidor();
       let enfileiradas = 0;
       for (const project of projects) {
         for (const floor of project.floorPlans || []) {
