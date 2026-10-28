@@ -31,19 +31,26 @@
   const CHAVE_USUARIO = 'nbz-usuario-v1';
   const CHAVE_FILA = 'nbz-fila-envio-v1';
   const CHAVE_FILA_PLANTAS = 'nbz-fila-plantas-v1';
-  /* Pavimentos cuja planta este aparelho SABE que chegou ao servidor — porque
-     ele a enviou OU porque a baixou de la.
+  /* Pavimentos cuja planta foi IMPORTADA NESTE APARELHO e ainda nao se
+     confirmou no servidor. So estes a varredura pode reenviar.
 
-     A varredura enfileira toda planta que esta aqui e nao esta no servidor, e
-     sem esta lista ela nao distingue "nunca foi enviada" de "foi apagada por
-     outra pessoa". Quem apagava a planta num aparelho a via voltar, porque o
-     outro a repunha na sincronizacao seguinte.
+     POR QUE A ORIGEM, E NAO "ja subiu" OU "ja baixou"
 
-     REGISTRAR SO O ENVIO NAO BASTA, e essa foi a primeira tentativa falha:
-     o aparelho que BAIXOU a planta nunca a enviou, entao para a varredura dele
-     ela parecia inedita e ele a reenviava. Quem conhece a planta por download
-     tambem sabe que ela existe no servidor, e e isso que a lista guarda. */
-  const CHAVE_PLANTAS_ENVIADAS = 'nbz-plantas-enviadas-v1';
+     A varredura roda ANTES da descida no mesmo ciclo. Entao o aparelho que
+     ainda nao recebeu a exclusao olha o proprio estado, ve planta local sem
+     planta no servidor, conclui "falta enviar" e a repoe — antes de descobrir
+     que alguem a apagou. Isso e uma corrida, nao um caso de borda: com dois
+     aparelhos abertos, apagar num deles era desfeito pelo outro.
+
+     Duas tentativas anteriores erraram o alvo. Marcar o envio nao bastava,
+     porque quem baixou nunca enviou. Marcar tambem o download nao bastava,
+     porque aparelho que ja tinha a planta de antes nao carrega marca nenhuma.
+
+     A origem resolve de vez: quem apenas recebeu uma copia nunca entra na lista,
+     logo nunca reenvia, independente do que tenha acontecido antes. A marca sai
+     quando o envio se confirma — dali em diante a varredura nao precisa mais
+     proteger aquele pavimento. */
+  const CHAVE_PLANTAS_PROPRIAS = 'nbz-plantas-proprias-v1';
   /* Etag da planta que esta no aparelho, por pavimento. E o que permite
      perguntar ao servidor "mudou?" em vez de rebaixar o arquivo inteiro. */
   const CHAVE_ETAG_PLANTAS = 'nbz-planta-etag-v1';
@@ -548,26 +555,26 @@
     return filaDePlantas().some((item) => item.pavimentoId === pavimentoId);
   }
 
-  function plantasNoServidor() {
-    const lista = ler(CHAVE_PLANTAS_ENVIADAS, []);
+  function plantasProprias() {
+    const lista = ler(CHAVE_PLANTAS_PROPRIAS, []);
     return new Set(Array.isArray(lista) ? lista : []);
   }
 
-  function marcarPlantaNoServidor(pavimentoId) {
-    const lista = ler(CHAVE_PLANTAS_ENVIADAS, []);
+  function marcarPlantaPropria(pavimentoId) {
+    const lista = ler(CHAVE_PLANTAS_PROPRIAS, []);
     const atual = Array.isArray(lista) ? lista : [];
     if (atual.includes(pavimentoId)) return;
     atual.push(pavimentoId);
-    gravar(CHAVE_PLANTAS_ENVIADAS, atual.length > 2000 ? atual.slice(-2000) : atual);
+    gravar(CHAVE_PLANTAS_PROPRIAS, atual.length > 2000 ? atual.slice(-2000) : atual);
   }
 
   /* Chamado ao apagar: a partir daqui este aparelho nao considera mais que
      mandou planta alguma para o pavimento, e uma importacao nova volta a poder
      subir normalmente. */
-  function esquecerPlantaNoServidor(pavimentoId) {
-    const lista = ler(CHAVE_PLANTAS_ENVIADAS, []);
+  function esquecerPlantaPropria(pavimentoId) {
+    const lista = ler(CHAVE_PLANTAS_PROPRIAS, []);
     const atual = Array.isArray(lista) ? lista : [];
-    gravar(CHAVE_PLANTAS_ENVIADAS, atual.filter((item) => item !== pavimentoId));
+    gravar(CHAVE_PLANTAS_PROPRIAS, atual.filter((item) => item !== pavimentoId));
   }
 
   /* Enfileira a planta do pavimento. O binario ja esta no IndexedDB sob
@@ -581,6 +588,10 @@
     const lista = filaDePlantas().filter((item) => item.pavimentoId !== pavimentoId);
     lista.push({ pavimentoId, meta, desde: new Date().toISOString() });
     salvarFilaDePlantas(lista);
+    /* Enfileirar e o que o painel faz ao IMPORTAR, entao e aqui que nasce a
+       marca de origem. A varredura tambem chama esta funcao, mas ela so
+       enfileira o que ja esta marcado — nao cria origem nova. */
+    marcarPlantaPropria(pavimentoId);
     return lista.length;
   }
 
@@ -625,10 +636,10 @@
       bruto: new global.Blob([registro.dados], { type: registro.tipo || 'image/jpeg' })
     });
     removerPlantaDaFila(item.pavimentoId);
-    /* Registra que ESTE aparelho ja mandou a planta deste pavimento. E o que
-       permite a varredura distinguir, depois, "nunca foi enviada" de "foi
-       apagada por outra pessoa" — e parar de reenviar o que alguem apagou. */
-    marcarPlantaNoServidor(item.pavimentoId);
+    /* Envio confirmado: a varredura nao precisa mais proteger este pavimento, e
+       manter a marca faria este aparelho reenviar a planta quando alguem a
+       apagasse — que e exatamente o problema que a marca existe para evitar. */
+    esquecerPlantaPropria(item.pavimentoId);
     /* A planta mudou no servidor: o etag guardado nao vale mais, e mante-lo
        faria a proxima descida aceitar 304 sobre a versao errada. */
     gravarEtagDePlanta(item.pavimentoId, '');
@@ -664,7 +675,7 @@
      fila subiria logo depois a planta que o usuario acabou de apagar. */
   async function excluirPlanta(pavimentoId) {
     removerPlantaDaFila(pavimentoId);
-    esquecerPlantaNoServidor(pavimentoId);
+    esquecerPlantaPropria(pavimentoId);
     gravarEtagDePlanta(pavimentoId, '');
     const midia = global.NBZMidia;
     if (midia) await midia.removerPlanta(pavimentoId);
@@ -721,10 +732,9 @@
     const gravou = await midia.guardarPlanta(pavimentoId, new global.Blob([bytes], { type: tipo }));
     if (!gravou) return '';
     gravarEtagDePlanta(pavimentoId, resposta.headers.get('etag') || '');
-    /* Quem baixou tambem SABE que a planta existe no servidor. Sem esta linha a
-       varredura deste aparelho a trataria como inedita e a reenviaria — e a
-       planta que o administrador apagou voltaria, reposta por quem so a leu. */
-    marcarPlantaNoServidor(pavimentoId);
+    /* Baixar NAO cria marca de origem: a planta veio de outra pessoa, e este
+       aparelho so tem uma copia. Marcar aqui o tornaria candidato a reenviar a
+       planta quando o administrador a apagasse. */
     return midia.urlDaPlanta(pavimentoId);
   }
 
@@ -762,7 +772,7 @@
     escoarFilaDePlantas,
     plantasPendentes,
     plantaPendente,
-    plantasNoServidor,
+    plantasProprias,
     baixarPlanta,
     excluirPlanta,
     fotosEnviadas,

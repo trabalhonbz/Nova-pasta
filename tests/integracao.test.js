@@ -1129,23 +1129,28 @@ teste('a limpeza apaga a planta de pavimento que não existe mais', async () => 
   ctx.fechar();
 });
 
-teste('planta que nunca entrou na fila é recuperada pela varredura', async () => {
-  /* Reproduz o que aconteceu com a primeira planta cadastrada em produção: ela
-     foi importada antes de o envio existir, então ficou como data-URI no estado,
-     sem entrada na fila e sem binário no IndexedDB. As dimensões subiram pelo
-     /sync/subir, que sempre as carregou, e o desenho não foi a lugar nenhum —
-     o banco ficou com planta_largura preenchida e planta_r2_key nula.
+teste('planta sem marca de origem não é reenviada nem mantida', async () => {
+  /* COMPROMISSO DELIBERADO, e vale explicar porque contraria uma versão
+     anterior deste mesmo teste.
 
-     Sem a varredura, nenhuma sincronização posterior corrige isso: a fila está
-     vazia e nada volta a olhar para o estado. */
+     A varredura já recuperava qualquer planta local ausente do servidor. Isso
+     resolvia o caso da planta importada antes de existir o envio — e causava a
+     ressurreição: a varredura roda antes da descida, então o aparelho que ainda
+     não soube da exclusão repunha a planta que o administrador apagara.
+
+     Entre "recupera planta órfã sozinha" e "exclusão funciona", a segunda vale
+     mais: a primeira é situação de uma vez só, a segunda é uso diário. Então a
+     varredura passou a exigir marca de origem, e a planta órfã deixou de subir
+     sozinha — mas o distintivo acusa, e reimportar resolve. Perda silenciosa é
+     que não pode haver. */
   const { api, db } = servidorDeTeste();
   const ctx = await boot({ api });
   await pausa(600);
   await preencherCadastroInicial(ctx, { nome: 'André', usuario: 'andre', senha: 'senhaforte1' });
   await criarObraComFoto(ctx);
 
-  /* Planta no estado como data-URI, sem fila e sem IndexedDB — o estado exato
-     de quem importou antes da mudança. */
+  /* Planta no estado, sem fila e sem marca de origem: o retrato de quem
+     importou antes de o envio existir. */
   await ctx.eval(`(() => {
     const floor = projects[0].floorPlans[0];
     floor.planImage = ${JSON.stringify(JPEG_1X1)};
@@ -1155,18 +1160,43 @@ teste('planta que nunca entrou na fila é recuperada pela varredura', async () =
     floor.temPlanta = false;
     saveState();
   })()`);
-  igual(ctx.eval('window.NBZApi.plantasPendentes()'), 0, 'pré-condição: a fila está vazia');
 
   await ctx.eval('sincronizarComServidor()');
   await pausa(600);
 
-  const pavimento = db.prepare(
-    'select planta_r2_key, planta_largura, planta_arquivo from pavimentos where id = ?'
-  ).get('pav-1');
-  confirmar(pavimento.planta_r2_key,
-    'a varredura deveria ter enviado o binário — sem ela, planta_r2_key fica nula');
-  igual(pavimento.planta_largura, 1800, 'com as dimensões que já estavam no estado');
-  igual(pavimento.planta_arquivo, 'N644-23-LOIM-0001-03S-HO-R00.jpg', 'e o nome do arquivo');
+  igual(
+    db.prepare('select planta_r2_key from pavimentos where id = ?').get('pav-1').planta_r2_key, null,
+    'sem marca de origem, a varredura NÃO pode reenviar'
+  );
+
+  /* E a cópia local também sai. Não há como distinguir "importei antes de o
+     envio existir" de "o administrador apagou": nos dois casos há planta aqui,
+     nenhuma lá e nenhuma marca de origem. Entre manter uma planta que nunca
+     poderá subir e fazer a exclusão funcionar, vale a exclusão — é uso diário
+     contra situação de uma vez só. Reimportar devolve a planta com marca. */
+  igual(
+    await ctx.eval('projects[0].floorPlans[0].planImage'), '',
+    'a cópia local sem origem é tratada como apagada'
+  );
+  ctx.fechar();
+});
+
+teste('planta importada agora sobe, porque tem marca de origem', async () => {
+  /* Contraprova: exigir origem não pode ter quebrado o caminho normal. */
+  const { api, db } = servidorDeTeste();
+  const ctx = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(ctx, { nome: 'André', usuario: 'andre', senha: 'senhaforte1' });
+  await criarObraComFoto(ctx);
+  await importarPlanta(ctx);
+
+  await ctx.eval('sincronizarComServidor()');
+  await pausa(600);
+
+  confirmar(
+    db.prepare('select planta_r2_key from pavimentos where id = ?').get('pav-1').planta_r2_key,
+    'planta importada neste aparelho tem de subir normalmente'
+  );
   ctx.fechar();
 });
 

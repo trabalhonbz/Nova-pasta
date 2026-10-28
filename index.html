@@ -4446,8 +4446,17 @@
              "planta importada aqui e ainda não enviada": nos dois o servidor
              diz que não tem planta, e só este aparelho sabe se pretende mandar
              uma. */
+          /* A MARCA DE ORIGEM, e não a fila, é o que distingue "o administrador
+             apagou" de "importei aqui e ainda não subiu".
+
+             A fila esvazia assim que o envio é tentado, inclusive quando falha e
+             a entrada é descartada — e aí a planta recém-importada viraria
+             "apagada" e sumiria sozinha. A marca de origem só sai quando o envio
+             se CONFIRMA, então ela cobre todo o intervalo em que a planta existe
+             aqui e ainda não existe lá. */
+          const proprias = window.NBZApi.plantasProprias();
           projects = window.NBZSync.fundir(projects, vindos, {
-            plantaPendente: (id) => window.NBZApi.plantaPendente(id)
+            plantaPendente: (id) => proprias.has(id)
           });
           saveStateSemReplicar();
           await baixarPlantasFaltantes();
@@ -4494,16 +4503,22 @@
        a mesma condição que o distintivo mostra como "não enviada". */
     async function enfileirarPlantasPendentes() {
       if (!comServidor || !window.NBZApi) return 0;
-      /* Planta que JÁ subiu por este aparelho e sumiu do servidor foi apagada
-         por alguém — não é envio pendente. Sem esta lista a varredura reenviava
-         o que o colega acabara de apagar, e a planta ressuscitava sozinha a cada
-         sincronização. É a mesma proteção que as fotografias sempre tiveram. */
-      const jaEnviadas = window.NBZApi.plantasNoServidor();
+      /* SÓ REENVIA PLANTA QUE FOI IMPORTADA NESTE APARELHO.
+
+         A varredura roda antes da descida no mesmo ciclo, então um aparelho que
+         ainda não recebeu a exclusão veria planta local sem planta no servidor e
+         concluiria "falta enviar" — repondo o que o administrador acabou de
+         apagar, antes de sequer saber da exclusão. Com dois aparelhos abertos,
+         apagar num era desfeito pelo outro.
+
+         A marca de origem corta a corrida na raiz: quem apenas recebeu uma cópia
+         nunca entra na lista e nunca reenvia. */
+      const proprias = window.NBZApi.plantasProprias();
       let enfileiradas = 0;
       for (const project of projects) {
         for (const floor of project.floorPlans || []) {
           if (!floor.id || !floor.planImage || floor.temPlanta) continue;
-          if (jaEnviadas.has(floor.id)) continue;
+          if (!proprias.has(floor.id)) continue;
 
           /* Planta importada antes de o envio existir ficou como data-URI no
              estado e nunca foi para o IndexedDB, que é de onde a fila lê o
