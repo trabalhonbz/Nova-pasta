@@ -642,6 +642,78 @@ teste('ADM cria pavimento, todos veem; ADM exclui, some para todos', async () =>
   colega.fechar();
 });
 
+teste('foto e demarcação do ADM chegam a todos os cargos', async () => {
+  /* O que o usuário pediu: registrar fotografia num pavimento, demarcar área, e
+     conferir que aparece para todos os usuários e cargos.
+
+     Cada cargo entra num aparelho próprio, com localStorage e IndexedDB vazios —
+     só o servidor em comum. O que se verifica em cada um é o que de fato importa
+     na obra: a demarcação com a situação certa, e a FOTOGRAFIA com binário no
+     armazenamento local (não apenas o registro), porque é ela que precisa abrir
+     dentro da obra sem sinal. */
+  const { api, db } = servidorDeTeste();
+
+  const admin = await boot({ api });
+  admin.__api = api;
+  await pausa(600);
+  await preencherCadastroInicial(admin, { nome: 'Richard', usuario: 'richard', senha: 'senhaforte1' });
+
+  /* A obra já nasce com setor demarcado e uma fotografia — é o que
+     `criarObraComFoto` monta: setor 'set-1' como 'executed' e a foto 'foto-1'. */
+  await criarObraComFoto(admin);
+  await admin.eval('sincronizarComServidor()');
+  await pausa(600);
+
+  const foto = db.prepare('select id, relatorio_id, bytes from fotos where excluido_em is null').get();
+  confirmar(foto, 'pré-condição: a fotografia subiu para o servidor');
+  confirmar(foto.bytes > 0, 'com binário de tamanho real');
+  igual(db.prepare('select situacao from setores where id = ?').get('set-1').situacao, 'executed',
+    'e a demarcação subiu com a situação aplicada');
+
+  /* Um aparelho por cargo. O cliente entra também: ele consulta relatórios, e
+     fotografia que não chega a ele é relatório pela metade. */
+  const cargos = ['engenheiro', 'encarregado', 'tecnico', 'cliente'];
+  for (const cargo of cargos) {
+    const usuario = `pessoa_${cargo}`;
+    const aparelho = await criarColegaComSenhaPropria(admin, {
+      nome: `Pessoa ${cargo}`, usuario,
+      provisoria: 'provisoria123', definitiva: `senha_${cargo}_1`, cargo
+    });
+    await aparelho.eval('sincronizarComServidor({ apenasBaixar: true })');
+    /* Espera generosa: além da descida, o binário da fotografia é baixado num
+       segundo passo. */
+    await pausa(1600);
+
+    const visto = await aparelho.eval(`(() => {
+      const obra = projects.find((p) => p.id === 'obra-1');
+      if (!obra) return { obra: false };
+      const pavimento = obra.floorPlans[0];
+      const relatorio = (obra.photoReports || [])[0];
+      const fotografia = relatorio && relatorio.photos && relatorio.photos[0];
+      return {
+        obra: true,
+        setores: pavimento.regions.map((r) => ({ id: r.id, situacao: r.status })),
+        relatorioDoPavimento: relatorio ? relatorio.floorId : null,
+        fotoId: fotografia ? fotografia.id : null,
+        fotoTemImagem: Boolean(fotografia && String(fotografia.data || '').startsWith('blob:'))
+      };
+    })()`);
+
+    confirmar(visto.obra, `${cargo}: a obra deveria ter chegado`);
+    igual(visto.setores, [{ id: 'set-1', situacao: 'executed' }],
+      `${cargo}: a demarcação deveria aparecer com a situação certa`);
+    igual(visto.relatorioDoPavimento, 'pav-1',
+      `${cargo}: o relatório fotográfico deveria estar no pavimento certo`);
+    igual(visto.fotoId, 'foto-1', `${cargo}: a fotografia deveria aparecer`);
+    confirmar(visto.fotoTemImagem,
+      `${cargo}: o binário da fotografia deveria estar no aparelho, e não só o registro`);
+
+    aparelho.fechar();
+  }
+
+  admin.fechar();
+});
+
 /* --------------------------------------------------------- exclusões */
 
 /* ------------------------------------------------------- permissões */
