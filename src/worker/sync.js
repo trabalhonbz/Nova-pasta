@@ -45,6 +45,46 @@ function podeEscrever(sessao) {
   return Boolean(sessao) && sessao.nivelAcesso !== 'cliente';
 }
 
+/* O QUE CADA CARGO PODE GRAVAR, E NAO SO QUEM PODE SINCRONIZAR
+
+   `podeEscrever` apenas barra o cliente. Com isso o TECNICO — que no painel so
+   muda situacao de setor, registra fotografia e lanca presenca — podia criar,
+   renomear e remodelar obra, pavimento e setor chamando `/sync/subir` direto. E
+   o ENCARREGADO, que nao tem `works.create`, podia criar obra nova.
+
+   Esconder botao nao e permissao: e a primeira frase do cabecalho do Worker, e
+   a regra tinha ficado so na tela.
+
+   O mapeamento espelha `roleDefinitions` do painel:
+
+     works.create -> administrador, engenheiro            (criar obra)
+     works.edit   -> administrador, engenheiro, encarregado (estrutura)
+     status.edit  -> todos menos cliente                  (situacao do setor)
+
+   Quem nao tem `works.edit` continua sincronizando: o pacote traz o estado
+   inteiro, e recusar o pedido todo tiraria do tecnico a capacidade de registrar
+   o que ele PODE. O que se faz e ignorar o que ele nao pode gravar. */
+const CARGOS_CRIAR_OBRA = ['administrador', 'engenheiro'];
+const CARGOS_ESTRUTURA = ['administrador', 'engenheiro', 'encarregado'];
+
+function podeCriarObra(sessao) {
+  return Boolean(sessao) && CARGOS_CRIAR_OBRA.includes(sessao.nivelAcesso);
+}
+
+function podeEditarEstrutura(sessao) {
+  return Boolean(sessao) && CARGOS_ESTRUTURA.includes(sessao.nivelAcesso);
+}
+
+/* Quais destes ids ja existem como obra viva. Uma consulta por pedido. */
+async function obrasQueExistem(env, ids) {
+  if (!ids.length) return new Set();
+  const marcas = ids.map(() => '?').join(',');
+  const { results } = await env.DB.prepare(
+    `select id from obras where excluido_em is null and id in (${marcas})`
+  ).bind(...ids).all();
+  return new Set((results || []).map((linha) => linha.id));
+}
+
 /* Mantem o mais recente entre o que chegou e o que esta gravado. Sem data no
    que chegou, assume-se agora: o cliente acabou de mandar. */
 function maisRecente(entrada, gravado) {
@@ -88,9 +128,23 @@ export async function subir(env, sessao, corpo) {
   const contagem = { obras: 0, pavimentos: 0, setores: 0, relatorios: 0 };
   const instrucoes = [];
 
+  /* Quem nao pode CRIAR obra tambem nao pode criar os filhos dela.
+
+     Sem esta consulta, a obra nova era ignorada (certo) e o pavimento dela era
+     gravado assim mesmo — e a chave estrangeira `pavimentos.obra_id` derrubava
+     o lote INTEIRO. Um encarregado com obra nova no aparelho perderia toda a
+     sincronizacao, inclusive o que ele podia gravar.
+
+     Uma consulta por pedido resolve: obra que nao existe e simplesmente
+     pulada. Para quem pode criar, nada disso e necessario. */
+  const existentes = podeCriarObra(sessao)
+    ? null
+    : await obrasQueExistem(env, obras.map((obra) => limpar(obra && obra.id, 64)).filter(Boolean));
+
   for (const obra of obras) {
     const obraId = limpar(obra && obra.id, 64);
     if (!obraId) continue;
+    if (existentes && !existentes.has(obraId)) continue;
     montarObra(env, sessao, obra, obraId, instrucoes, contagem);
   }
 
@@ -198,6 +252,34 @@ const SITUACOES = ['executed', 'inProgress', 'blocked', 'pending'];
    o lote saia numa transacao so. */
 function montarObra(env, sessao, obra, obraId, instrucoes, contagem) {
   const carimbo = limpar(obra.atualizadoEm, 40) || agora();
+  const estrutura = podeEditarEstrutura(sessao);
+
+  /* Sem `works.edit` nada da estrutura e gravado — nem obra, nem pavimento, nem
+     os campos do setor. Resta a situacao, tratada em `montarSetor`. */
+  if (!estrutura) {
+    montarSomenteSituacoes(env, obra, instrucoes, contagem, carimbo);
+    return;
+  }
+
+  /* Com `works.edit` e sem `works.create`, a obra pode ser ATUALIZADA e nao
+     criada: o `insert` viraria cadastro novo pela porta dos fundos. O update
+     sobre id inexistente simplesmente nao afeta linha nenhuma. */
+  if (!podeCriarObra(sessao)) {
+    instrucoes.push(env.DB.prepare(
+      `update obras
+          set nome = ?, cidade = ?, cliente = ?, responsavel = ?, sistema = ?,
+              situacao = ?, data_inicio = ?, imagem_url = ?, atualizado_em = ?
+        where id = ? and excluido_em is null and ? >= atualizado_em`
+    ).bind(
+      limpar(obra.nome, 120), limpar(obra.cidade, 80), limpar(obra.cliente, 120),
+      limpar(obra.responsavel, 80), limpar(obra.sistema, 80) || 'A definir',
+      limpar(obra.situacao, 40) || 'Em andamento', limpar(obra.dataInicio, 30) || null,
+      limpar(obra.imagemUrl, 500), carimbo, obraId, carimbo
+    ));
+    contagem.obras += 1;
+    montarFilhos(env, sessao, obra, obraId, instrucoes, contagem, carimbo);
+    return;
+  }
 
   instrucoes.push(env.DB.prepare(
     `insert into obras
@@ -219,7 +301,10 @@ function montarObra(env, sessao, obra, obraId, instrucoes, contagem) {
     obra.excluidoEm ? limpar(obra.excluidoEm, 40) : null
   ));
   contagem.obras += 1;
+  montarFilhos(env, sessao, obra, obraId, instrucoes, contagem, carimbo);
+}
 
+function montarFilhos(env, sessao, obra, obraId, instrucoes, contagem, carimbo) {
   /* Os ids que entram neste lote. Um relatorio cujo pavimento nao esteja aqui e
      descartado: a chave estrangeira derrubaria o lote inteiro, e perder a obra
      toda por causa de um relatorio orfao seria pior que ignora-lo. */
@@ -239,6 +324,30 @@ function montarObra(env, sessao, obra, obraId, instrucoes, contagem) {
     const pavimentoId = limpar(relatorio && relatorio.pavimentoId, 64);
     if (!relatorioId || !pavimentosDoLote.has(pavimentoId)) continue;
     montarRelatorio(env, sessao, obraId, relatorio, relatorioId, pavimentoId, carimbo, instrucoes, contagem, setoresDoLote);
+  }
+}
+
+/* Caminho do cargo sem `works.edit` — hoje, o tecnico.
+
+   Ele registra fotografia e muda a situacao do setor, e e so isso que sobe.
+   Nada de criar obra, renomear pavimento ou mexer em area, material ou pontos.
+
+   `update ... where id = ?` sobre id inexistente nao afeta linha alguma, entao
+   um pacote com obra nova simplesmente nao cria nada — sem precisar consultar
+   antes o que existe. */
+function montarSomenteSituacoes(env, obra, instrucoes, contagem, carimbo) {
+  for (const pavimento of (Array.isArray(obra.pavimentos) ? obra.pavimentos : [])) {
+    for (const setor of (Array.isArray(pavimento && pavimento.setores) ? pavimento.setores : [])) {
+      const setorId = limpar(setor && setor.id, 64);
+      const situacao = SITUACOES.includes(setor && setor.situacao) ? setor.situacao : '';
+      if (!setorId || !situacao) continue;
+
+      instrucoes.push(env.DB.prepare(
+        `update setores set situacao = ?, atualizado_em = ?
+          where id = ? and excluido_em is null and ? >= atualizado_em`
+      ).bind(situacao, carimbo, setorId, carimbo));
+      contagem.setores += 1;
+    }
   }
 }
 

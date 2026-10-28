@@ -644,6 +644,111 @@ teste('ADM cria pavimento, todos veem; ADM exclui, some para todos', async () =>
 
 /* --------------------------------------------------------- exclusões */
 
+/* ------------------------------------------------------- permissões */
+
+/* `obras.criado_por` referencia `usuarios(id)`, então sessão de teste precisa de
+   usuário correspondente no banco — senão o lote inteiro cai com FOREIGN KEY. */
+function semearUsuarios(db) {
+  const cargos = { u0: 'administrador', u1: 'tecnico', u2: 'encarregado', u3: 'cliente' };
+  for (const [id, cargo] of Object.entries(cargos)) {
+    db.prepare(
+      `insert into usuarios (id, usuario, nome, nivel_acesso, senha_hash, senha_salt)
+       values (?, ?, ?, ?, 'x', 'y')`
+    ).run(id, id, id, cargo);
+  }
+}
+
+function obraDeTeste(extra = {}) {
+  return {
+    id: 'obra-1', nome: 'MEDICAL CENTER', cidade: 'São Paulo',
+    pavimentos: [{
+      id: 'pav-1', nome: 'Térreo', areaTotal: 77,
+      setores: [{ id: 'set-1', nome: 'Setor A', situacao: 'pending', pontos: [], area: 10 }]
+    }],
+    ...extra
+  };
+}
+
+teste('técnico não cria nem altera estrutura pelo /sync/subir', async () => {
+  /* `podeEscrever` só barrava o cliente. O técnico, que no painel apenas muda
+     situação de setor, registra fotografia e lança presença, podia criar obra,
+     renomear pavimento e remodelar setor chamando a rota direto. */
+  const { env, db } = servidorDeTeste();
+  semearUsuarios(db);
+  const tecnico = { id: 'u1', nivelAcesso: 'tecnico' };
+
+  await sync.subir(env, tecnico, { obras: [obraDeTeste()] });
+
+  igual(db.prepare('select count(*) as t from obras').get().t, 0,
+    'o técnico NÃO pode criar obra');
+  igual(db.prepare('select count(*) as t from pavimentos').get().t, 0,
+    'nem pavimento');
+  igual(db.prepare('select count(*) as t from setores').get().t, 0,
+    'nem setor');
+});
+
+teste('técnico muda a situação do setor, que é o que o cargo permite', async () => {
+  /* Recusar o pedido inteiro tiraria dele o que PODE fazer: o pacote traz o
+     estado todo, inclusive obra e pavimento que ele não pode gravar. O que se
+     faz é ignorar o que não é dele e aplicar o que é. */
+  const { env, db } = servidorDeTeste();
+  semearUsuarios(db);
+  const adm = { id: 'u0', nivelAcesso: 'administrador' };
+  await sync.subir(env, adm, { obras: [obraDeTeste()] });
+  igual(db.prepare("select situacao from setores where id='set-1'").get().situacao, 'pending',
+    'pré-condição: o setor existe com a situação inicial');
+
+  const tecnico = { id: 'u1', nivelAcesso: 'tecnico' };
+  await sync.subir(env, tecnico, {
+    obras: [obraDeTeste({
+      nome: 'NOME TROCADO PELO TECNICO',
+      pavimentos: [{
+        id: 'pav-1', nome: 'RENOMEADO', areaTotal: 999,
+        setores: [{ id: 'set-1', nome: 'RENOMEADO', situacao: 'executed', pontos: [], area: 999 }]
+      }]
+    })]
+  });
+
+  igual(db.prepare("select situacao from setores where id='set-1'").get().situacao, 'executed',
+    'a situação tem de ter sido aplicada');
+  igual(db.prepare("select nome from setores where id='set-1'").get().nome, 'Setor A',
+    'mas o nome do setor não');
+  igual(db.prepare("select nome from pavimentos where id='pav-1'").get().nome, 'Térreo',
+    'nem o nome do pavimento');
+  igual(db.prepare("select nome from obras where id='obra-1'").get().nome, 'MEDICAL CENTER',
+    'nem o nome da obra');
+});
+
+teste('encarregado edita obra existente mas não cria obra nova', async () => {
+  /* O painel esconde "+ Nova obra" do encarregado (`works.create`) e deixa ele
+     editar (`works.edit`). O servidor aceitava os dois. */
+  const { env, db } = servidorDeTeste();
+  semearUsuarios(db);
+  const encarregado = { id: 'u2', nivelAcesso: 'encarregado' };
+
+  await sync.subir(env, encarregado, { obras: [obraDeTeste()] });
+  igual(db.prepare('select count(*) as t from obras').get().t, 0,
+    'encarregado não pode criar obra');
+
+  /* Com a obra já existente, ele edita. */
+  const adm = { id: 'u0', nivelAcesso: 'administrador' };
+  await sync.subir(env, adm, { obras: [obraDeTeste()] });
+  await sync.subir(env, encarregado, { obras: [obraDeTeste({ cidade: 'Campinas' })] });
+
+  igual(db.prepare("select cidade from obras where id='obra-1'").get().cidade, 'Campinas',
+    'mas pode editar a que já existe');
+  igual(db.prepare('select count(*) as t from pavimentos').get().t, 1,
+    'e continua podendo gravar pavimento');
+});
+
+teste('cliente não grava nada', async () => {
+  const { env, db } = servidorDeTeste();
+  semearUsuarios(db);
+  const recusado = await sync.subir(env, { id: 'u3', nivelAcesso: 'cliente' }, { obras: [obraDeTeste()] });
+  igual(recusado.status, 403, 'o cliente deveria receber 403');
+  igual(db.prepare('select count(*) as t from obras').get().t, 0, 'e nada pode ter sido gravado');
+});
+
 teste('aparelho com estado antigo não ressuscita registro excluído', async () => {
   /* A CAUSA RAIZ de "os pavimentos estão ressurgindo".
 
