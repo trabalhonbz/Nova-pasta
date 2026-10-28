@@ -1579,7 +1579,21 @@
         floor.planWidth = imported.width;
         floor.planHeight = imported.height;
         floor.planFileName = file.name;
-        if (floor.regions.length) floor.regions = [];
+        if (floor.regions.length) {
+          /* A limpeza das demarcações precisa ser DITA ao servidor.
+
+             O diálogo avisa que as marcações serão removidas, e isso só valia na
+             tela: o `/sync/subir` nunca apaga o que fica de fora, então os
+             setores antigos continuavam no servidor e voltavam na descida
+             seguinte — sobre a planta nova, com pontos calculados para a antiga,
+             no lugar errado. */
+          if (comServidor && window.NBZApi) {
+            for (const regiao of floor.regions) {
+              if (regiao && regiao.id) window.NBZApi.registrarExclusao('setor', regiao.id);
+            }
+          }
+          floor.regions = [];
+        }
         syncProjectStats(project);
         const activityCount = activities.length;
         addActivity('Planta importada', `${project.name} · ${floor.name} · ${file.name}`);

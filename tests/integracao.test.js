@@ -642,6 +642,286 @@ teste('ADM cria pavimento, todos veem; ADM exclui, some para todos', async () =>
   colega.fechar();
 });
 
+/* Importa pelo MANIPULADOR REAL do painel, trocando só o rasterizador.
+
+   O auxiliar `importarPlanta` grava direto no armazenamento e enfileira na mão —
+   útil, mas pula `importFloorPlan`, que é o que roda de verdade quando alguém
+   escolhe o arquivo. Se o defeito estiver ali (não gravar, não enfileirar, não
+   marcar origem, usar o id errado), nenhum teste pegaria.
+
+   Trocar o rasterizador é inevitável: ele depende de canvas, e o jsdom não tem.
+   Tudo DEPOIS dele — que é onde mora a lógica — passa a ser exercitado. */
+async function importarPelaTela(ctx, { largura = 1200, altura = 800, arquivo = 'planta.jpg' } = {}) {
+  await ctx.eval(`(() => {
+    window.__rasterizadorOriginal = rasterizePlanFile;
+    rasterizePlanFile = async () => ({
+      data: ${JSON.stringify(JPEG_1X1)}, width: ${largura}, height: ${altura}
+    });
+  })()`);
+  ctx.window.confirm = () => true;
+  await ctx.eval(`importFloorPlan({ name: ${JSON.stringify(arquivo)}, size: 1024, type: 'image/jpeg' })`);
+  await pausa(500);
+}
+
+teste('importar pela tela grava, enfileira e marca origem', async () => {
+  /* Percorre `importFloorPlan` de verdade e confere as três coisas que ele tem
+     de deixar prontas: o desenho na tela, o binário no armazenamento sob o id do
+     pavimento, e a planta na fila com marca de origem — sem a marca, a varredura
+     não a envia e ela nunca chega ao servidor. */
+  const { api, db } = servidorDeTeste();
+  const ctx = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(ctx, { nome: 'Richard', usuario: 'richard', senha: 'senhaforte1' });
+  await criarObraComFoto(ctx);
+  await ctx.eval('sketchProjectId = "obra-1"; sketchFloorIndex = 0;');
+
+  await importarPelaTela(ctx);
+
+  const estado = await ctx.eval(`(async () => {
+    const pav = projects[0].floorPlans[0];
+    return {
+      desenho: pav.planImage,
+      largura: pav.planWidth,
+      arquivo: pav.planFileName,
+      binario: Boolean(await window.NBZMidia.registroDaPlanta(pav.id)),
+      naFila: window.NBZApi.plantaPendente(pav.id),
+      origem: window.NBZApi.plantasProprias().has(pav.id),
+      erroNaTela: document.querySelector('#sketchError').textContent
+    };
+  })()`);
+
+  confirmar(String(estado.desenho).startsWith('blob:'),
+    `o desenho deveria aparecer, e veio "${estado.desenho}" (erro na tela: "${estado.erroNaTela}")`);
+  confirmar(estado.binario, 'o binário deveria estar gravado sob o id do pavimento');
+  confirmar(estado.naFila, 'a planta deveria estar na fila de envio');
+  confirmar(estado.origem, 'e marcada como importada NESTE aparelho');
+  igual(estado.largura, 1200, 'com as medidas do rasterizador');
+  igual(estado.arquivo, 'planta.jpg', 'e o nome do arquivo');
+
+  /* E sobe. */
+  await ctx.eval('sincronizarComServidor()');
+  await pausa(800);
+  confirmar(
+    db.prepare('select planta_r2_key from pavimentos where id = ?').get('pav-1').planta_r2_key,
+    'e o binário tem de chegar ao servidor'
+  );
+  ctx.fechar();
+});
+
+teste('a planta se mantém igual vinda de JPEG ou de PDF', async () => {
+  /* O PDF nunca chega ao servidor como PDF: `rasterizePlanFile` renderiza a
+     primeira página num canvas e entrega JPEG, exatamente como faz com imagem.
+     Depois do rasterizador os dois caminhos são o MESMO caminho — e é isso que
+     este teste fixa, para ninguém "otimizar" mandando o PDF cru adiante.
+
+     O que muda entre eles é só a origem do desenho, e isso fica no nome do
+     arquivo, que é informativo. */
+  const { api, db } = servidorDeTeste();
+
+  for (const arquivo of ['planta-terreo.jpg', 'planta-terreo.pdf']) {
+    const ctx = await boot({ api });
+    await pausa(600);
+    if (arquivo.endsWith('.jpg')) {
+      await preencherCadastroInicial(ctx, { nome: 'Richard', usuario: 'richard', senha: 'senhaforte1' });
+    } else {
+      await preencherLogin(ctx, { usuario: 'richard', senha: 'senhaforte1' });
+      await pausa(1200);
+    }
+    await criarObraComFoto(ctx);
+    await ctx.eval('sketchProjectId = "obra-1"; sketchFloorIndex = 0;');
+    await importarPelaTela(ctx, { arquivo });
+    await ctx.eval('sincronizarComServidor()');
+    await pausa(900);
+
+    const pavimento = db.prepare(
+      'select planta_r2_key, planta_arquivo, planta_largura from pavimentos where id = ?'
+    ).get('pav-1');
+    confirmar(pavimento.planta_r2_key, `${arquivo}: a planta deveria ter subido`);
+    confirmar(/\.jpg$/.test(pavimento.planta_r2_key),
+      `${arquivo}: o objeto no bucket é JPEG nos dois casos, e é "${pavimento.planta_r2_key}"`);
+    igual(pavimento.planta_arquivo, arquivo, `${arquivo}: o nome de origem é preservado`);
+    igual(pavimento.planta_largura, 1200, `${arquivo}: com as medidas do rasterizador`);
+
+    confirmar(
+      String(await ctx.eval('projects[0].floorPlans[0].planImage')).startsWith('blob:'),
+      `${arquivo}: e o desenho fica visível no aparelho`
+    );
+    ctx.fechar();
+  }
+});
+
+teste('o servidor recusa PDF cru, porque quem rasteriza é o painel', async () => {
+  /* Guarda do contrato: se um dia alguém mandar o arquivo original em vez do
+     desenho rasterizado, o servidor recusa com 415 em vez de guardar um PDF que
+     nenhuma tela sabe desenhar. `tipoReal` confere a assinatura do arquivo, e
+     não o cabeçalho informado por quem envia. */
+  const { env, db } = servidorDeTeste();
+  db.prepare('insert into obras (id, nome) values (?, ?)').run('obra-1', 'M');
+  db.prepare('insert into pavimentos (id, obra_id, nome) values (?, ?, ?)').run('pav-1', 'obra-1', 'Térreo');
+
+  /* "%PDF-1.4" seguido de enchimento: assinatura real de PDF. */
+  const pdf = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34, 0x0a, 0, 0, 0, 0, 0, 0, 0]);
+  const recusado = await fotos.enviarPlanta(
+    env, { id: 'u1', nivelAcesso: 'administrador' },
+    {
+      headers: { get: (n) => (String(n).toLowerCase() === 'content-length' ? String(pdf.length) : null) },
+      arrayBuffer: () => Promise.resolve(pdf.buffer.slice(0))
+    },
+    new URLSearchParams({ pavimento: 'pav-1' })
+  );
+
+  igual(recusado.status, 415, 'PDF cru deveria ser recusado');
+  confirmar(/JPG, PNG ou WEBP/.test(recusado.erro), `a mensagem deveria dizer o que aceita, e diz "${recusado.erro}"`);
+  igual(
+    db.prepare('select planta_r2_key from pavimentos where id = ?').get('pav-1').planta_r2_key, null,
+    'e nada pode ter sido gravado'
+  );
+});
+
+teste('a planta continua visível depois de demarcar sobre ela', async () => {
+  /* O relato: importa a planta, demarca uma área, e o desenho de fundo some —
+     sobra o setor flutuando sobre o branco.
+
+     Demarcar dispara `saveState()`, que agenda sincronização, que roda a fusão.
+     É nesse caminho que a planta já sumiu antes, por mais de um motivo, então o
+     teste percorre o ciclo inteiro: importar, demarcar, sincronizar, e conferir
+     o desenho E o binário no fim. */
+  const { api } = servidorDeTeste();
+  const ctx = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(ctx, { nome: 'Richard', usuario: 'richard', senha: 'senhaforte1' });
+  await criarObraComFoto(ctx);
+  const urlOriginal = await importarPlanta(ctx);
+  confirmar(String(urlOriginal).startsWith('blob:'), 'pré-condição: a planta foi importada');
+
+  /* Demarca uma área nova, como o croqui faz ao desenhar. */
+  await ctx.eval(`(() => {
+    projects[0].floorPlans[0].regions.push({
+      id: 'set-demarcado', name: 'SETOR 1', status: 'executed',
+      points: [{x:10,y:10},{x:30,y:10},{x:30,y:30},{x:10,y:30}], area: 0.71
+    });
+    saveState();
+  })()`);
+  await pausa(300);
+
+  const logoDepois = await ctx.eval('projects[0].floorPlans[0].planImage');
+  confirmar(String(logoDepois).startsWith('blob:'),
+    `logo depois de demarcar a planta já deveria estar visível, e está "${logoDepois}"`);
+
+  /* Agora o ciclo que de fato mexe no estado: sobe e desce. */
+  await ctx.eval('sincronizarComServidor()');
+  await pausa(900);
+
+  const depoisDoSync = await ctx.eval(`(async () => {
+    const pav = projects[0].floorPlans[0];
+    return {
+      desenho: pav.planImage,
+      binario: Boolean(await window.NBZMidia.registroDaPlanta(pav.id)),
+      setores: pav.regions.map((r) => r.id).sort()
+    };
+  })()`);
+
+  confirmar(String(depoisDoSync.desenho).startsWith('blob:'),
+    `depois de sincronizar a planta deveria continuar visível, e está "${depoisDoSync.desenho}"`);
+  confirmar(depoisDoSync.binario, 'e o binário tem de continuar no aparelho');
+  igual(depoisDoSync.setores, ['set-1', 'set-demarcado'], 'com as duas demarcações');
+
+  /* E depois de recarregar a página, que é quando `reidratarPlantas` entra. */
+  await ctx.eval('(async () => { await prepararMidia(); })()');
+  await pausa(400);
+  confirmar(
+    String(await ctx.eval('projects[0].floorPlans[0].planImage')).startsWith('blob:'),
+    'e tem de sobreviver ao preparo da mídia, que é o que roda ao reabrir'
+  );
+  ctx.fechar();
+});
+
+teste('planta e demarcação do ADM ficam visíveis em todos os cargos', async () => {
+  /* O que o usuário pediu: subir uma planta, demarcar sobre ela, e conferir se a
+     planta fica visível para todo mundo.
+
+     "Visível" aqui tem significado preciso e é o que se verifica: o pavimento
+     tem o DESENHO no aparelho (object URL apontando para binário gravado), as
+     medidas da planta, e a demarcação com a situação certa. Registro sem binário
+     mostraria o quadro de imagem quebrada, que já aconteceu em produção. */
+  const { api, db } = servidorDeTeste();
+
+  const admin = await boot({ api });
+  admin.__api = api;
+  await pausa(600);
+  await preencherCadastroInicial(admin, { nome: 'Richard', usuario: 'richard', senha: 'senhaforte1' });
+  await criarObraComFoto(admin);
+  /* Sincroniza ANTES de importar: assim o setor antigo existe no servidor, e dá
+     para provar que a limpeza feita pela importação chega lá. */
+  await admin.eval('sincronizarComServidor()');
+  await pausa(500);
+  igual(db.prepare('select count(*) as t from setores where excluido_em is null').get().t, 1,
+    'pré-condição: o setor antigo está no servidor');
+
+  await admin.eval('sketchProjectId = "obra-1"; sketchFloorIndex = 0;');
+  /* Pela tela, e não pelo atalho: é `importFloorPlan` que roda quando alguém
+     escolhe o arquivo, e é ele que precisa estar certo. Ele limpa as
+     demarcações, porque os pontos são percentuais da imagem. */
+  await importarPelaTela(admin);
+
+  /* E demarca sobre a planta, que é o passo seguinte do uso real. */
+  await admin.eval(`(() => {
+    projects[0].floorPlans[0].regions.push({
+      id: 'set-demarcado', name: 'SETOR 1', status: 'executed',
+      points: [{x:10,y:10},{x:30,y:10},{x:30,y:30},{x:10,y:30}], area: 0.71
+    });
+    saveState();
+  })()`);
+  await admin.eval('sincronizarComServidor()');
+  await pausa(900);
+
+  const pavimento = db.prepare(
+    'select planta_r2_key, planta_largura, planta_altura from pavimentos where id = ?'
+  ).get('pav-1');
+  confirmar(pavimento.planta_r2_key, 'pré-condição: a planta subiu ao servidor');
+  igual(pavimento.planta_largura, 1200, 'com as medidas');
+
+  for (const cargo of ['engenheiro', 'encarregado', 'tecnico', 'cliente']) {
+    const aparelho = await criarColegaComSenhaPropria(admin, {
+      nome: `Pessoa ${cargo}`, usuario: `planta_${cargo}`,
+      provisoria: 'provisoria123', definitiva: `senha_${cargo}_9`, cargo
+    });
+    await aparelho.eval('sincronizarComServidor({ apenasBaixar: true })');
+    /* A planta é baixada num segundo passo, depois da descida do estado. */
+    await pausa(1600);
+
+    const visto = await aparelho.eval(`(async () => {
+      const obra = projects.find((p) => p.id === 'obra-1');
+      if (!obra) return { obra: false };
+      const pav = obra.floorPlans[0];
+      return {
+        obra: true,
+        temDesenho: String(pav.planImage || '').startsWith('blob:'),
+        largura: pav.planWidth,
+        temPlantaNoServidor: Boolean(pav.temPlanta),
+        binarioGravado: Boolean(await window.NBZMidia.registroDaPlanta(pav.id)),
+        setores: pav.regions.map((r) => ({ id: r.id, situacao: r.status }))
+      };
+    })()`);
+
+    confirmar(visto.obra, `${cargo}: a obra deveria ter chegado`);
+    confirmar(visto.temDesenho, `${cargo}: o DESENHO da planta deveria estar visível`);
+    confirmar(visto.binarioGravado,
+      `${cargo}: o binário da planta deveria estar gravado no aparelho, não só referenciado`);
+    igual(visto.largura, 1200, `${cargo}: as medidas da planta deveriam ter chegado`);
+    confirmar(visto.temPlantaNoServidor, `${cargo}: o painel deveria saber que há planta no servidor`);
+    /* Só a demarcação feita SOBRE a planta nova. A antiga foi limpa pela
+       importação, e essa limpeza precisa ter chegado ao servidor — senão ela
+       voltaria, com pontos calculados para o desenho anterior. */
+    igual(visto.setores.map((s) => s.id), ['set-demarcado'],
+      `${cargo}: deveria ver a demarcação nova, e só ela`);
+
+    aparelho.fechar();
+  }
+
+  admin.fechar();
+});
+
 teste('foto e demarcação do ADM chegam a todos os cargos', async () => {
   /* O que o usuário pediu: registrar fotografia num pavimento, demarcar área, e
      conferir que aparece para todos os usuários e cargos.
