@@ -778,6 +778,240 @@ teste('o servidor recusa PDF cru, porque quem rasteriza é o painel', async () =
   );
 });
 
+teste('a planta sobrevive a tudo que o croqui oferece', async () => {
+  /* Varredura do que existe na tela da planta, uma ação por vez, conferindo o
+     desenho depois de CADA uma. A pergunta é sempre a mesma — a planta sumiu? —
+     e aqui ela é feita após demarcar, pintar, editar dados do setor, fotografar,
+     dar zoom, desfazer, limpar o desenho em andamento e excluir a demarcação.
+
+     Verifica o SVG e o binário juntos: o estado pode estar certo e a tela não,
+     ou o contrário. Já aconteceram os dois. */
+  const { api } = servidorDeTeste();
+  const ctx = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(ctx, { nome: 'Richard', usuario: 'richard', senha: 'senhaforte1' });
+  await criarObraComFoto(ctx);
+  await ctx.eval('sketchProjectId = "obra-1"; sketchFloorIndex = 0;');
+  await importarPelaTela(ctx);
+  await ctx.eval('sincronizarComServidor()');
+  await pausa(700);
+
+  /* Lê o que o olho veria: o <image> do SVG, mais o binário guardado. */
+  async function plantaSegueAhi(ctx, etapa) {
+    const visto = await ctx.eval(`(async () => {
+      const pav = projects[0].floorPlans[0];
+      const img = document.querySelector('#planBackground');
+      return {
+        estado: pav.planImage,
+        href: img ? img.getAttribute('href') : null,
+        visivel: img ? img.getAttribute('visibility') : null,
+        binario: Boolean(await window.NBZMidia.registroDaPlanta(pav.id)),
+        erro: document.querySelector('#sketchError').textContent
+      };
+    })()`);
+    confirmar(String(visto.estado).startsWith('blob:'),
+      `${etapa}: a planta sumiu do estado — "${visto.estado}" (erro na tela: "${visto.erro}")`);
+    confirmar(visto.binario, `${etapa}: o binário sumiu do aparelho`);
+    igual(visto.href, visto.estado, `${etapa}: o desenho saiu do SVG`);
+    igual(visto.visivel, 'visible', `${etapa}: o desenho ficou oculto`);
+  }
+
+  await plantaSegueAhi(ctx, 'logo após importar');
+
+  /* 1. Demarcar uma área. */
+  await ctx.eval(`(() => {
+    projects[0].floorPlans[0].regions.push({
+      id: 'set-x', name: 'SETOR 1', status: 'pending',
+      points: [{x:10,y:10},{x:40,y:10},{x:40,y:40},{x:10,y:40}], area: 12.5
+    });
+    selectedRegionId = 'set-x';
+    saveState();
+    renderSketch();
+  })()`);
+  await pausa(300);
+  await plantaSegueAhi(ctx, 'após demarcar');
+
+  /* 2. Trocar a cor (situação) da área demarcada. */
+  for (const situacao of ['executed', 'inProgress', 'blocked', 'pending']) {
+    await ctx.eval(`(() => {
+      selectedRegionId = 'set-x';
+      document.querySelector('[data-paint="${situacao}"]').dispatchEvent(new window.Event('click', { bubbles: true }));
+    })()`);
+    await pausa(250);
+    await plantaSegueAhi(ctx, `após pintar ${situacao}`);
+  }
+
+  /* 3. Editar os dados do setor pelo formulário. */
+  await ctx.eval(`(() => {
+    selectedRegionId = 'set-x';
+    const def = { regionName: 'SETOR RENOMEADO', regionMaterial: 'Manta', regionSystem: 'Asfáltica' };
+    for (const [id, valor] of Object.entries(def)) {
+      const campo = document.querySelector('#' + id);
+      if (campo) campo.value = valor;
+    }
+  })()`);
+  await ctx.eval(`(() => {
+    const form = document.querySelector('#regionForm');
+    if (form) form.dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
+  })()`);
+  await pausa(400);
+  await plantaSegueAhi(ctx, 'após editar dados do setor');
+
+  /* 4. Zoom e enquadramento. */
+  for (const acao of ['in', 'out', 'reset']) {
+    await ctx.eval(`(() => {
+      const b = document.querySelector('[data-plan-zoom="${acao}"]');
+      if (b) b.dispatchEvent(new window.Event('click', { bubbles: true }));
+    })()`);
+    await pausa(200);
+    await plantaSegueAhi(ctx, `após zoom ${acao}`);
+  }
+
+  /* 5. Abrir as fotografias do local e registrar uma. */
+  const achouFoto = await ctx.eval(`(() => {
+    const b = document.querySelector('[data-sketch-action="photo"]');
+    if (!b) return false;
+    b.dispatchEvent(new window.Event('click', { bubbles: true }));
+    return true;
+  })()`);
+  confirmar(achouFoto, 'o botão de fotografias deveria existir na barra do croqui');
+  await pausa(400);
+  await plantaSegueAhi(ctx, 'após abrir fotografias');
+
+  await ctx.eval(`(async () => {
+    const blob = window.NBZMidia.dataUriParaBlob(${JSON.stringify(JPEG_1X1)});
+    await window.NBZMidia.guardarFoto('foto-croqui', blob);
+    const url = await window.NBZMidia.urlDaFoto('foto-croqui');
+    projects[0].photoReports[0].photos.push({
+      id: 'foto-croqui', data: url, date: new Date().toISOString(),
+      author: 'Richard', includeInReport: true
+    });
+    saveState();
+    renderSketch();
+  })()`);
+  await ctx.eval('sincronizarComServidor()');
+  await pausa(900);
+  await plantaSegueAhi(ctx, 'após registrar fotografia e sincronizar');
+
+  /* 6. Desfazer e limpar o desenho em andamento. */
+  for (const acao of ['undo', 'clear']) {
+    const achou = await ctx.eval(`(() => {
+      const b = document.querySelector('[data-sketch-action="${acao}"]');
+      if (!b) return false;
+      b.dispatchEvent(new window.Event('click', { bubbles: true }));
+      return true;
+    })()`);
+    confirmar(achou, `o botão "${acao}" deveria existir na barra do croqui`);
+    await pausa(250);
+    await plantaSegueAhi(ctx, `após ${acao}`);
+  }
+
+  /* 7. Excluir a demarcação. */
+  ctx.window.confirm = () => true;
+  await ctx.eval('selectedRegionId = "set-x"; deleteSelectedRegion();');
+  await pausa(400);
+  await plantaSegueAhi(ctx, 'após excluir a demarcação');
+
+  await ctx.eval('sincronizarComServidor()');
+  await pausa(900);
+  await plantaSegueAhi(ctx, 'após sincronizar a exclusão da demarcação');
+
+  /* 8. E depois de reabrir o aplicativo. */
+  await ctx.eval('(async () => { await prepararMidia(); })()');
+  await pausa(500);
+  await plantaSegueAhi(ctx, 'após reabrir o aplicativo');
+
+  ctx.fechar();
+});
+
+teste('a planta se mantém ao trocar de modo e ao pintar situações', async () => {
+  /* O relato: a planta some ao mudar para Finalizado, Executando ou Fotos.
+
+     Cada botão daqueles troca o modo e redesenha o croqui, e pintar uma área
+     ainda grava o estado e dispara sincronização — ou seja, percorre o caminho
+     onde a planta já sumiu antes. O teste passa por todos os modos e, em cada
+     um, confere o desenho E o binário. */
+  const { api } = servidorDeTeste();
+  const ctx = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(ctx, { nome: 'Richard', usuario: 'richard', senha: 'senhaforte1' });
+  await criarObraComFoto(ctx);
+  await ctx.eval('sketchProjectId = "obra-1"; sketchFloorIndex = 0;');
+  await importarPelaTela(ctx);
+  await ctx.eval('sincronizarComServidor()');
+  await pausa(700);
+
+  /* Demarca uma área para haver o que pintar. */
+  await ctx.eval(`(() => {
+    projects[0].floorPlans[0].regions.push({
+      id: 'set-pintar', name: 'SETOR 1', status: 'pending',
+      points: [{x:10,y:10},{x:30,y:10},{x:30,y:30},{x:10,y:30}], area: 0.71
+    });
+    selectedRegionId = 'set-pintar';
+    saveState();
+    renderSketch();
+  })()`);
+  await pausa(300);
+
+  const modos = [
+    ['executed', 'Finalizado'],
+    ['inProgress', 'Executando'],
+    ['blocked', 'Não Liberado'],
+    ['pending', 'Liberado'],
+    ['draw', 'Demarcar Áreas'],
+    ['', 'Fotos']
+  ];
+
+  for (const [valor, rotulo] of modos) {
+    /* Clica no botão de verdade, pelo seletor que a tela monta. */
+    const clicou = await ctx.eval(`(() => {
+      const b = document.querySelector('[data-paint="${valor}"]');
+      if (!b) return false;
+      b.dispatchEvent(new window.Event('click', { bubbles: true }));
+      return true;
+    })()`);
+    confirmar(clicou, `${rotulo}: o botão deveria existir na barra`);
+    await pausa(400);
+
+    const visto = await ctx.eval(`(async () => {
+      const pav = projects[0].floorPlans[0];
+      const imagem = document.querySelector('#planBackground');
+      return {
+        desenho: pav.planImage,
+        binario: Boolean(await window.NBZMidia.registroDaPlanta(pav.id)),
+        href: imagem ? imagem.getAttribute('href') : null,
+        visivel: imagem ? imagem.getAttribute('visibility') : null
+      };
+    })()`);
+
+    confirmar(String(visto.desenho).startsWith('blob:'),
+      `${rotulo}: a planta deveria continuar no estado, e está "${visto.desenho}"`);
+    confirmar(visto.binario, `${rotulo}: o binário deveria continuar no aparelho`);
+    /* E, acima de tudo, continuar desenhada: é o <image> do SVG que o olho vê. */
+    igual(visto.href, visto.desenho, `${rotulo}: o desenho deveria estar no SVG`);
+    igual(visto.visivel, 'visible', `${rotulo}: e marcado como visível`);
+  }
+
+  /* Pintar de fato uma situação — grava e sincroniza. */
+  await ctx.eval(`(() => {
+    const b = document.querySelector('[data-paint="executed"]');
+    selectedRegionId = 'set-pintar';
+    b.dispatchEvent(new window.Event('click', { bubbles: true }));
+  })()`);
+  await ctx.eval('sincronizarComServidor()');
+  await pausa(800);
+
+  igual(
+    await ctx.eval('projects[0].floorPlans[0].regions.find((r) => r.id === "set-pintar").status'),
+    'executed', 'a situação pintada deveria ter sido aplicada'
+  );
+  confirmar(
+    String(await ctx.eval('projects[0].floorPlans[0].planImage')).startsWith('blob:'),
+    'e a planta tem de sobreviver a pintar situação e sincronizar'
+  );
+  ctx.fechar();
+});
+
 teste('a planta continua visível depois de demarcar sobre ela', async () => {
   /* O relato: importa a planta, demarca uma área, e o desenho de fundo some —
      sobra o setor flutuando sobre o branco.
