@@ -51,6 +51,8 @@
      quando o envio se confirma — dali em diante a varredura nao precisa mais
      proteger aquele pavimento. */
   const CHAVE_PLANTAS_PROPRIAS = 'nbz-plantas-proprias-v1';
+  /* Exclusoes de obra, pavimento e setor esperando confirmacao do servidor. */
+  const CHAVE_EXCLUSOES = 'nbz-exclusoes-v1';
   /* Etag da planta que esta no aparelho, por pavimento. E o que permite
      perguntar ao servidor "mudou?" em vez de rebaixar o arquivo inteiro. */
   const CHAVE_ETAG_PLANTAS = 'nbz-planta-etag-v1';
@@ -490,8 +492,48 @@
 
   const CHAVE_MARCA = 'nbz-sync-desde-v1';
 
-  function subirEstado(obras) {
-    return chamar('/sync/subir', { metodo: 'POST', corpo: { obras } });
+  /* ------------------------------------------------------- exclusoes */
+
+  /* EXCLUSAO PRECISA SER DITA, NAO DEDUZIDA DA AUSENCIA
+
+     O `/sync/subir` insere e atualiza o que recebe; nunca apaga o que ficou de
+     fora — e nao pode mesmo, porque o pacote e parcial e ausencia significa
+     "nao mudou". Resultado: excluir obra, pavimento ou setor valia so no
+     aparelho, e o registro voltava na descida seguinte.
+
+     A saida e registrar a exclusao como FATO e envia-la junto. Cada item fica
+     guardado aqui ate o servidor confirmar que aplicou, entao exclusao feita
+     sem sinal sobe quando a conexao voltar — do mesmo jeito que a fotografia. */
+  function exclusoesPendentes() {
+    const lista = ler(CHAVE_EXCLUSOES, []);
+    return Array.isArray(lista) ? lista : [];
+  }
+
+  function registrarExclusao(tipo, id) {
+    if (!tipo || !id) return 0;
+    const lista = exclusoesPendentes();
+    if (lista.some((item) => item.tipo === tipo && item.id === id)) return lista.length;
+    lista.push({ tipo, id, em: new Date().toISOString() });
+    gravar(CHAVE_EXCLUSOES, lista);
+    return lista.length;
+  }
+
+  function confirmarExclusoes(aplicadas) {
+    if (!Array.isArray(aplicadas) || !aplicadas.length) return;
+    const feitas = new Set(aplicadas.map((item) => `${item.tipo}:${item.id}`));
+    gravar(CHAVE_EXCLUSOES, exclusoesPendentes().filter(
+      (item) => !feitas.has(`${item.tipo}:${item.id}`)
+    ));
+  }
+
+  async function subirEstado(obras) {
+    const exclusoes = exclusoesPendentes();
+    const resposta = await chamar('/sync/subir', { metodo: 'POST', corpo: { obras, exclusoes } });
+    /* Limpa apenas o que o servidor disse ter aplicado. Limpar tudo que foi
+       enviado perderia a exclusao recusada por permissao, e ela sumiria sem
+       nunca ter acontecido. */
+    confirmarExclusoes(resposta && resposta.exclusoesAplicadas);
+    return resposta;
   }
 
   /* `desde` guarda o carimbo da ultima descida bem-sucedida, para que a
@@ -781,6 +823,8 @@
     usoDoArmazenamento,
     baixarFoto,
     subirEstado,
+    registrarExclusao,
+    exclusoesPendentes,
     baixarEstado,
     esquecerMarcaDeSync,
     iniciar

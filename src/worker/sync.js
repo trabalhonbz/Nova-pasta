@@ -73,9 +73,16 @@ export async function subir(env, sessao, corpo) {
   }
 
   const obras = Array.isArray(corpo && corpo.obras) ? corpo.obras : [];
-  if (!obras.length) return { ok: true, obras: 0, pavimentos: 0, setores: 0, relatorios: 0 };
   if (obras.length > 200) {
     return { erro: 'Envio grande demais. Sincronize em partes.', status: 413 };
+  }
+
+  if (!obras.length) {
+    const soExclusoes = await aplicarExclusoes(env, sessao, corpo && corpo.exclusoes);
+    return {
+      ok: true, obras: 0, pavimentos: 0, setores: 0, relatorios: 0,
+      exclusoesAplicadas: soExclusoes, em: agora()
+    };
   }
 
   const contagem = { obras: 0, pavimentos: 0, setores: 0, relatorios: 0 };
@@ -87,7 +94,10 @@ export async function subir(env, sessao, corpo) {
     montarObra(env, sessao, obra, obraId, instrucoes, contagem);
   }
 
-  if (!instrucoes.length) return { ok: true, ...contagem, em: agora() };
+  if (!instrucoes.length) {
+    const semUpsert = await aplicarExclusoes(env, sessao, corpo && corpo.exclusoes);
+    return { ok: true, ...contagem, exclusoesAplicadas: semUpsert, em: agora() };
+  }
 
   /* O D1 limita o tamanho do lote; fatiar mantem obras grandes funcionando sem
      que o cliente precise saber desse detalhe. */
@@ -96,7 +106,70 @@ export async function subir(env, sessao, corpo) {
     await env.DB.batch(instrucoes.slice(inicio, inicio + TAMANHO_LOTE));
   }
 
-  return { ok: true, ...contagem, instrucoes: instrucoes.length, em: agora() };
+  /* AS EXCLUSOES VEM DEPOIS DO UPSERT, e a ordem importa.
+
+     O painel manda o estado dele no mesmo pedido, e esse estado pode conter o
+     registro que outro aparelho acabou de apagar — ou, no caso de setor que
+     continua na tela, o proprio registro que se esta apagando. Marcar antes
+     seria desfeito pelo upsert logo em seguida.
+
+     Depois do upsert, a marca e a ultima palavra do pedido. */
+  const exclusoesAplicadas = await aplicarExclusoes(env, sessao, corpo && corpo.exclusoes);
+
+  return { ok: true, ...contagem, instrucoes: instrucoes.length, exclusoesAplicadas, em: agora() };
+}
+
+/* ------------------------------------------------------------ exclusoes */
+
+/* Cada tipo tem a tabela que marca e os cargos que podem marcar.
+
+   Os cargos espelham o que o painel exige para oferecer o botao: obra e
+   pavimento por `works.delete`, que so administrador e engenheiro tem; setor por
+   `regions.edit`, que inclui o encarregado. Conferir aqui e o que vale — o
+   painel esconde botao, e esconder botao nao e permissao.
+
+   A exclusao e LOGICA: a linha fica com `excluido_em` preenchido em vez de
+   sumir. E o que permite a descida contar aos outros aparelhos que o registro
+   acabou; apagar de verdade faria o registro apenas desaparecer do pacote, e
+   ausencia num delta significa "nao mudou". */
+const TIPOS_DE_EXCLUSAO = {
+  obra: { tabela: 'obras', cargos: ['administrador', 'engenheiro'] },
+  pavimento: { tabela: 'pavimentos', cargos: ['administrador', 'engenheiro'] },
+  setor: { tabela: 'setores', cargos: ['administrador', 'engenheiro', 'encarregado'] }
+};
+
+/* Devolve o que de fato foi aplicado, para o painel so esquecer o que o
+   servidor confirmou. Item recusado por cargo continua pendente, e nao some
+   como se tivesse acontecido. */
+async function aplicarExclusoes(env, sessao, pedidas) {
+  const lista = Array.isArray(pedidas) ? pedidas.slice(0, 500) : [];
+  if (!lista.length) return [];
+
+  const carimbo = agora();
+  const instrucoes = [];
+  const aplicadas = [];
+
+  for (const item of lista) {
+    const tipo = limpar(item && item.tipo, 20);
+    const id = limpar(item && item.id, 64);
+    const regra = TIPOS_DE_EXCLUSAO[tipo];
+    if (!regra || !id) continue;
+    if (!regra.cargos.includes(sessao.nivelAcesso)) continue;
+
+    instrucoes.push(env.DB.prepare(
+      `update ${regra.tabela} set excluido_em = ?, atualizado_em = ?
+        where id = ? and excluido_em is null`
+    ).bind(carimbo, carimbo, id));
+    aplicadas.push({ tipo, id });
+  }
+
+  if (!instrucoes.length) return [];
+
+  const TAMANHO_LOTE = 100;
+  for (let inicio = 0; inicio < instrucoes.length; inicio += TAMANHO_LOTE) {
+    await env.DB.batch(instrucoes.slice(inicio, inicio + TAMANHO_LOTE));
+  }
+  return aplicadas;
 }
 
 const SITUACOES = ['executed', 'inProgress', 'blocked', 'pending'];

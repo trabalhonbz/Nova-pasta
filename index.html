@@ -1276,6 +1276,12 @@
       project.floorPlans.forEach((floor, index) => {
         if (!removedIndexSet.has(index)) newIndexByOldIndex.set(index, newIndex++);
       });
+      /* Mesma razão do caso individual, agora em lote. */
+      if (comServidor && window.NBZApi) {
+        for (const floor of project.floorPlans) {
+          if (selectedFloorIds.has(floor.id)) window.NBZApi.registrarExclusao('pavimento', floor.id);
+        }
+      }
       project.floorPlans = project.floorPlans.filter((floor) => !selectedFloorIds.has(floor.id));
       project.photoReports = project.photoReports.flatMap((report) => {
         const adjustedIndex = newIndexByOldIndex.get(report.floorIndex);
@@ -1342,6 +1348,13 @@
       const previousFloors = project.floorPlans.slice();
       const previousReports = project.photoReports.slice();
       const previousStatus = project.status;
+      /* Registra a exclusão antes de o pavimento sair do estado — depois do
+         `splice` não há mais de onde tirar o id. O `/sync/subir` insere e
+         atualiza, nunca apaga o que ficou de fora, então sem este registro o
+         pavimento voltaria do servidor na descida seguinte. */
+      if (comServidor && floor.id && window.NBZApi) {
+        window.NBZApi.registrarExclusao('pavimento', floor.id);
+      }
       project.floorPlans.splice(floorIndex, 1);
       project.photoReports = project.photoReports.filter((report) => report.floorIndex !== floorIndex).map((report) => report.floorIndex > floorIndex ? { ...report, floorIndex: report.floorIndex - 1 } : report);
       updateProjectFromFloor(project);
@@ -1571,7 +1584,7 @@
       const floor = project && selectedFloor(project, sketchFloorIndex);
       if (!floor || !floor.planImage) return;
       if (!requirePermission('regions.edit', 'Seu cargo não permite remover plantas.')) return;
-      if (!window.confirm('Remover a planta e as demarcações deste pavimento?')) return;
+      if (!window.confirm('Remover a planta deste pavimento? As áreas demarcadas e as situações são preservadas.')) return;
       const previous = { planImage: floor.planImage, planWidth: floor.planWidth, planHeight: floor.planHeight, planFileName: floor.planFileName, regions: floor.regions, temPlanta: floor.temPlanta };
       floor.planImage = '';
       floor.planWidth = 0;
@@ -1581,7 +1594,22 @@
          no servidor e sem imagem local, e traria a planta de volta na
          sincronização seguinte — a remoção duraria até o próximo sync. */
       floor.temPlanta = false;
-      floor.regions = [];
+      /* AS DEMARCAÇÕES FICAM.
+
+         Antes eram apagadas junto, e isso era errado por dois motivos. O
+         primeiro é que não funcionava: o `/sync/subir` só insere e atualiza o
+         que recebe, nunca apaga o que ficou de fora, então os setores
+         continuavam no servidor e voltavam na descida seguinte — a tela perdia
+         os números e eles reapareciam sozinhos depois.
+
+         O segundo é que não deveria funcionar. Área, m², situação e histórico de
+         cada setor são o que alimenta o laudo; a planta é o desenho de fundo
+         sobre o qual eles foram marcados. Jogar fora a medição porque se trocou
+         a imagem é perder o dado para preservar a ilustração.
+
+         Importar planta nova continua limpando as demarcações, e aí faz
+         sentido: os pontos são percentuais da imagem, e sobre outro desenho
+         apontariam para o lugar errado. */
       updateProjectFromFloor(project);
       const activityCount = activities.length;
       addActivity('Planta e marcações removidas', `${project.name} · ${floor.name}`);
@@ -2034,6 +2062,9 @@
       const linkedPhotos = project.photoReports.filter((report) => report.regionId === target.id).reduce((count, report) => count + report.photos.length, 0);
       if (!window.confirm(linkedPhotos ? `Excluir a demarcação selecionada? As ${linkedPhotos} fotografia(s) do local serão mantidas e passam a ficar vinculadas apenas ao pavimento.` : 'Excluir a demarcação selecionada?')) return;
       const [region] = floor.regions.splice(regionIndex, 1);
+      if (comServidor && region && region.id && window.NBZApi) {
+        window.NBZApi.registrarExclusao('setor', region.id);
+      }
       const previousStatus = project.status;
       const previousLinks = project.photoReports.filter((report) => report.regionId === region.id).map((report) => ({ report, regionId: report.regionId }));
       previousLinks.forEach(({ report }) => { report.regionId = ''; });

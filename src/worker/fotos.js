@@ -50,6 +50,23 @@ export function podeEnviarFoto(sessao) {
   return Boolean(sessao) && sessao.nivelAcesso !== 'cliente';
 }
 
+/* Planta tem regra PROPRIA, mais restrita que a de fotografia.
+
+   O painel libera importar e remover planta por `regions.edit`, que pertence a
+   administrador, engenheiro e encarregado. O tecnico registra fotografia mas
+   nao mexe em planta — e o servidor conferia pela regra de FOTO, deixando-o
+   apagar planta chamando a rota direto. Ele nao via o botao, e esconder botao
+   nao e permissao: e a primeira frase do cabecalho deste Worker.
+
+   A exclusao de planta vale para todos os aparelhos e todos os perfis, entao
+   divergencia aqui e grave: um cargo sem autorizacao na tela apagava, para
+   todo mundo, um registro que vale como base do laudo. */
+const CARGOS_DE_PLANTA = ['administrador', 'engenheiro', 'encarregado'];
+
+export function podeEditarPlanta(sessao) {
+  return Boolean(sessao) && CARGOS_DE_PLANTA.includes(sessao.nivelAcesso);
+}
+
 /* O R2 precisa ser ativado uma vez no painel da Cloudflare antes do primeiro
    uso, e isso pode nao ter sido feito ainda. Sem este aviso, a falta do binding
    apareceria como "Erro interno" — que nao diz a ninguem o que fazer.
@@ -238,7 +255,7 @@ export async function excluir(env, sessao, id) {
 /* --------------------------------------------------------------- plantas */
 
 export async function enviarPlanta(env, sessao, pedido, parametros) {
-  if (!podeEnviarFoto(sessao)) {
+  if (!podeEditarPlanta(sessao)) {
     return { erro: 'Seu cargo não permite importar plantas.', status: 403 };
   }
   const semBucket = bucketAusente(env);
@@ -309,7 +326,7 @@ export async function enviarPlanta(env, sessao, pedido, parametros) {
    `/sync/subir` como qualquer outra alteracao de setor. Apagar setor por aqui
    tambem duplicaria a regra em dois lugares. */
 export async function excluirPlanta(env, sessao, pavimentoId) {
-  if (!podeEnviarFoto(sessao)) {
+  if (!podeEditarPlanta(sessao)) {
     return { erro: 'Seu cargo não permite remover plantas.', status: 403 };
   }
 

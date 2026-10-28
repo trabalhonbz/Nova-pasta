@@ -16,6 +16,11 @@ import { readFileSync } from 'node:fs';
 import { adaptarD1, bancoNovo } from './d1-memoria.mjs';
 import { boot, pausa, teste, confirmar, igual, executar } from './harness.js';
 import worker from '../src/worker/index.js';
+/* Chamado direto nos testes de permissão: o painel nunca oferece o botão ao
+   cargo sem autorização, então só a chamada crua exercita a guarda do servidor
+   — que é justamente onde a regra tinha divergido. */
+import * as fotos from '../src/worker/fotos.js';
+import * as sync from '../src/worker/sync.js';
 
 /* `src/sincronizar.js` é um IIFE que se pendura no global do navegador. Avaliá-lo
    aqui dá acesso à tradução e à fusão como funções puras, sem subir um painel em
@@ -528,6 +533,112 @@ teste('quando o R2 aparece, a fila acumulada sobe sozinha', async () => {
   igual(foto.id, 'foto-1', 'com o mesmo id de quando foi tirada');
   confirmar(foto.bytes > 0, 'e com o binário íntegro');
   ctx.fechar();
+});
+
+/* --------------------------------------------------------- exclusões */
+
+teste('pavimento excluído some do servidor e não volta', async () => {
+  /* O `/sync/subir` insere e atualiza o que recebe, e nunca apaga o que ficou
+     de fora — não pode mesmo, porque o pacote é parcial e ausência significa
+     "não mudou". Sem registrar a exclusão como fato, excluir pavimento valia só
+     no aparelho e o registro voltava na descida seguinte. */
+  const { api, db } = servidorDeTeste();
+  const ctx = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(ctx, { nome: 'Richard', usuario: 'richard', senha: 'senhaforte1' });
+  await criarObraComFoto(ctx);
+  await ctx.eval('sincronizarComServidor()');
+  await pausa(400);
+  igual(db.prepare('select count(*) as t from pavimentos where excluido_em is null').get().t, 1,
+    'pré-condição: o pavimento está no servidor');
+
+  ctx.window.confirm = () => true;
+  await ctx.eval('deleteProjectFloor("obra-1", 0)');
+  /* `saveState()` agenda a sincronização para 4 s depois; o teste não espera
+     esse tempo, chama direto. */
+  await ctx.eval('sincronizarComServidor()');
+  await pausa(700);
+
+  igual(
+    db.prepare('select count(*) as t from pavimentos where excluido_em is null').get().t, 0,
+    'o pavimento tem de sair do servidor'
+  );
+  igual(
+    await ctx.eval('window.NBZApi.exclusoesPendentes().length'), 0,
+    'e a pendência tem de ser esquecida depois de confirmada'
+  );
+
+  /* E não volta: a descida seguinte traz a linha com excluidoEm, que a tradução
+     descarta. */
+  await ctx.eval('sincronizarComServidor({ completo: true })');
+  await pausa(600);
+  igual(
+    await ctx.eval('projects.find((p) => p.id === "obra-1").floorPlans.length'), 0,
+    'e não pode reaparecer no painel'
+  );
+  ctx.fechar();
+});
+
+teste('exclusão feita sem sinal sobe quando a conexão volta', async () => {
+  /* A pendência fica guardada até o servidor confirmar, então exclusão feita em
+     obra sem sinal não se perde — mesma garantia da fotografia. */
+  const { api, db } = servidorDeTeste();
+  const ctx = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(ctx, { nome: 'Richard', usuario: 'richard', senha: 'senhaforte1' });
+  await criarObraComFoto(ctx);
+  await ctx.eval('sincronizarComServidor()');
+  await pausa(400);
+
+  /* Registra a exclusão sem sincronizar, como se estivesse offline. */
+  await ctx.eval('window.NBZApi.registrarExclusao("setor", "set-1")');
+  igual(await ctx.eval('window.NBZApi.exclusoesPendentes().length'), 1, 'ficou pendente');
+  igual(db.prepare('select count(*) as t from setores where excluido_em is null').get().t, 1,
+    'e o servidor ainda não sabe');
+
+  await ctx.eval('sincronizarComServidor()');
+  await pausa(600);
+
+  igual(
+    db.prepare('select count(*) as t from setores where excluido_em is null').get().t, 0,
+    'ao sincronizar, a exclusão sobe'
+  );
+  igual(await ctx.eval('window.NBZApi.exclusoesPendentes().length'), 0, 'e deixa de ser pendente');
+  ctx.fechar();
+});
+
+teste('cargo sem permissão não exclui, e a pendência não some', async () => {
+  /* Recusa por cargo não pode limpar a pendência: ela sumiria como se a
+     exclusão tivesse acontecido, e ninguém ficaria sabendo. O encarregado pode
+     apagar setor (`regions.edit`) e não pavimento (`works.delete`). */
+  const { env, db } = servidorDeTeste();
+  db.prepare('insert into obras (id, nome) values (?, ?)').run('obra-1', 'MEDICAL CENTER');
+  db.prepare('insert into pavimentos (id, obra_id, nome) values (?, ?, ?)').run('pav-1', 'obra-1', 'Térreo');
+  db.prepare('insert into setores (id, pavimento_id, nome) values (?, ?, ?)').run('set-1', 'pav-1', 'Setor A');
+
+  const encarregado = { id: 'u1', nivelAcesso: 'encarregado' };
+  const resposta = await sync.subir(env, encarregado, {
+    obras: [],
+    exclusoes: [{ tipo: 'pavimento', id: 'pav-1' }, { tipo: 'setor', id: 'set-1' }]
+  });
+
+  igual(
+    resposta.exclusoesAplicadas.map((i) => i.tipo), ['setor'],
+    'só o setor deveria ter sido aplicado'
+  );
+  igual(db.prepare('select count(*) as t from pavimentos where excluido_em is null').get().t, 1,
+    'o pavimento continua: encarregado não tem works.delete');
+  igual(db.prepare('select count(*) as t from setores where excluido_em is null').get().t, 0,
+    'o setor saiu: encarregado tem regions.edit');
+
+  /* Técnico não apaga nem setor. */
+  db.prepare("update setores set excluido_em = null where id = 'set-1'").run();
+  const doTecnico = await sync.subir(env, { id: 'u2', nivelAcesso: 'tecnico' }, {
+    obras: [], exclusoes: [{ tipo: 'setor', id: 'set-1' }]
+  });
+  igual(doTecnico.exclusoesAplicadas, [], 'técnico não deveria apagar setor');
+  igual(db.prepare('select count(*) as t from setores where excluido_em is null').get().t, 1,
+    'e o setor continua lá');
 });
 
 /* ------------------------------------------------------ fusão delta */
@@ -1063,6 +1174,84 @@ teste('planta apagada pelo administrador some no aparelho que só a baixou', asy
     'e ele NÃO pode tê-la reenviado ao servidor'
   );
   colega.fechar();
+});
+
+teste('técnico não apaga planta nem chamando a rota direto', async () => {
+  /* O painel libera planta por `regions.edit`, que o técnico não tem — ele não
+     vê o botão. Mas o servidor conferia pela regra de FOTOGRAFIA, que ele tem,
+     então bastava chamar a rota para apagar planta de todo mundo.
+
+     Esconder botão não é permissão: é a primeira frase do cabeçalho do Worker,
+     e a regra tinha divergido justamente onde o estrago é global. */
+  const { env, db } = servidorDeTeste();
+  db.prepare('insert into obras (id, nome) values (?, ?)').run('obra-1', 'MEDICAL CENTER');
+  db.prepare('insert into pavimentos (id, obra_id, nome, planta_r2_key) values (?, ?, ?, ?)')
+    .run('pav-1', 'obra-1', 'Térreo', 'obras/obra-1/plantas/pav-1-1.jpg');
+
+  const recusado = await fotos.excluirPlanta(env, { id: 'u1', nivelAcesso: 'tecnico' }, 'pav-1');
+  igual(recusado.status, 403, 'o técnico deveria receber 403');
+  confirmar(
+    db.prepare('select planta_r2_key from pavimentos where id = ?').get('pav-1').planta_r2_key,
+    'e a planta tem de continuar no servidor'
+  );
+
+  /* Importar também: mesma regra, mesmo motivo. */
+  const envioRecusado = await fotos.enviarPlanta(
+    env, { id: 'u1', nivelAcesso: 'tecnico' },
+    { headers: { get: () => null }, arrayBuffer: () => Promise.resolve(new Uint8Array(20).buffer) },
+    new URLSearchParams({ pavimento: 'pav-1' })
+  );
+  igual(envioRecusado.status, 403, 'o técnico também não importa planta');
+
+  /* Contraprova: encarregado tem `regions.edit` e precisa continuar podendo. */
+  const permitido = await fotos.excluirPlanta(env, { id: 'u2', nivelAcesso: 'encarregado' }, 'pav-1');
+  confirmar(!permitido.erro, `encarregado deveria poder remover, e veio "${permitido.erro || ''}"`);
+  igual(
+    db.prepare('select planta_r2_key from pavimentos where id = ?').get('pav-1').planta_r2_key, null,
+    'e a remoção dele tem de valer'
+  );
+});
+
+teste('remover a planta preserva as áreas demarcadas', async () => {
+  /* Antes as demarcações eram apagadas junto, e isso era errado duas vezes: não
+     propagava (o sync nunca apaga o que fica de fora, então voltavam na descida
+     seguinte) e não deveria propagar — área, m² e situação são o que alimenta o
+     laudo, e a planta é só o desenho de fundo. */
+  const { api, db } = servidorDeTeste();
+  const ctx = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(ctx, { nome: 'Richard', usuario: 'richard', senha: 'senhaforte1' });
+  await criarObraComFoto(ctx);
+  await importarPlanta(ctx);
+  await ctx.eval('sincronizarComServidor()');
+  await pausa(400);
+
+  /* Duas coisas que o `removeFloorPlan()` exige e o teste precisa montar: o
+     croqui aberto, porque ele lê o pavimento de `sketchProjectId`/`sketchFloorIndex`,
+     e o `confirm`, que o jsdom não implementa e devolve undefined. Sem as duas,
+     a função sai na primeira linha sem fazer nada. */
+  await ctx.eval('sketchProjectId = "obra-1"; sketchFloorIndex = 0;');
+  ctx.window.confirm = () => true;
+  await ctx.eval('removeFloorPlan()');
+  await pausa(900);
+
+  igual(
+    await ctx.eval('projects[0].floorPlans[0].regions.length'), 1,
+    'o setor demarcado tem de continuar na tela'
+  );
+  igual(
+    await ctx.eval('projects[0].floorPlans[0].planImage'), '',
+    'e a planta tem de ter saído'
+  );
+  igual(
+    db.prepare('select count(*) as t from setores where excluido_em is null').get().t, 1,
+    'o setor continua no servidor'
+  );
+  igual(
+    db.prepare('select planta_r2_key from pavimentos where id = ?').get('pav-1').planta_r2_key, null,
+    'e a planta saiu do servidor'
+  );
+  ctx.fechar();
 });
 
 teste('a limpeza de órfãos não apaga a planta', async () => {
