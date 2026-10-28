@@ -535,7 +535,165 @@ teste('quando o R2 aparece, a fila acumulada sobe sozinha', async () => {
   ctx.fechar();
 });
 
+/* ------------------------------- ciclo completo do pavimento (ADM) */
+
+/* Cadastra uma pessoa e já troca a senha provisória, para ela poder sincronizar.
+
+   Sem a troca o servidor recusa TODAS as rotas com 428 — regra que existe para
+   o administrador deixar de conhecer a senha de quem usa o sistema. Num teste
+   que precisa de dois usuários de verdade sincronizando, essa é a única forma
+   de chegar lá. */
+async function criarColegaComSenhaPropria(admin, { nome, usuario, provisoria, definitiva, cargo = 'engenheiro' }) {
+  await cadastrarPeloPainel(admin, { nome, usuario, senha: provisoria, cargo });
+
+  const dele = await boot({ api: admin.__api });
+  await pausa(600);
+  await preencherLogin(dele, { usuario, senha: provisoria });
+  await pausa(900);
+  await dele.eval(`(async () => {
+    await window.NBZApi.trocarSenha(${JSON.stringify(provisoria)}, ${JSON.stringify(definitiva)});
+  })()`);
+  await pausa(600);
+  dele.fechar();
+
+  /* A troca derruba as sessões, inclusive a dele: entra de novo com a nova. */
+  const reaberto = await boot({ api: admin.__api });
+  await pausa(600);
+  await preencherLogin(reaberto, { usuario, senha: definitiva });
+  await pausa(1500);
+  return reaberto;
+}
+
+teste('ADM cria pavimento, todos veem; ADM exclui, some para todos', async () => {
+  /* O teste que o usuário pediu, de ponta a ponta e com dois usuários distintos
+     — não dois aparelhos do mesmo login. É o requisito inteiro num caso só:
+     criar aparece para todos, excluir some para todos. */
+  const { api, db } = servidorDeTeste();
+
+  const admin = await boot({ api });
+  admin.__api = api;
+  await pausa(600);
+  await preencherCadastroInicial(admin, { nome: 'Richard', usuario: 'richard', senha: 'senhaforte1' });
+
+  const colega = await criarColegaComSenhaPropria(admin, {
+    nome: 'Nicolas', usuario: 'nicolas', provisoria: 'provisoria123', definitiva: 'senhadele456'
+  });
+
+  /* ---- 1. o ADM cria o pavimento ---- */
+  await admin.eval(`(() => {
+    projects = [{
+      id: 'obra-1', name: 'MEDICAL CENTER', city: 'São Paulo', client: 'Racional',
+      manager: 'Filipp', system: 'Manta asfáltica', status: 'Em andamento',
+      date: '2026-06-01', image: '', area: 1000,
+      executed: 0, inProgress: 0, pending: 0, blocked: 0, unclassified: 0, floors: 1,
+      floorPlans: [{ id: 'pav-novo', name: 'Térreo', area: 77, planImage: '', planWidth: 0, planHeight: 0, planFileName: '', regions: [] }],
+      photoReports: []
+    }];
+    saveState();
+  })()`);
+  await admin.eval('sincronizarComServidor()');
+  await pausa(600);
+
+  igual(
+    db.prepare("select nome from pavimentos where id = 'pav-novo' and excluido_em is null").get().nome,
+    'Térreo', 'o pavimento tem de estar no servidor'
+  );
+
+  /* ---- 2. o colega vê ---- */
+  await colega.eval('sincronizarComServidor({ apenasBaixar: true })');
+  await pausa(800);
+  igual(
+    await colega.eval('(projects.find((p) => p.id === "obra-1") || {floorPlans:[]}).floorPlans.map((f) => f.id)'),
+    ['pav-novo'], 'o colega, que é outro usuário, tem de ver o pavimento criado'
+  );
+
+  /* ---- 3. o ADM exclui ---- */
+  admin.window.confirm = () => true;
+  await admin.eval('deleteProjectFloor("obra-1", 0)');
+  await admin.eval('sincronizarComServidor()');
+  await pausa(800);
+
+  igual(
+    db.prepare("select count(*) as t from pavimentos where id = 'pav-novo' and excluido_em is null").get().t, 0,
+    'a exclusão tem de estar registrada no banco central'
+  );
+  igual(
+    await admin.eval('projects.find((p) => p.id === "obra-1").floorPlans.length'), 0,
+    'e sumiu no aparelho de quem excluiu'
+  );
+
+  /* ---- 4. some para o colega, sem ele fazer nada ---- */
+  await colega.eval('sincronizarComServidor({ apenasBaixar: true })');
+  await pausa(800);
+  igual(
+    await colega.eval('projects.find((p) => p.id === "obra-1").floorPlans.length'), 0,
+    'e tem de sumir para o outro usuário também'
+  );
+
+  /* ---- 5. não volta nem depois de sincronizar de novo ---- */
+  await colega.eval('sincronizarComServidor({ completo: true })');
+  await pausa(800);
+  igual(
+    await colega.eval('projects.find((p) => p.id === "obra-1").floorPlans.length'), 0,
+    'e não pode ressurgir numa descida completa'
+  );
+
+  admin.fechar();
+  colega.fechar();
+});
+
 /* --------------------------------------------------------- exclusões */
+
+teste('aparelho com estado antigo não ressuscita registro excluído', async () => {
+  /* A CAUSA RAIZ de "os pavimentos estão ressurgindo".
+
+     `paraServidor` nunca envia `excluidoEm`, e o upsert gravava o valor do
+     cliente por cima: `excluido_em = excluded.excluido_em`, ou seja, null. Então
+     qualquer aparelho que ainda tivesse o registro no estado o trazia de volta
+     ao empurrar — o administrador apagava, o celular do colega sincronizava com
+     o estado antigo, e o pavimento voltava para todo mundo.
+
+     A guarda de carimbo não protegia: o painel carimba todo registro com a hora
+     da SINCRONIZAÇÃO, não com a hora em que o dado mudou, então o aparelho mais
+     desatualizado sempre tem o carimbo mais novo.
+
+     Agora o upsert usa `coalesce(tabela.excluido_em, excluded.excluido_em)`:
+     uma vez marcada, a exclusão fica. */
+  const { env, db } = servidorDeTeste();
+  const adm = { id: 'u1', nivelAcesso: 'administrador' };
+
+  db.prepare('insert into obras (id, nome) values (?, ?)').run('obra-1', 'MEDICAL CENTER');
+  db.prepare('insert into pavimentos (id, obra_id, nome) values (?, ?, ?)').run('pav-1', 'obra-1', 'Térreo');
+  db.prepare('insert into setores (id, pavimento_id, nome) values (?, ?, ?)').run('set-1', 'pav-1', 'Setor A');
+
+  await sync.subir(env, adm, {
+    obras: [],
+    exclusoes: [{ tipo: 'pavimento', id: 'pav-1' }, { tipo: 'setor', id: 'set-1' }]
+  });
+  igual(db.prepare('select count(*) as t from pavimentos where excluido_em is null').get().t, 0,
+    'pré-condição: o pavimento saiu');
+
+  /* O aparelho desatualizado empurra o estado antigo, com o pavimento e o setor
+     ainda presentes e sem nenhuma marca de exclusão. */
+  await sync.subir(env, adm, {
+    obras: [{
+      id: 'obra-1', nome: 'MEDICAL CENTER',
+      pavimentos: [{
+        id: 'pav-1', nome: 'Térreo', areaTotal: 77,
+        setores: [{ id: 'set-1', nome: 'Setor A', situacao: 'executed', pontos: [], area: 10 }]
+      }]
+    }]
+  });
+
+  igual(
+    db.prepare('select count(*) as t from pavimentos where excluido_em is null').get().t, 0,
+    'o pavimento NÃO pode ter ressuscitado'
+  );
+  igual(
+    db.prepare('select count(*) as t from setores where excluido_em is null').get().t, 0,
+    'nem o setor'
+  );
+});
 
 teste('pavimento excluído some do servidor e não volta', async () => {
   /* O `/sync/subir` insere e atualiza o que recebe, e nunca apaga o que ficou
@@ -639,6 +797,174 @@ teste('cargo sem permissão não exclui, e a pendência não some', async () => 
   igual(doTecnico.exclusoesAplicadas, [], 'técnico não deveria apagar setor');
   igual(db.prepare('select count(*) as t from setores where excluido_em is null').get().t, 1,
     'e o setor continua lá');
+});
+
+teste('pavimento replicado não herda a planta do original', async () => {
+  /* A cópia levava `planImage`, medidas, nome do arquivo e `temPlanta` do
+     original — afirmando ter planta que não tem. O endereço apontava para o
+     binário do original (que some ao recarregar, porque o armazenamento é por
+     id de pavimento) e o servidor nunca teve planta para o id novo: o painel
+     pedia `/plantas/<id da cópia>` a cada sincronização e recebia 404. */
+  const { api } = servidorDeTeste();
+  const ctx = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(ctx, { nome: 'Richard', usuario: 'richard', senha: 'senhaforte1' });
+  await criarObraComFoto(ctx);
+  await importarPlanta(ctx);
+
+  await ctx.eval('replicateFloor("obra-1", 0)');
+  await pausa(400);
+
+  const copia = await ctx.eval(`(() => {
+    const c = projects[0].floorPlans[1];
+    return { nome: c.name, planImage: c.planImage, largura: c.planWidth, arquivo: c.planFileName, temPlanta: Boolean(c.temPlanta), setores: c.regions.length };
+  })()`);
+
+  confirmar(/cópia/.test(copia.nome), `a cópia deveria existir, e veio "${copia.nome}"`);
+  igual(copia.planImage, '', 'a cópia não pode herdar o endereço da imagem');
+  igual(copia.largura, 0, 'nem as medidas da planta');
+  igual(copia.arquivo, '', 'nem o nome do arquivo');
+  igual(copia.temPlanta, false, 'nem a afirmação de que existe planta no servidor');
+  igual(copia.setores, 0, 'e as demarcações continuam saindo, como já saíam');
+
+  /* O original não pode ter sido afetado. */
+  confirmar(
+    String(await ctx.eval('projects[0].floorPlans[0].planImage')).startsWith('blob:'),
+    'o pavimento de origem mantém a planta dele'
+  );
+  ctx.fechar();
+});
+
+teste('relatório fotográfico não migra de pavimento depois da fusão', () => {
+  /* Bug que corrompe laudo. O painel acha o relatório pela POSIÇÃO do pavimento
+     no array, e `paraPainel` calcula essa posição no array do PACOTE. A fusão
+     monta outro array, unindo local e recebido, e numa descida parcial as
+     posições não coincidem: o relatório passa a pertencer ao pavimento errado.
+
+     Aqui o aparelho tem dois pavimentos e o pacote traz só o segundo. */
+  const local = [{
+    id: 'obra-1',
+    floorPlans: [
+      { id: 'pav-A', name: 'Térreo', regions: [] },
+      { id: 'pav-B', name: 'Térreo2', regions: [] }
+    ],
+    photoReports: []
+  }];
+  const doServidor = [{
+    id: 'obra-1',
+    floorPlans: [{ id: 'pav-B', name: 'Térreo2', regions: [] }],
+    /* Índice 0 porque no pacote o pav-B é o único — é assim que `paraPainel`
+       calcula, e é exatamente o que se precisa corrigir. */
+    photoReports: [{ id: 'rel-1', floorId: 'pav-B', floorIndex: 0, photos: [] }]
+  }];
+
+  const [obra] = NBZSync.fundir(local, doServidor);
+
+  igual(obra.floorPlans.map((p) => p.id), ['pav-A', 'pav-B'], 'os dois pavimentos permanecem');
+  igual(obra.photoReports[0].floorId, 'pav-B', 'o relatório é do pav-B');
+  igual(
+    obra.photoReports[0].floorIndex, 1,
+    'e o índice tem de apontar para a posição do pav-B no array final, não para a do pacote'
+  );
+});
+
+teste('relatório de pavimento excluído sai junto', () => {
+  /* Depois da fusão o array tem a união de tudo que existe, então pavimento
+     ausente é pavimento excluído — e relatório pendurado nele ficaria órfão,
+     apontando para índice inexistente. */
+  const local = [{
+    id: 'obra-1',
+    floorPlans: [{ id: 'pav-A', name: 'Térreo', regions: [] }],
+    photoReports: [{ id: 'rel-1', floorId: 'pav-A', floorIndex: 0, photos: [] }]
+  }];
+  const doServidor = [{ id: 'obra-1', floorPlans: [], photoReports: [] }];
+
+  const [obra] = NBZSync.fundir(local, doServidor, {
+    exclusoes: { pavimentos: new Set(['pav-A']), obras: new Set(), setores: new Set(), relatorios: new Set(), fotos: new Set() }
+  });
+
+  igual(obra.floorPlans.length, 0, 'o pavimento saiu');
+  igual(obra.photoReports.length, 0, 'e o relatório dele também');
+});
+
+teste('pavimento apagado pelo ADM some no aparelho do colega', async () => {
+  /* O print do usuário: pavimentos "ressurgindo" depois de excluídos.
+
+     `paraPainel` descarta as linhas com excluidoEm ao montar os projetos — e
+     precisa descartar, senão o apagado voltaria para a tela. Mas depois disso a
+     exclusão fica indistinguível de "não veio neste delta", e a fusão preserva o
+     que não veio. Exclusão nenhuma chegava ao painel do colega. */
+  const { api, db } = servidorDeTeste();
+
+  const admin = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(admin, { nome: 'Richard', usuario: 'richard', senha: 'senhaforte1' });
+  await criarObraComFoto(admin);
+  await admin.eval('sincronizarComServidor()');
+  await pausa(400);
+
+  const colega = await boot({ api });
+  await pausa(600);
+  await preencherLogin(colega, { usuario: 'richard', senha: 'senhaforte1' });
+  await pausa(1500);
+  igual(
+    colega.eval('projects.find((p) => p.id === "obra-1").floorPlans.length'), 1,
+    'pré-condição: o colega vê o pavimento'
+  );
+
+  admin.window.confirm = () => true;
+  await admin.eval('deleteProjectFloor("obra-1", 0)');
+  await admin.eval('sincronizarComServidor()');
+  await pausa(700);
+  igual(db.prepare('select count(*) as t from pavimentos where excluido_em is null').get().t, 0,
+    'pré-condição: saiu do servidor');
+  admin.fechar();
+
+  /* O colega apenas sincroniza. É aqui que a exclusão tem de chegar. */
+  await colega.eval('sincronizarComServidor({ apenasBaixar: true })');
+  await pausa(700);
+
+  igual(
+    await colega.eval('projects.find((p) => p.id === "obra-1").floorPlans.length'), 0,
+    'o pavimento apagado pelo ADM tem de sumir no aparelho do colega'
+  );
+  colega.fechar();
+});
+
+teste('setor apagado pelo ADM some no aparelho do colega', async () => {
+  const { api, db } = servidorDeTeste();
+
+  const admin = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(admin, { nome: 'Richard', usuario: 'richard', senha: 'senhaforte1' });
+  await criarObraComFoto(admin);
+  await admin.eval('sincronizarComServidor()');
+  await pausa(400);
+
+  const colega = await boot({ api });
+  await pausa(600);
+  await preencherLogin(colega, { usuario: 'richard', senha: 'senhaforte1' });
+  await pausa(1500);
+  igual(
+    colega.eval('projects.find((p) => p.id === "obra-1").floorPlans[0].regions.length'), 1,
+    'pré-condição: o colega vê o setor'
+  );
+
+  await admin.eval('window.NBZApi.registrarExclusao("setor", "set-1")');
+  await admin.eval('sincronizarComServidor()');
+  await pausa(700);
+  igual(db.prepare('select count(*) as t from setores where excluido_em is null').get().t, 0,
+    'pré-condição: saiu do servidor');
+  admin.fechar();
+
+  await colega.eval('sincronizarComServidor({ apenasBaixar: true })');
+  await pausa(700);
+
+  igual(
+    await colega.eval('projects.find((p) => p.id === "obra-1").floorPlans[0].regions.length'), 0,
+    'o setor apagado tem de sumir no aparelho do colega'
+  );
+  colega.fechar();
 });
 
 /* ------------------------------------------------------ fusão delta */

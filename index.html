@@ -1320,7 +1320,31 @@
       const source = project?.floorPlans[floorIndex];
       if (!project || !source || project.floorPlans.length >= 300) return;
       if (!requirePermission('works.edit', 'Seu cargo não permite replicar pavimentos.')) return;
-      const copy = { ...source, id: newId(), name: `${source.name} (cópia)`.slice(0, 60), regions: [] };
+      /* A cópia nasce SEM planta, e isso não é esquecimento.
+
+         `{ ...source }` levava junto `planImage`, as medidas, o nome do arquivo
+         e `temPlanta`, produzindo um pavimento que afirma ter planta e não tem:
+         o endereço da imagem aponta para o binário do original — que some ao
+         recarregar, porque o armazenamento é por id de pavimento — e o servidor
+         nunca teve planta para o id novo. O painel passava a pedir
+         `/plantas/<id da cópia>` a cada sincronização, recebendo 404, e o
+         distintivo ficava preso em "baixando".
+
+         Zerar é coerente com o que a replicação já fazia com as demarcações:
+         elas também saem, porque os pontos são percentuais da imagem. Quem
+         precisar da mesma planta nos dois pavimentos importa de novo — são dois
+         cliques, contra um estado quebrado que ninguém entende. */
+      const copy = {
+        ...source,
+        id: newId(),
+        name: `${source.name} (cópia)`.slice(0, 60),
+        regions: [],
+        planImage: '',
+        planWidth: 0,
+        planHeight: 0,
+        planFileName: '',
+        temPlanta: false
+      };
       project.floorPlans.splice(floorIndex + 1, 0, copy);
       project.photoReports = project.photoReports.map((report) => report.floorIndex > floorIndex ? { ...report, floorIndex: report.floorIndex + 1 } : report);
       updateProjectFromFloor(project);
@@ -4472,7 +4496,13 @@
         /* 3. Traz o que mudou noutros aparelhos. */
         const pacote = await window.NBZApi.baixarEstado({ completo });
         const vindos = window.NBZSync.paraPainel(pacote);
-        if (vindos.length) {
+        const exclusoesVindas = window.NBZSync.exclusoesDoPacote(pacote);
+        /* Um pacote pode trazer SÓ exclusões: se a obra não foi tocada, nada vem
+           em `vindos` e o único conteúdo é a linha apagada. Condicionar a fusão a
+           `vindos.length` fazia a exclusão ser ignorada exatamente no caso mais
+           comum — apagar um pavimento sem mexer em mais nada. */
+        const temExclusao = Object.values(exclusoesVindas).some((conjunto) => conjunto.size);
+        if (vindos.length || temExclusao) {
           /* A fila de envio é o que distingue "planta apagada no servidor" de
              "planta importada aqui e ainda não enviada": nos dois o servidor
              diz que não tem planta, e só este aparelho sabe se pretende mandar
@@ -4486,8 +4516,13 @@
              se CONFIRMA, então ela cobre todo o intervalo em que a planta existe
              aqui e ainda não existe lá. */
           const proprias = window.NBZApi.plantasProprias();
+          /* As exclusões vêm do mesmo pacote. Sem elas a fusão só sabe somar, e
+             o que o administrador apagou noutro aparelho volta na descida
+             seguinte — porque `paraPainel` descarta a linha excluída e, depois
+             disso, exclusão fica indistinguível de "não veio neste delta". */
           projects = window.NBZSync.fundir(projects, vindos, {
-            plantaPendente: (id) => proprias.has(id)
+            plantaPendente: (id) => proprias.has(id),
+            exclusoes: exclusoesVindas
           });
           saveStateSemReplicar();
           await baixarPlantasFaltantes();

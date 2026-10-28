@@ -119,6 +119,25 @@ export async function subir(env, sessao, corpo) {
   return { ok: true, ...contagem, instrucoes: instrucoes.length, exclusoesAplicadas, em: agora() };
 }
 
+/* EXCLUSAO NAO SE DESFAZ POR SINCRONIZACAO
+
+   Os quatro upserts usam `coalesce(<tabela>.excluido_em, excluded.excluido_em)`
+   em vez de aceitar o valor do cliente. Uma vez marcada, a exclusao fica.
+
+   Sem isso, qualquer aparelho que ainda tivesse o registro no estado o
+   ressuscitava ao empurrar: `paraServidor` nunca envia `excluidoEm`, entao o
+   upsert gravava null por cima da marca. O administrador apagava o pavimento, o
+   celular do colega sincronizava com o estado antigo e o pavimento voltava para
+   todo mundo — sem ninguem conseguir entender por que.
+
+   A guarda `atualizado_em >= atualizado_em` nao ajuda aqui, porque o painel
+   carimba todo registro com a hora da SINCRONIZACAO, nao com a hora em que o
+   dado mudou: o aparelho mais desatualizado sempre tem o carimbo mais novo.
+
+   Consequencia aceita: nao ha como "desexcluir" pelo sync. Restaurar exige
+   mexer no banco. E o lado certo para errar — ressurreicao espontanea de
+   registro apagado e muito pior que restauracao manual rara. */
+
 /* ------------------------------------------------------------ exclusoes */
 
 /* Cada tipo tem a tabela que marca e os cargos que podem marcar.
@@ -190,7 +209,7 @@ function montarObra(env, sessao, obra, obraId, instrucoes, contagem) {
        responsavel = excluded.responsavel, sistema = excluded.sistema,
        situacao = excluded.situacao, data_inicio = excluded.data_inicio,
        imagem_url = excluded.imagem_url, atualizado_em = excluded.atualizado_em,
-       excluido_em = excluded.excluido_em
+       excluido_em = coalesce(obras.excluido_em, excluded.excluido_em)
      where excluded.atualizado_em >= obras.atualizado_em`
   ).bind(
     obraId, limpar(obra.nome, 120), limpar(obra.cidade, 80), limpar(obra.cliente, 120),
@@ -251,7 +270,7 @@ function montarPavimento(env, obraId, pavimento, pavimentoId, ordem, carimbo, in
      on conflict(id) do update set
        nome = excluded.nome, area_total = excluded.area_total, ordem = excluded.ordem,
        atualizado_em = excluded.atualizado_em,
-       excluido_em = excluded.excluido_em
+       excluido_em = coalesce(pavimentos.excluido_em, excluded.excluido_em)
      where excluded.atualizado_em >= pavimentos.atualizado_em`
   ).bind(
     pavimentoId, obraId, limpar(pavimento.nome, 60), numero(pavimento.areaTotal), ordem,
@@ -288,7 +307,7 @@ function montarSetor(env, pavimentoId, setor, setorId, carimbo, instrucoes, cont
        area = excluded.area, data_inicio = excluded.data_inicio,
        data_fim = excluded.data_fim, material = excluded.material,
        sistema = excluded.sistema, custo_unitario = excluded.custo_unitario,
-       atualizado_em = excluded.atualizado_em, excluido_em = excluded.excluido_em
+       atualizado_em = excluded.atualizado_em, excluido_em = coalesce(setores.excluido_em, excluded.excluido_em)
      where excluded.atualizado_em >= setores.atualizado_em`
   ).bind(
     setorId, pavimentoId, limpar(setor.nome, 60), situacao, pontos, numero(setor.area),
@@ -313,7 +332,7 @@ function montarRelatorio(env, sessao, obraId, relatorio, relatorioId, pavimentoI
      on conflict(id) do update set
        pavimento_id = excluded.pavimento_id, setor_id = excluded.setor_id,
        origem = excluded.origem, descricao = excluded.descricao, data = excluded.data,
-       atualizado_em = excluded.atualizado_em, excluido_em = excluded.excluido_em
+       atualizado_em = excluded.atualizado_em, excluido_em = coalesce(relatorios_foto.excluido_em, excluded.excluido_em)
      where excluded.atualizado_em >= relatorios_foto.atualizado_em`
   ).bind(
     relatorioId, obraId, pavimentoId,

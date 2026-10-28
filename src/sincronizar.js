@@ -216,6 +216,32 @@
      Por isso a fusão é por id em cada nível: obra, pavimento, setor, relatório
      e foto. Em cada um deles, quem veio do servidor ganha dos campos locais, e
      quem é só local permanece. */
+  /* O QUE O PACOTE DIZ TER SIDO EXCLUÍDO
+
+     `paraPainel` descarta as linhas com `excluidoEm` ao montar os projetos — e
+     precisa descartar, senão o registro apagado voltaria para a tela. Só que,
+     depois disso, a exclusão fica indistinguível de "não veio neste delta", e a
+     fusão preserva o que não veio. Resultado: exclusão nenhuma chegava ao
+     painel, e o pavimento apagado ressurgia na sincronização seguinte.
+
+     Esta função lê o mesmo pacote e separa justamente o que foi descartado, para
+     a fusão poder remover. Sem ela, "ausência significa não mudou" — regra
+     correta para delta — apagaria o efeito de toda exclusão. */
+  function exclusoesDoPacote(pacote) {
+    const vazio = { obras: new Set(), pavimentos: new Set(), setores: new Set(), relatorios: new Set(), fotos: new Set() };
+    if (!pacote) return vazio;
+    const colher = (lista) => new Set(
+      (lista || []).filter((item) => item && item.excluidoEm).map((item) => item.id)
+    );
+    return {
+      obras: colher(pacote.obras),
+      pavimentos: colher(pacote.pavimentos),
+      setores: colher(pacote.setores),
+      relatorios: colher(pacote.relatorios),
+      fotos: colher(pacote.fotos)
+    };
+  }
+
   function mesclarPorId(locais, vindos, combinar) {
     const porId = new Map((locais || []).map((item) => [item.id, item]));
     for (const vindo of vindos || []) {
@@ -275,17 +301,71 @@
   /* `opcoes.plantaPendente(pavimentoId)` diz se a planta daquele pavimento está
      na fila de envio deste aparelho. Quem chama é o painel, que conhece a fila;
      a tradução em si continua sem depender dela. */
-  function fundir(projetosLocais, projetosDoServidor, opcoes = {}) {
-    const plantaPendente = opcoes && opcoes.plantaPendente;
-    return mesclarPorId(projetosLocais, projetosDoServidor, (local, vindo) => ({
-      ...vindo,
-      floorPlans: mesclarPorId(
-        local.floorPlans, vindo.floorPlans,
-        (pavLocal, pavVindo) => mesclarPavimento(pavLocal, pavVindo, plantaPendente)
-      ),
-      photoReports: mesclarPorId(local.photoReports, vindo.photoReports, mesclarRelatorio)
-    }));
+  function semOsExcluidos(lista, excluidos) {
+    if (!excluidos || !excluidos.size) return lista || [];
+    return (lista || []).filter((item) => !excluidos.has(item.id));
   }
 
-  global.NBZSync = { paraServidor, paraPainel, fundir, fotosParaEnviar };
+  function fundir(projetosLocais, projetosDoServidor, opcoes = {}) {
+    const plantaPendente = opcoes && opcoes.plantaPendente;
+    /* `exclusoes` vem de `exclusoesDoPacote`. Sem ela a fusão só sabe somar, e
+       exclusão feita noutro aparelho nunca chega — o registro apagado volta na
+       descida seguinte porque "não veio" é lido como "não mudou". */
+    const exc = (opcoes && opcoes.exclusoes) || {};
+
+    const fundidos = mesclarPorId(projetosLocais, projetosDoServidor, (local, vindo) => ({
+      ...vindo,
+      floorPlans: semOsExcluidos(
+        mesclarPorId(
+          local.floorPlans, vindo.floorPlans,
+          (pavLocal, pavVindo) => mesclarPavimento(pavLocal, pavVindo, plantaPendente)
+        ),
+        exc.pavimentos
+      ).map((pavimento) => ({
+        ...pavimento,
+        regions: semOsExcluidos(pavimento.regions, exc.setores)
+      })),
+      photoReports: semOsExcluidos(
+        mesclarPorId(local.photoReports, vindo.photoReports, mesclarRelatorio),
+        exc.relatorios
+      ).map((relatorio) => ({
+        ...relatorio,
+        photos: semOsExcluidos(relatorio.photos, exc.fotos)
+      }))
+    }));
+
+    /* Obra excluída sai inteira, inclusive se o pacote não a trouxe por já estar
+       fora do recorte: o id basta. */
+    return semOsExcluidos(fundidos, exc.obras).map(realinharRelatorios);
+  }
+
+  /* RECALCULA `floorIndex` DEPOIS DA FUSÃO — e isto corrige corrupção de laudo.
+
+     O painel localiza o relatório fotográfico pela POSIÇÃO do pavimento no
+     array (`floorIndex`), e `paraPainel` calcula essa posição no array do
+     PACOTE. A fusão monta outro array, unindo o que é local com o que veio, e
+     numa descida parcial as posições não coincidem.
+
+     Na prática: o aparelho tem [Térreo, Térreo2]; o delta traz só o Térreo2 e o
+     relatório dele recebe índice 0; depois da fusão, índice 0 é o Térreo. O
+     relatório fotográfico passa a pertencer ao pavimento errado — e é ele que
+     alimenta o laudo.
+
+     `floorId` é a referência confiável e já viaja junto. Recalcular a posição a
+     partir dele, com o array final em mãos, é o que mantém as duas visões
+     coerentes. Relatório cujo pavimento não existe mais sai: depois da fusão o
+     array tem a união de tudo que existe, então ausência aqui é exclusão. */
+  function realinharRelatorios(obra) {
+    const posicaoPorId = new Map((obra.floorPlans || []).map((pavimento, indice) => [pavimento.id, indice]));
+    return {
+      ...obra,
+      photoReports: (obra.photoReports || [])
+        .filter((relatorio) => !relatorio.floorId || posicaoPorId.has(relatorio.floorId))
+        .map((relatorio) => (relatorio.floorId
+          ? { ...relatorio, floorIndex: posicaoPorId.get(relatorio.floorId) }
+          : relatorio))
+    };
+  }
+
+  global.NBZSync = { paraServidor, paraPainel, fundir, exclusoesDoPacote, fotosParaEnviar };
 })(typeof window !== 'undefined' ? window : globalThis);
