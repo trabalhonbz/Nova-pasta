@@ -1070,13 +1070,58 @@
       const swatches = regionStatusOptions.map((option) => `<button type="button" data-set-status="${option.value}" data-project="${escapeHtml(project.id)}" data-floor-id="${escapeHtml(floor.id)}" data-region-id="${escapeHtml(region.id)}" style="--sw:${option.color};--ink:${option.ink}" aria-pressed="${region.status === option.value}" aria-label="Marcar ${escapeHtml(name)} como ${escapeHtml(option.label)}" title="${escapeHtml(option.label)}"><i style="background:${option.color}"></i><span>${escapeHtml(option.label)}</span></button>`).join('');
       return `<div class="paint-bar local-status"><span class="paint-bar-label">Situação do local — toque na cor (${formatNumber(regionArea(region, floor))} m²)</span><div class="paint-swatches" role="group" aria-label="Situação de ${escapeHtml(name)}">${swatches}</div></div>`;
     }
+    /* AS DEMARCAÇÕES DESENHADAS SOBRE A PLANTA DO RELATÓRIO.
+
+       O relatório mostrava a planta como `<img>` cru e listava os setores numa
+       tabela ao lado. Quem lia via "SETOR 1 · 0,8 m²" e não fazia ideia de ONDE
+       era — que é justamente o que um laudo de impermeabilização precisa
+       mostrar. O desenho existia só no croqui, na tela de edição.
+
+       SOBREPOR, E NÃO SUBSTITUIR O `<img>`: `loadReportImages()` espera o
+       carregamento buscando `#reportContent img` antes de imprimir, e um
+       `<image>` dentro de SVG não casa com esse seletor — a planta sairia em
+       branco no papel. Mantendo a tag, a impressão segue como estava.
+
+       O ALINHAMENTO É EXATO, e não aproximado: `getPlanBounds` encaixa a planta
+       preservando o aspecto, então `bounds.width / bounds.height` é igual a
+       `planWidth / planHeight`, que é o aspecto com que o `<img>` se desenha.
+       Com a `viewBox` nos limites da planta e a sobreposição esticada sobre a
+       imagem, os pontos — que são coordenadas absolutas desse mesmo espaço —
+       caem no lugar certo. `preserveAspectRatio="none"` não distorce aqui
+       porque os dois aspectos são o mesmo.
+
+       Sem as medidas da planta não há aspecto conhecido, e esticar sobre uma
+       imagem de proporção diferente poria os setores no lugar errado — pior que
+       não desenhar. Nesse caso não se desenha. */
+    function reportPlanOverlay(floor) {
+      if (!floor.planWidth || !floor.planHeight || !floor.regions.length) return '';
+      const bounds = getPlanBounds(floor);
+      const shapes = floor.regions.map((region) => {
+        if (!Array.isArray(region.points) || region.points.length < 3) return '';
+        const paint = statusPaintOf(region.status);
+        const points = region.points
+          .map((point) => `${Math.round(point.x * 100) / 100},${Math.round(point.y * 100) / 100}`)
+          .join(' ');
+        const caixa = getPointsBounds(region.points);
+        const cx = caixa.x + caixa.width / 2;
+        const cy = caixa.y + caixa.height / 2;
+        const nome = (region.name || 'Setor').toLocaleUpperCase('pt-BR');
+        /* `paint-order="stroke"` põe o contorno branco ATRÁS do texto: é o que
+           mantém o rótulo legível sobre o traço escuro da planta. */
+        return `<polygon points="${points}" fill="${paint}" fill-opacity="${regionFillOpacity}" stroke="${paint}" stroke-width="2.4" stroke-linejoin="round"><title>${escapeHtml(nome)} · ${formatNumber(regionArea(region, floor))} m² · ${escapeHtml(statusLabelOf(region.status))}</title></polygon>`
+          + `<text x="${Math.round(cx * 100) / 100}" y="${Math.round(cy * 100) / 100}" text-anchor="middle" font-size="13" font-weight="700" fill="#10233f" stroke="#ffffff" stroke-width="3.2" paint-order="stroke">${escapeHtml(nome)}</text>`
+          + `<text x="${Math.round(cx * 100) / 100}" y="${Math.round((cy + 14) * 100) / 100}" text-anchor="middle" font-size="11" fill="#2c3d57" stroke="#ffffff" stroke-width="2.6" paint-order="stroke">${formatNumber(regionArea(region, floor))} m²</text>`;
+      }).join('');
+      if (!shapes) return '';
+      return `<svg class="rf-plan-overlay" viewBox="${bounds.x} ${bounds.y} ${bounds.width} ${bounds.height}" preserveAspectRatio="none" aria-hidden="true">${shapes}</svg>`;
+    }
     function reportFloorCard(project, floor, index) {
       const executed = floorAreaByStatus(floor, 'executed');
       const progress = floor.area ? Math.min(100, Math.round(executed / floor.area * 100)) : 0;
       const expanded = printingReport || !collapsedReportFloors.has(floor.id);
       const photoCount = project.photoReports.filter((report) => report.floorId === floor.id).reduce((count, report) => count + reportPhotos(report).length, 0);
       const plan = floor.planImage
-        ? `<img src="${escapeHtml(floor.planImage)}" alt="Planta de ${escapeHtml(floor.name)}" loading="lazy">`
+        ? `<div class="rf-plan-holder"><img src="${escapeHtml(floor.planImage)}" alt="Planta de ${escapeHtml(floor.name)}" loading="lazy">${reportPlanOverlay(floor)}</div>`
         : '<span class="rf-empty">Nenhuma planta importada para este pavimento.</span>';
       const rows = floor.regions.map((region, regionIndex) => {
         const option = statusOption(region.status);
@@ -1519,6 +1564,24 @@
            faltava: antes o botão só armava o pincel e parecia não fazer nada. */
         const floor = currentSketchFloor();
         const region = floor && floor.regions.find((item) => item.id === selectedRegionId);
+        /* "FOTOS" NÃO É COR, E TRATÁ-LA COMO UMA DEIXAVA O BOTÃO MORTO.
+
+           A ferramenta tem `data-paint=""`, então caía no mesmo caminho das
+           cores logo abaixo: `paintRegion` recebia situação vazia, parava na
+           própria guarda sem pintar nada, e o `return` seguinte ainda pulava o
+           `renderPaintSwatches()`. Com um setor selecionado — o caso normal,
+           porque tocar na área já o seleciona — clicar em "Fotos" não abria o
+           local, não pintava e nem acendia o botão: nada acontecia.
+
+           Aqui ela faz o que o rótulo promete. Com área selecionada, abre o
+           local na hora, de onde saem a câmera e a importação do aparelho; sem
+           área, arma o modo e o próximo toque num setor abre. */
+        if (!paintStatus) {
+          if (region) openLocalPanel(sketchProjectId, sketchFloorIndex, region.id);
+          renderPaintSwatches();
+          renderSketchGeometry();
+          return;
+        }
         if (region) {
           paintRegion(projects.find((item) => item.id === sketchProjectId), floor, region, paintStatus);
           return;

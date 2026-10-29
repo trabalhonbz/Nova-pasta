@@ -168,6 +168,24 @@
     max-height:150mm;
     border-radius:0
   }
+  /* No papel a planta cresce até 150mm, e a sobreposição precisa crescer junto:
+     sem o contentor encolhendo no mesmo retângulo, os setores sairiam
+     deslocados — e um laudo com a área marcada no lugar errado é pior que um
+     laudo sem marcação nenhuma. */
+  .rf-plan-holder{
+    position:relative;
+    display:inline-block;
+    max-width:100%;
+    line-height:0
+  }
+  .rf-plan-overlay{
+    position:absolute;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    border-radius:0
+  }
   .rf-empty{
     font-size:8pt
   }

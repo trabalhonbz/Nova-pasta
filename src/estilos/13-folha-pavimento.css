@@ -127,6 +127,23 @@
   max-width:100%;
   border-radius:6px
 }
+/* Encosta a sobreposição dos setores exatamente na imagem: o contentor encolhe
+   até o tamanho que o `<img>` assumiu, e o SVG cobre esse mesmo retângulo. */
+.rf-plan-holder{
+  position:relative;
+  display:inline-block;
+  max-width:100%;
+  line-height:0
+}
+.rf-plan-overlay{
+  position:absolute;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  border-radius:6px;
+  pointer-events:none
+}
 .rf-table-wrap{
   overflow-x:auto;
   border:1px solid #eef1f6;

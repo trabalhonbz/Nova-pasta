@@ -990,6 +990,166 @@ teste('planta do diálogo sobrevive a demarcar e renomear o setor', async () => 
   ctx.fechar();
 });
 
+teste('o botão Fotos abre o local, com câmera e importação', async () => {
+  /* O relato: "clico em Fotos, seleciono o local e não consigo tirar foto."
+
+     A ferramenta "Fotos" tem `data-paint=""`, e por isso caía no mesmo caminho
+     das cores: `paintRegion` recebia situação vazia, parava na própria guarda
+     sem pintar, e o `return` seguinte pulava até o redesenho dos botões. Com um
+     setor selecionado — o caso normal, porque tocar na área já o seleciona —
+     clicar em "Fotos" não fazia NADA: nem abria o local, nem acendia o botão.
+
+     O resto do caminho já existia e está íntegro; o que faltava era chegar
+     nele. Por isso o teste confere o diálogo aberto E os dois caminhos de
+     imagem, incluindo o `capture` que é o que faz o celular abrir a câmera
+     traseira em vez da galeria. */
+  const { api } = servidorDeTeste();
+  const ctx = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(ctx, { nome: 'André', usuario: 'andre', senha: 'senhaforte1' });
+  await criarObraVazia(ctx);
+  await cadastrarPavimentoComPlanta(ctx, { largura: 1200, altura: 800 });
+
+  await ctx.eval(`(() => {
+    sketchProjectId = 'obra-1';
+    sketchFloorIndex = 0;
+    projects[0].floorPlans[0].regions.push({
+      id: 'set-x', name: 'SETOR 1', status: 'executed',
+      points: [{ x: 10, y: 10 }, { x: 40, y: 10 }, { x: 40, y: 40 }, { x: 10, y: 40 }], area: 12.5
+    });
+    /* Tocar na área já deixa o setor selecionado: é esse estado que matava o
+       botão, então é exatamente nele que o teste precisa estar. */
+    selectedRegionId = 'set-x';
+    saveState();
+    renderSketch();
+  })()`);
+  await pausa(300);
+
+  await ctx.eval(`(() => {
+    document.querySelector('[data-paint=""]').dispatchEvent(new window.Event('click', { bubbles: true }));
+  })()`);
+  await pausa(400);
+
+  const painel = await ctx.eval(`(() => {
+    const dialog = document.querySelector('#localDialog');
+    const camera = document.querySelector('#localCameraInput');
+    const arquivo = document.querySelector('#localFileInput');
+    return {
+      aberto: Boolean(dialog && dialog.open),
+      titulo: document.querySelector('#localTitle').textContent,
+      botaoCamera: Boolean(document.querySelector('label[for="localCameraInput"]')),
+      botaoArquivo: Boolean(document.querySelector('label[for="localFileInput"]')),
+      capture: camera ? camera.getAttribute('capture') : null,
+      aceitaImagem: camera ? camera.getAttribute('accept') : null,
+      varios: arquivo ? arquivo.hasAttribute('multiple') : false
+    };
+  })()`);
+
+  confirmar(painel.aberto, 'clicar em Fotos com uma área selecionada tem de abrir o local');
+  igual(painel.titulo, 'SETOR 1', 'e abrir o local certo');
+  confirmar(painel.botaoCamera, 'o botão de câmera tem de estar na tela');
+  confirmar(painel.botaoArquivo, 'e o de escolher do dispositivo também');
+  igual(painel.capture, 'environment', 'a câmera traseira é a que interessa na obra');
+  igual(painel.aceitaImagem, 'image/*', 'e o seletor aceita imagem');
+  confirmar(painel.varios, 'importar do aparelho aceita várias de uma vez');
+
+  /* E a foto escolhida vira prévia de verdade, pronta para confirmar.
+
+     `compressPhoto` é trocado pela mesma razão que `rasterizePlanFile` nos
+     outros testes: ele desenha num canvas, que o jsdom não tem, e a promessa
+     ficaria pendurada para sempre em vez de falhar. O que interessa aqui é o
+     passo DEPOIS dele — a imagem virar prévia aguardando confirmação. */
+  await ctx.eval(`(() => {
+    compressPhoto = async () => ${JSON.stringify(JPEG_1X1)};
+  })()`);
+  await ctx.eval(`(async () => {
+    const blob = window.NBZMidia.dataUriParaBlob(${JSON.stringify(JPEG_1X1)});
+    const arquivo = new window.File([blob], 'obra.jpg', { type: 'image/jpeg' });
+    await addLocalPhotos([arquivo]);
+  })()`);
+  await pausa(400);
+
+  const prévia = await ctx.eval('pendingLocalPhotos.length');
+  igual(prévia, 1, 'a imagem escolhida deveria virar prévia aguardando confirmação');
+  ctx.fechar();
+});
+
+teste('o relatório desenha as demarcações sobre a planta', async () => {
+  /* O relato: "as demarcações e as imagens deram certo, mas no relatório não
+     aparece a demarcação que fiz."
+
+     O relatório mostrava a planta como `<img>` cru e os setores numa tabela ao
+     lado. Quem lê via "SETOR 1 · 0,8 m²" sem saber ONDE é — que é exatamente o
+     que um laudo de impermeabilização precisa mostrar.
+
+     O teste confere o desenho E o alinhamento. O alinhamento importa tanto
+     quanto o desenho: setor marcado no lugar errado é pior que setor nenhum,
+     porque parece informação boa. Por isso a `viewBox` é comparada com os
+     limites que a planta ocupa, que é o espaço em que os pontos vivem. */
+  const { api } = servidorDeTeste();
+  const ctx = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(ctx, { nome: 'André', usuario: 'andre', senha: 'senhaforte1' });
+  await criarObraVazia(ctx);
+  await cadastrarPavimentoComPlanta(ctx, { largura: 1200, altura: 800 });
+
+  await ctx.eval(`(() => {
+    projects[0].floorPlans[0].regions.push(
+      { id: 'set-a', name: 'SETOR 1', status: 'executed',
+        points: [{ x: 150, y: 120 }, { x: 300, y: 120 }, { x: 300, y: 260 }, { x: 150, y: 260 }], area: 0.8 },
+      { id: 'set-b', name: 'SETOR 2', status: 'blocked',
+        points: [{ x: 400, y: 150 }, { x: 520, y: 150 }, { x: 520, y: 280 }, { x: 400, y: 280 }], area: 0.16 }
+    );
+    syncProjectStats(projects[0]);
+    saveState();
+    renderReports();
+  })()`);
+  await pausa(400);
+
+  const visto = await ctx.eval(`(() => {
+    const svg = document.querySelector('#reportContent .rf-plan-overlay');
+    const floor = projects[0].floorPlans[0];
+    const b = getPlanBounds(floor);
+    return {
+      temSvg: Boolean(svg),
+      viewBox: svg ? svg.getAttribute('viewBox') : '',
+      esperado: [b.x, b.y, b.width, b.height].join(' '),
+      poligonos: svg ? svg.querySelectorAll('polygon').length : 0,
+      rotulos: svg ? Array.from(svg.querySelectorAll('text')).map((t) => t.textContent) : [],
+      imgContinua: Boolean(document.querySelector('#reportContent .rf-plan img')),
+      preenchimentos: svg ? Array.from(svg.querySelectorAll('polygon')).map((p) => p.getAttribute('fill')) : []
+    };
+  })()`);
+
+  confirmar(visto.temSvg, 'o relatório deveria ter a camada de setores sobre a planta');
+  igual(visto.poligonos, 2, 'um polígono por setor demarcado');
+  igual(visto.viewBox, visto.esperado,
+    'a viewBox tem de ser o retângulo da planta, senão os setores saem deslocados');
+  confirmar(visto.rotulos.includes('SETOR 1') && visto.rotulos.includes('SETOR 2'),
+    `os setores deveriam estar rotulados, e vieram ${JSON.stringify(visto.rotulos)}`);
+
+  /* O `<img>` tem de continuar existindo: `loadReportImages()` espera por
+     `#reportContent img` antes de imprimir, e sem a tag a planta sai em branco
+     no papel. */
+  confirmar(visto.imgContinua, 'a planta tem de seguir como <img>, por causa da impressão');
+
+  /* Cores diferentes para situações diferentes: é o que faz o laudo mostrar o
+     que está pronto e o que está travado sem precisar cruzar com a tabela. */
+  confirmar(visto.preenchimentos[0] !== visto.preenchimentos[1],
+    `cada situação tem sua cor, e vieram ${JSON.stringify(visto.preenchimentos)}`);
+
+  /* Pavimento sem medidas de planta não ganha camada: sem aspecto conhecido o
+     desenho cairia no lugar errado, e errado é pior que ausente. */
+  const semMedidas = await ctx.eval(`(() => {
+    projects[0].floorPlans[0].planWidth = 0;
+    projects[0].floorPlans[0].planHeight = 0;
+    renderReports();
+    return Boolean(document.querySelector('#reportContent .rf-plan-overlay'));
+  })()`);
+  confirmar(!semMedidas, 'sem as medidas da planta, melhor não desenhar do que desenhar torto');
+  ctx.fechar();
+});
+
 teste('a planta se mantém igual vinda de JPEG ou de PDF', async () => {
   /* O PDF nunca chega ao servidor como PDF: `rasterizePlanFile` renderiza a
      primeira página num canvas e entrega JPEG, exatamente como faz com imagem.
