@@ -778,6 +778,287 @@ teste('o servidor recusa PDF cru, porque quem rasteriza é o painel', async () =
   );
 });
 
+/* ------------------------- caça às sumiços da planta ------------------- */
+
+/* Lê o que o olho veria, para reusar entre os testes desta seção. */
+async function desenhoNaTela(ctx, indice = 0) {
+  return ctx.eval(`(async () => {
+    const pav = projects[0].floorPlans[${indice}];
+    if (!pav) return { existe: false };
+    const img = document.querySelector('#planBackground');
+    return {
+      existe: true,
+      estado: pav.planImage || '',
+      binario: Boolean(await window.NBZMidia.registroDaPlanta(pav.id)),
+      href: img ? (img.getAttribute('href') || '') : '',
+      visivel: img ? img.getAttribute('visibility') : null
+    };
+  })()`);
+}
+
+teste('com TODOS os cargos ativos ao mesmo tempo, a planta não some em ninguém', async () => {
+  /* O cenário de obra: várias pessoas com o painel aberto, sincronizando em
+     momentos diferentes. É aqui que a planta já sumiu — um aparelho empurrava
+     estado sem o desenho e a fusão do outro apagava.
+
+     Cada usuário é de um cargo, num aparelho próprio, e todos sincronizam
+     várias vezes intercalados. Ao fim, a planta tem de estar viva em TODOS. */
+  const { api, db } = servidorDeTeste();
+
+  const admin = await boot({ api });
+  admin.__api = api;
+  await pausa(600);
+  await preencherCadastroInicial(admin, { nome: 'Richard', usuario: 'richard', senha: 'senhaforte1' });
+  await criarObraComFoto(admin);
+  await admin.eval('sketchProjectId = "obra-1"; sketchFloorIndex = 0;');
+  await importarPelaTela(admin);
+  await admin.eval('sincronizarComServidor()');
+  await pausa(800);
+  confirmar(db.prepare('select planta_r2_key from pavimentos where id = ?').get('pav-1').planta_r2_key,
+    'pré-condição: a planta está no servidor');
+
+  /* Os quatro outros cargos entram, um aparelho cada. O cliente entra junto
+     apesar de não gravar nada: ele LÊ e sincroniza, e sincronização que apaga a
+     planta não pergunta o cargo de quem sincronizou. */
+  const colegas = [];
+  for (const cargo of ['engenheiro', 'encarregado', 'tecnico', 'cliente']) {
+    colegas.push({
+      cargo,
+      ctx: await criarColegaComSenhaPropria(admin, {
+        nome: `Pessoa ${cargo}`, usuario: `muitos_${cargo}`,
+        provisoria: 'provisoria123', definitiva: `senha_${cargo}_7`, cargo
+      })
+    });
+  }
+
+  /* Todos baixam. */
+  for (const { cargo, ctx } of colegas) {
+    await ctx.eval('sincronizarComServidor({ apenasBaixar: true })');
+    await pausa(1500);
+    const v = await ctx.eval(`(async () => {
+      const obra = projects.find((p) => p.id === 'obra-1');
+      const pav = obra && obra.floorPlans[0];
+      return pav ? { estado: pav.planImage || '', binario: Boolean(await window.NBZMidia.registroDaPlanta(pav.id)) } : { estado: '', binario: false };
+    })()`);
+    confirmar(String(v.estado).startsWith('blob:'), `${cargo}: não recebeu a planta`);
+    confirmar(v.binario, `${cargo}: recebeu a referência mas não o binário`);
+  }
+
+  /* Agora o vaivém: cada um grava algo e sincroniza, intercalado com os outros.
+     O técnico só pode mudar situação, então é o que ele faz. */
+  for (let rodada = 1; rodada <= 3; rodada += 1) {
+    for (const { cargo, ctx } of colegas) {
+      /* O cliente não grava — o servidor recusa com 403 e é assim que deve ser.
+         Ele participa sincronizando, que é o que o cargo dele faz. */
+      if (cargo === 'cliente') {
+        await ctx.eval('sincronizarComServidor({ apenasBaixar: true })');
+        await pausa(300);
+        continue;
+      }
+      await ctx.eval(`(() => {
+        const obra = projects.find((p) => p.id === 'obra-1');
+        const setor = obra.floorPlans[0].regions[0];
+        if (setor) setor.status = '${rodada % 2 ? 'inProgress' : 'executed'}';
+        saveState();
+      })()`);
+      await ctx.eval('sincronizarComServidor()');
+      await pausa(300);
+    }
+    await admin.eval('sincronizarComServidor()');
+    await pausa(300);
+
+    /* Depois de cada rodada, a planta tem de estar viva em todos. */
+    for (const { cargo, ctx } of [{ cargo: 'administrador', ctx: admin }, ...colegas]) {
+      const v = await ctx.eval(`(async () => {
+        const obra = projects.find((p) => p.id === 'obra-1');
+        const pav = obra && obra.floorPlans[0];
+        return pav ? { estado: pav.planImage || '', binario: Boolean(await window.NBZMidia.registroDaPlanta(pav.id)) } : { estado: '', binario: false };
+      })()`);
+      confirmar(String(v.estado).startsWith('blob:'),
+        `rodada ${rodada}, ${cargo}: a planta sumiu — "${v.estado}"`);
+      confirmar(v.binario, `rodada ${rodada}, ${cargo}: o binário sumiu`);
+    }
+  }
+
+  /* E continua no servidor no fim de tudo. */
+  confirmar(
+    db.prepare('select planta_r2_key from pavimentos where id = ?').get('pav-1').planta_r2_key,
+    'a planta tem de continuar no servidor depois de todo o vaivém'
+  );
+
+  admin.fechar();
+  for (const { ctx } of colegas) ctx.fechar();
+});
+
+teste('dois pavimentos com plantas diferentes não trocam de desenho', async () => {
+  /* Cenário nunca exercitado: duas plantas no mesmo projeto. Como o armazenamento
+     é por id de pavimento e o object URL fica em cache por chave, basta uma
+     confusão de chave para o Térreo mostrar a planta do 2º andar — e ninguém
+     perceberia, porque AMBOS mostram alguma planta. */
+  const { api } = servidorDeTeste();
+  const ctx = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(ctx, { nome: 'Richard', usuario: 'richard', senha: 'senhaforte1' });
+  await criarObraComFoto(ctx);
+
+  await ctx.eval(`(() => {
+    projects[0].floorPlans.push({
+      id: 'pav-2', name: '2º pavimento', area: 80, regions: [],
+      planImage: '', planWidth: 0, planHeight: 0, planFileName: ''
+    });
+    saveState();
+  })()`);
+
+  await ctx.eval('sketchProjectId = "obra-1"; sketchFloorIndex = 0;');
+  await importarPelaTela(ctx, { arquivo: 'terreo.jpg', largura: 1000, altura: 700 });
+  await ctx.eval('sketchProjectId = "obra-1"; sketchFloorIndex = 1;');
+  await importarPelaTela(ctx, { arquivo: 'segundo.jpg', largura: 1400, altura: 900 });
+  await ctx.eval('sincronizarComServidor()');
+  await pausa(900);
+
+  const t = await ctx.eval('JSON.stringify(projects[0].floorPlans.map((f) => ({ id: f.id, img: f.planImage, arq: f.planFileName, larg: f.planWidth })))');
+  const plantas = JSON.parse(t);
+  confirmar(plantas[0].img && plantas[0].img.startsWith('blob:'), 'o térreo deveria ter planta');
+  confirmar(plantas[1].img && plantas[1].img.startsWith('blob:'), 'o 2º pavimento também');
+  confirmar(plantas[0].img !== plantas[1].img,
+    'e os desenhos têm de ser DIFERENTES — o mesmo endereço nos dois significaria planta trocada');
+  igual(plantas[0].arq, 'terreo.jpg', 'cada um com o arquivo que recebeu');
+  igual(plantas[1].arq, 'segundo.jpg', 'idem');
+  igual([plantas[0].larg, plantas[1].larg], [1000, 1400], 'e com as medidas próprias');
+  ctx.fechar();
+});
+
+teste('excluir um pavimento não apaga a planta do outro', async () => {
+  const { api } = servidorDeTeste();
+  const ctx = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(ctx, { nome: 'Richard', usuario: 'richard', senha: 'senhaforte1' });
+  await criarObraComFoto(ctx);
+  await ctx.eval(`(() => {
+    projects[0].floorPlans.push({
+      id: 'pav-2', name: '2º pavimento', area: 80, regions: [],
+      planImage: '', planWidth: 0, planHeight: 0, planFileName: ''
+    });
+    saveState();
+  })()`);
+  await ctx.eval('sketchProjectId = "obra-1"; sketchFloorIndex = 0;');
+  await importarPelaTela(ctx, { arquivo: 'terreo.jpg' });
+  await ctx.eval('sincronizarComServidor()');
+  await pausa(700);
+  const antes = await ctx.eval('projects[0].floorPlans[0].planImage');
+
+  /* Exclui o SEGUNDO pavimento, que não tem planta. */
+  ctx.window.confirm = () => true;
+  await ctx.eval('deleteProjectFloor("obra-1", 1)');
+  await ctx.eval('sincronizarComServidor()');
+  await pausa(900);
+
+  igual(await ctx.eval('projects[0].floorPlans.length'), 1, 'sobra um pavimento');
+  const depois = await desenhoNaTela(ctx);
+  igual(depois.estado, antes, 'e a planta do que sobrou tem de ser a mesma');
+  confirmar(depois.binario, 'com o binário intacto');
+  ctx.fechar();
+});
+
+teste('a planta sobrevive a dez sincronizações seguidas', async () => {
+  /* A busca periódica roda de minuto em minuto. Num dia de trabalho são
+     centenas de ciclos, e basta um deles apagar a planta para o engenheiro
+     perder o desenho no meio da visita. */
+  const { api } = servidorDeTeste();
+  const ctx = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(ctx, { nome: 'Richard', usuario: 'richard', senha: 'senhaforte1' });
+  await criarObraComFoto(ctx);
+  await ctx.eval('sketchProjectId = "obra-1"; sketchFloorIndex = 0;');
+  await importarPelaTela(ctx);
+  await ctx.eval('sincronizarComServidor()');
+  await pausa(700);
+
+  for (let i = 1; i <= 10; i += 1) {
+    await ctx.eval('sincronizarComServidor({ apenasBaixar: true })');
+    await pausa(150);
+    const v = await desenhoNaTela(ctx);
+    confirmar(String(v.estado).startsWith('blob:'), `sumiu na ${i}ª sincronização`);
+    confirmar(v.binario, `binário sumiu na ${i}ª sincronização`);
+  }
+  ctx.fechar();
+});
+
+teste('a planta sobrevive a uma descida completa', async () => {
+  /* `completo: true` ignora a marca e traz a base inteira — é o que roda ao
+     entrar num aparelho. Pacote cheio percorre caminhos da fusão que o delta
+     não percorre. */
+  const { api } = servidorDeTeste();
+  const ctx = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(ctx, { nome: 'Richard', usuario: 'richard', senha: 'senhaforte1' });
+  await criarObraComFoto(ctx);
+  await ctx.eval('sketchProjectId = "obra-1"; sketchFloorIndex = 0;');
+  await importarPelaTela(ctx);
+  await ctx.eval('sincronizarComServidor()');
+  await pausa(700);
+
+  await ctx.eval('sincronizarComServidor({ completo: true })');
+  await pausa(800);
+  const v = await desenhoNaTela(ctx);
+  confirmar(String(v.estado).startsWith('blob:'), `sumiu na descida completa — "${v.estado}"`);
+  confirmar(v.binario, 'e o binário sumiu junto');
+  ctx.fechar();
+});
+
+teste('a planta sobrevive a sair e entrar de novo', async () => {
+  /* Sair limpa a sessão; entrar dispara descida completa. O binário mora no
+     IndexedDB, que não é limpo no logout — então tem de reaparecer. */
+  const { api } = servidorDeTeste();
+  const ctx = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(ctx, { nome: 'Richard', usuario: 'richard', senha: 'senhaforte1' });
+  await criarObraComFoto(ctx);
+  await ctx.eval('sketchProjectId = "obra-1"; sketchFloorIndex = 0;');
+  await importarPelaTela(ctx);
+  await ctx.eval('sincronizarComServidor()');
+  await pausa(700);
+
+  ctx.doc.querySelector('#logoutButton').dispatchEvent(new ctx.window.Event('click', { bubbles: true }));
+  await pausa(700);
+  await preencherLogin(ctx, { usuario: 'richard', senha: 'senhaforte1' });
+  await pausa(1700);
+
+  const v = await ctx.eval(`(async () => {
+    const obra = projects.find((p) => p.id === 'obra-1');
+    const pav = obra && obra.floorPlans[0];
+    return pav ? {
+      estado: pav.planImage || '',
+      binario: Boolean(await window.NBZMidia.registroDaPlanta(pav.id))
+    } : { estado: '', binario: false };
+  })()`);
+  confirmar(String(v.estado).startsWith('blob:'), `sumiu depois de sair e entrar — "${v.estado}"`);
+  confirmar(v.binario, 'e o binário sumiu junto');
+  ctx.fechar();
+});
+
+teste('sem IndexedDB a planta ainda aparece, pelo caminho de reserva', async () => {
+  /* Modo privado de alguns navegadores e origem não segura bloqueiam o
+     IndexedDB. A camada de mídia degrada para data-URI no localStorage — e o
+     desenho PRECISA aparecer mesmo assim, senão quem está nessa situação fica
+     sem planta e sem explicação. */
+  const { api } = servidorDeTeste();
+  const ctx = await boot({ api, comIndexedDB: false });
+  await pausa(600);
+  await preencherCadastroInicial(ctx, { nome: 'Richard', usuario: 'richard', senha: 'senhaforte1' });
+  await criarObraComFoto(ctx);
+  await ctx.eval('sketchProjectId = "obra-1"; sketchFloorIndex = 0;');
+  await importarPelaTela(ctx);
+  await pausa(400);
+
+  const estado = await ctx.eval('projects[0].floorPlans[0].planImage');
+  confirmar(String(estado).startsWith('data:'),
+    `sem IndexedDB o desenho deveria ficar como data-URI, e ficou "${String(estado).slice(0, 24)}"`);
+  const href = await ctx.eval("document.querySelector('#planBackground').getAttribute('href')");
+  igual(href, estado, 'e o SVG tem de apontar para ele');
+  ctx.fechar();
+});
+
 teste('a planta sobrevive a tudo que o croqui oferece', async () => {
   /* Varredura do que existe na tela da planta, uma ação por vez, conferindo o
      desenho depois de CADA uma. A pergunta é sempre a mesma — a planta sumiu? —
