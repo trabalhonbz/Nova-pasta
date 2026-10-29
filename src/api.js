@@ -692,12 +692,23 @@
      rede para o escoamento e tenta no proximo gatilho; recusa 4xx do servidor
      nao melhora com repeticao e sai da fila para nao bloquear as outras. */
   async function escoarFilaDePlantas() {
-    if (!online() || !token()) return { enviadas: 0, pendentes: plantasPendentes() };
+    if (!online() || !token()) return { enviadas: 0, pendentes: plantasPendentes(), ids: [] };
     let enviadas = 0;
+    /* Quais pavimentos tiveram a planta ACEITA pelo servidor.
+
+       Quem chama precisa disto para anotar `temPlanta` no estado. O envio
+       bem-sucedido apaga a marca de origem, e `temPlanta` so chegava pela
+       descida seguinte: entre os dois instantes o estado dizia planta aqui,
+       nenhuma la e nenhuma marca — a assinatura que a fusao le como "apagada".
+       Bastava a descida nao trazer o pavimento para a planta recem-enviada
+       sumir sozinha. A entrada descartada por falta de binario fica fora: nada
+       subiu, e marca-la seria mentir para o painel. */
+    const ids = [];
     for (const item of filaDePlantas()) {
       try {
-        await enviarUmaPlanta(item);
+        const resultado = await enviarUmaPlanta(item);
         enviadas += 1;
+        if (!resultado || !resultado.descartada) ids.push(item.pavimentoId);
       } catch (erro) {
         if (erro.offline || erro.status === 0) break;
         if (erro.status >= 400 && erro.status < 500 && erro.status !== 429) {
@@ -707,7 +718,7 @@
         }
       }
     }
-    return { enviadas, pendentes: plantasPendentes() };
+    return { enviadas, pendentes: plantasPendentes(), ids };
   }
 
   /* Remove a planta no servidor e a copia local.

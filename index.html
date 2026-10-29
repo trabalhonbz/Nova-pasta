@@ -1559,6 +1559,52 @@
       const paintBar = body.querySelector('.paint-bar');
       paintBar.after(body.querySelector('.sketch-tools'), body.querySelector('.sketch-tip'));
     }
+    /* ===== O ÚNICO LUGAR QUE PÕE PLANTA NUM PAVIMENTO =====
+
+       Colocar planta exige TRÊS coisas, e fazer duas não é fazer "quase tudo" —
+       é produzir um estado que a sincronização apaga sozinha:
+
+         1. o binário no IndexedDB sob o id do pavimento;
+         2. os campos (`planImage`, medidas, nome do arquivo) no estado;
+         3. a entrada na fila de envio, que é o que cria a MARCA DE ORIGEM.
+
+       Sem a marca, `mesclarPavimento` lê planta local + servidor sem planta
+       como "o administrador apagou", e zera o desenho. É correto da parte dela:
+       é assim que exclusão feita noutro aparelho propaga. O erro está em quem
+       grava a planta sem avisar que pretende enviá-la.
+
+       Essa regra não era imposta por nada. Havia dois lugares que punham
+       planta: o croqui cumpria os três passos, o diálogo de adicionar pavimento
+       cumpria o segundo e mais nada — e a planta cadastrada por ele sumia na
+       primeira ação seguinte, sem nunca ter chegado aos colegas. O defeito
+       voltou três vezes porque cada correção arrumava a instância, não a
+       possibilidade de esquecer.
+
+       Agora os passos moram aqui. Quem precisar de um terceiro caminho chama
+       estas duas funções, na ordem, e acerta por construção. `aplicar` vem
+       antes de `saveState()`; `enfileirarEnvio`, depois de ele dar certo — se a
+       gravação local falhar não há o que enviar, e o aparelho é a fonte da
+       verdade enquanto não há sinal. */
+    async function aplicarPlantaNoPavimento(floor, imported, nomeArquivo) {
+      /* Pavimento sem id (estado anterior à migração) fica no data-URI de
+         antes: funciona, embora gaste cota. */
+      floor.planImage = floor.id
+        ? await persistirPlanta(floor.id, imported.data)
+        : imported.data;
+      floor.planWidth = imported.width;
+      floor.planHeight = imported.height;
+      floor.planFileName = nomeArquivo;
+    }
+
+    function enfileirarEnvioDaPlanta(floor) {
+      if (!comServidor || !floor || !floor.id || !window.NBZApi) return;
+      window.NBZApi.enfileirarPlanta(floor.id, {
+        largura: floor.planWidth || 0,
+        altura: floor.planHeight || 0,
+        arquivo: floor.planFileName || ''
+      });
+    }
+
     async function importFloorPlan(file) {
       const project = projects.find((item) => item.id === sketchProjectId);
       const floor = project && selectedFloor(project, sketchFloorIndex);
@@ -1570,15 +1616,7 @@
       error.textContent = 'Importando planta…';
       try {
         const imported = await rasterizePlanFile(file);
-        /* O binário vai para o IndexedDB sob o id do pavimento; `planImage`
-           recebe o object URL. Pavimento sem id (estado anterior à migração)
-           continua no data-URI de antes, que funciona embora gaste cota. */
-        floor.planImage = floor.id
-          ? await persistirPlanta(floor.id, imported.data)
-          : imported.data;
-        floor.planWidth = imported.width;
-        floor.planHeight = imported.height;
-        floor.planFileName = file.name;
+        await aplicarPlantaNoPavimento(floor, imported, file.name);
         if (floor.regions.length) {
           /* A limpeza das demarcações precisa ser DITA ao servidor.
 
@@ -1603,14 +1641,8 @@
           error.textContent = 'Sem espaço para salvar a planta. Tente um arquivo menor.';
           return;
         }
-        /* Enfileira o envio DEPOIS de gravar: se a gravação local falhar não há
-           o que enviar, e o aparelho é a fonte da verdade enquanto não há sinal.
-           O `saveState()` acima já agendou a sincronização, que escoa a fila. */
-        if (comServidor && floor.id && window.NBZApi) {
-          window.NBZApi.enfileirarPlanta(floor.id, {
-            largura: imported.width, altura: imported.height, arquivo: file.name
-          });
-        }
+        /* O `saveState()` acima já agendou a sincronização, que escoa a fila. */
+        enfileirarEnvioDaPlanta(floor);
         renderSketch();
         renderAll();
       } catch (importError) {
@@ -1821,6 +1853,40 @@
     }
     /* Cartão de progresso do pavimento: percentual executado, barra e as quatro
        situações com a área de cada uma. */
+    /* Refaz o endereço do desenho a partir do binário guardado no aparelho.
+
+       Chamado quando o `<image>` do croqui falha ao carregar. O endereço antigo
+       é liberado antes: a camada de mídia guarda object URL em cache por chave, e
+       sem liberar ela devolveria exatamente a URL morta que acabou de falhar.
+
+       Uma tentativa só, controlada por `recuperandoPlanta`: se o binário também
+       tiver sumido, insistir viraria laço infinito de erro e recuperação. */
+    const recuperandoPlanta = new Set();
+
+    async function recuperarDesenhoDaPlanta(floor) {
+      if (!floor || !floor.id || recuperandoPlanta.has(floor.id)) return;
+      if (!window.NBZMidia || !await temMidia()) return;
+      recuperandoPlanta.add(floor.id);
+      try {
+        const registro = await window.NBZMidia.registroDaPlanta(floor.id);
+        if (!registro) return;
+        window.NBZMidia.liberarUrlDaPlanta(floor.id);
+        const url = await window.NBZMidia.urlDaPlanta(floor.id);
+        if (!url) return;
+        floor.planImage = url;
+        const alvo = document.querySelector('#planBackground');
+        if (alvo) {
+          alvo.setAttribute('href', url);
+          alvo.setAttribute('visibility', 'visible');
+        }
+        console.info('Desenho da planta recarregado do armazenamento local.');
+      } finally {
+        /* Solta a trava depois de um instante, para uma falha nova mais tarde
+           ainda poder ser recuperada — sem permitir a repetição imediata. */
+        window.setTimeout(() => recuperandoPlanta.delete(floor.id), 3000);
+      }
+    }
+
     /* Diz em que pé está a planta deste pavimento em relação ao servidor.
 
        Existe para responder uma pergunta prática que a tela não respondia: "já
@@ -1911,6 +1977,17 @@
       if (floor.planImage) planImage.setAttribute('href', floor.planImage);
       else planImage.removeAttribute('href');
       planImage.setAttribute('visibility', floor.planImage ? 'visible' : 'hidden');
+      /* Se o desenho falhar ao carregar, refaz o endereço a partir do binário.
+
+         O object URL é frágil de um jeito que o estado não revela: ele pode ter
+         sido revogado, ou o navegador pode tê-lo descartado sob pressão de
+         memória — e o Safari do iPhone faz isso com imagem grande. Nesses casos
+         `floor.planImage` continua parecendo certo e a tela fica vazia, que é o
+         sintoma mais difícil de diagnosticar: estado correto, planta invisível.
+
+         O binário está no IndexedDB. Refazer a URL é barato e resolve a classe
+         inteira do problema, sem precisar descobrir qual das causas foi. */
+      planImage.onerror = () => { recuperarDesenhoDaPlanta(floor); };
       document.querySelector('#planFileName').textContent = floor.planFileName || 'Nenhuma planta importada';
       document.querySelector('#removePlan').disabled = !floor.planImage;
       document.querySelector('#floorAreaInput').value = areaInputValue(floor.area);
@@ -3170,7 +3247,12 @@
       try {
         const file = document.querySelector('#addFloorPlanFile').files[0];
         const imported = file ? await rasterizePlanFile(file) : null;
-        const floor = { id: newId(), name: floorName, area: Math.round(area * 100) / 100, regions: [], planImage: imported?.data || '', planWidth: imported?.width || 0, planHeight: imported?.height || 0, planFileName: imported ? file.name : '' };
+        const floor = { id: newId(), name: floorName, area: Math.round(area * 100) / 100, regions: [], planImage: '', planWidth: imported?.width || 0, planHeight: imported?.height || 0, planFileName: imported ? file.name : '', temPlanta: false };
+        /* Mesmo caminho do croqui, pelas mesmas funções. Este diálogo guardava
+           o data-URI direto em `planImage` e parava aí — sem binário, sem fila,
+           sem marca de origem —, e a planta cadastrada por aqui sumia na
+           primeira ação seguinte sem nunca ter chegado aos colegas. */
+        if (imported) await aplicarPlantaNoPavimento(floor, imported, file.name);
         project.floorPlans.push(floor);
         updateProjectFromFloor(project);
         const activityCount = activities.length;
@@ -3182,6 +3264,7 @@
           error.textContent = 'Não foi possível salvar. Reduza o tamanho do arquivo ou libere espaço neste navegador.';
           return;
         }
+        if (imported) enfileirarEnvioDaPlanta(floor);
         notify(`Pavimento ${floor.name} cadastrado · ${formatNumber(floor.area)} m²`, 'ok');
         renderAll();
         document.querySelector('#addFloorDialog').close();
@@ -4505,7 +4588,7 @@
                `POST /plantas` recusa com 404 se o pavimento ainda não existir
                no D1 — mesma dependência que vale para as fotografias. */
         await enfileirarPlantasPendentes();
-        await window.NBZApi.escoarFilaDePlantas();
+        marcarPlantasNoServidor((await window.NBZApi.escoarFilaDePlantas()).ids);
 
         /* 3. Traz o que mudou noutros aparelhos. */
         const pacote = await window.NBZApi.baixarEstado({ completo });
@@ -4581,6 +4664,28 @@
 
        `temPlanta` falso com `planImage` presente é a assinatura do problema, e é
        a mesma condição que o distintivo mostra como "não enviada". */
+    /* Anota no estado que estas plantas já estão no servidor.
+
+       Fecha a janela entre o envio confirmado e o pacote da descida. O envio
+       bem-sucedido apaga a marca de origem — de propósito, para este aparelho
+       não reenviar a planta que alguém apagar —, mas `temPlanta` só chegava
+       pela descida. No intervalo, o pavimento tinha planta aqui, nenhuma no
+       servidor e nenhuma marca: exatamente o que `mesclarPavimento` lê como
+       "apagada no servidor". Se a descida não trouxesse aquele pavimento, a
+       planta que acabara de subir era zerada na própria sincronização.
+
+       O servidor continua sendo a autoridade: a fusão sobrescreve `temPlanta`
+       com o que vier no pacote. Isto só cobre o vão entre uma coisa e outra. */
+    function marcarPlantasNoServidor(ids) {
+      if (!Array.isArray(ids) || !ids.length) return;
+      const enviados = new Set(ids);
+      for (const project of projects) {
+        for (const floor of project.floorPlans || []) {
+          if (floor.id && enviados.has(floor.id)) floor.temPlanta = true;
+        }
+      }
+    }
+
     async function enfileirarPlantasPendentes() {
       if (!comServidor || !window.NBZApi) return 0;
       /* SÓ REENVIA PLANTA QUE FOI IMPORTADA NESTE APARELHO.
@@ -4610,11 +4715,7 @@
             if (url) floor.planImage = url;
           }
 
-          window.NBZApi.enfileirarPlanta(floor.id, {
-            largura: floor.planWidth || 0,
-            altura: floor.planHeight || 0,
-            arquivo: floor.planFileName || ''
-          });
+          enfileirarEnvioDaPlanta(floor);
           enfileiradas += 1;
         }
       }

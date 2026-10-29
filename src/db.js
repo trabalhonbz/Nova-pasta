@@ -295,6 +295,15 @@
     return removerFoto(chaveDaPlanta(pavimentoId));
   }
 
+  /* Descarta o object URL em cache sem apagar o binário.
+
+     Serve para quando a URL morreu — revogada, ou descartada pelo navegador sob
+     pressão de memória — e é preciso gerar outra a partir do mesmo arquivo. Sem
+     liberar, `urlDaPlanta` devolveria do cache exatamente a URL morta. */
+  function liberarUrlDaPlanta(pavimentoId) {
+    liberarUrl(chaveDaPlanta(pavimentoId));
+  }
+
   /* Devolve um object URL estável para a foto, criando-o na primeira chamada. */
   function urlDaFoto(id) {
     if (!id) return Promise.resolve('');
@@ -357,6 +366,7 @@
     urlDaPlanta,
     registroDaPlanta,
     removerPlanta,
+    liberarUrlDaPlanta,
     lerFoto,
     lerRegistro,
     removerFoto,

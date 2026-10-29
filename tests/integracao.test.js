@@ -708,6 +708,288 @@ teste('importar pela tela grava, enfileira e marca origem', async () => {
   ctx.fechar();
 });
 
+/* Obra sem nenhum pavimento: o pavimento vem do diálogo, que é o que se testa. */
+async function criarObraVazia(ctx) {
+  return ctx.eval(`(() => {
+    projects = [{
+      id: 'obra-1', name: 'MEDICAL CENTER', city: 'São Paulo', client: 'Racional',
+      manager: 'Filipp', system: 'Manta asfáltica', status: 'Em andamento',
+      date: '2026-06-01', image: '', area: 0,
+      executed: 0, inProgress: 0, pending: 0, blocked: 0, unclassified: 0, floors: 0,
+      floorPlans: [], photoReports: []
+    }];
+    saveState();
+  })()`);
+}
+
+/* Cadastra o pavimento pelo DIÁLOGO "Adicionar pavimento", com planta.
+
+   É por aqui que a planta entra na prática: a pessoa cria o pavimento e já
+   escolhe o arquivo no mesmo formulário. O manipulador é outro, diferente do
+   `importFloorPlan` do croqui — e era o único dos dois que não gravava no
+   IndexedDB, não enfileirava e não marcava origem. Nenhum teste passava por
+   ele, e por isso a suíte inteira ficava verde com o defeito em produção.
+
+   Como em `importarPelaTela`, só o rasterizador é trocado: ele depende de
+   canvas, que o jsdom não tem. Tudo depois dele é exercitado de verdade. */
+async function cadastrarPavimentoComPlanta(ctx, {
+  projeto = 'obra-1', nome = 'Térreo', area = '77',
+  arquivo = 'N644-23-LOIM-0001-03S-HO-R00.pdf', largura = 1800, altura = 1272
+} = {}) {
+  await ctx.eval(`(() => {
+    rasterizePlanFile = async () => ({
+      data: ${JSON.stringify(JPEG_1X1)}, width: ${largura}, height: ${altura}
+    });
+    floorProjectId = ${JSON.stringify(projeto)};
+    document.querySelector('#floorName').value = ${JSON.stringify(nome)};
+    document.querySelector('#newFloorArea').value = ${JSON.stringify(area)};
+    Object.defineProperty(document.querySelector('#addFloorPlanFile'), 'files', {
+      configurable: true,
+      value: [{ name: ${JSON.stringify(arquivo)}, size: 2048, type: 'application/pdf' }]
+    });
+  })()`);
+  ctx.submit('#addFloorForm');
+  await pausa(700);
+}
+
+teste('planta cadastrada junto com o pavimento grava, enfileira e marca origem', async () => {
+  /* O RELATO, ao pé da letra: "depois que coloca a foto AQUI, quando eu vou
+     fazer qualquer coisa na planta ela cai." O "aqui" é este diálogo.
+
+     O que ele fazia: punha o data-URI em `planImage` e parava. Sem binário no
+     IndexedDB, sem fila, sem marca de origem. A planta nunca subia — e na
+     sincronização seguinte a fusão lia planta local + servidor sem planta +
+     nenhuma marca, que é a assinatura exata de "o administrador apagou", e
+     zerava o desenho.
+
+     As três garantias conferidas aqui são as mesmas que `importFloorPlan` já
+     dava. O defeito era a diferença entre os dois caminhos, não a regra. */
+  const { api, db } = servidorDeTeste();
+  const ctx = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(ctx, { nome: 'André', usuario: 'andre', senha: 'senhaforte1' });
+  await criarObraVazia(ctx);
+
+  await cadastrarPavimentoComPlanta(ctx);
+
+  const estado = await ctx.eval(`(async () => {
+    const pav = projects[0].floorPlans[0];
+    if (!pav) return { semPavimento: true, erroNaTela: document.querySelector('#addFloorError').textContent };
+    return {
+      id: pav.id,
+      desenho: pav.planImage || '',
+      largura: pav.planWidth,
+      arquivo: pav.planFileName,
+      binario: Boolean(await window.NBZMidia.registroDaPlanta(pav.id)),
+      naFila: window.NBZApi.plantaPendente(pav.id),
+      origem: window.NBZApi.plantasProprias().has(pav.id),
+      erroNaTela: document.querySelector('#addFloorError').textContent
+    };
+  })()`);
+
+  confirmar(!estado.semPavimento,
+    `o pavimento deveria ter sido cadastrado (erro na tela: "${estado.erroNaTela}")`);
+  confirmar(String(estado.desenho).startsWith('blob:'),
+    `o desenho deveria aparecer, e veio "${estado.desenho}" (erro: "${estado.erroNaTela}")`);
+  confirmar(estado.binario, 'o binário tem de ir para o IndexedDB sob o id do pavimento');
+  confirmar(estado.naFila, 'a planta tem de entrar na fila de envio');
+  confirmar(estado.origem, 'e ganhar marca de origem, que é o que a protege na fusão');
+  igual(estado.largura, 1800, 'com as medidas do rasterizador');
+  igual(estado.arquivo, 'N644-23-LOIM-0001-03S-HO-R00.pdf', 'e o nome do arquivo escolhido');
+
+  await ctx.eval('sincronizarComServidor()');
+  await pausa(900);
+  confirmar(
+    db.prepare('select planta_r2_key from pavimentos where id = ?').get(estado.id).planta_r2_key,
+    'e o binário tem de chegar ao servidor'
+  );
+  ctx.fechar();
+});
+
+teste('planta cadastrada pelo diálogo não cai ao mexer no pavimento', async () => {
+  /* O sintoma, reproduzido: cadastra com planta, faz qualquer coisa, some.
+
+     "Qualquer coisa" aqui é demarcar e gravar — e depois três sincronizações,
+     uma delas completa. O sumiço acontecia na primeira descida que trouxesse o
+     pavimento de volta, então repetir é parte do teste: um ciclo só poderia
+     passar por sorte de o delta não ter incluído aquele registro. */
+  const { api } = servidorDeTeste();
+  const ctx = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(ctx, { nome: 'André', usuario: 'andre', senha: 'senhaforte1' });
+  await criarObraVazia(ctx);
+  await cadastrarPavimentoComPlanta(ctx);
+
+  const antes = await ctx.eval('projects[0].floorPlans[0].planImage || ""');
+  confirmar(String(antes).startsWith('blob:'), 'pré-condição: a planta aparece ao cadastrar');
+
+  await ctx.eval('sincronizarComServidor()');
+  await pausa(900);
+
+  await ctx.eval(`(() => {
+    const pav = projects[0].floorPlans[0];
+    pav.regions.push({
+      id: 'set-novo', name: 'Setor A', status: 'executed',
+      points: [{ x: 10, y: 20 }, { x: 30, y: 20 }, { x: 30, y: 40 }], area: 25
+    });
+    syncProjectStats(projects[0]);
+    saveState();
+  })()`);
+
+  await ctx.eval('sincronizarComServidor()');
+  await pausa(800);
+  await ctx.eval('sincronizarComServidor()');
+  await pausa(800);
+  await ctx.eval('sincronizarComServidor({ completo: true })');
+  await pausa(900);
+
+  const depois = await ctx.eval(`(() => {
+    const pav = projects[0].floorPlans[0];
+    return { desenho: pav.planImage || '', setores: pav.regions.length, noServidor: Boolean(pav.temPlanta) };
+  })()`);
+
+  confirmar(String(depois.desenho).startsWith('blob:'),
+    `a planta caiu depois de demarcar e sincronizar — "${depois.desenho}"`);
+  confirmar(depois.noServidor, 'e o estado tem de saber que ela está no servidor');
+  igual(depois.setores, 1, 'a demarcação continua lá');
+  ctx.fechar();
+});
+
+teste('planta cadastrada pelo diálogo aparece para o colega', async () => {
+  /* O segundo pedido: "quando eu coloco a planta, ela aparece para todos."
+
+     Antes não aparecia para ninguém — nada a enviava. Dois usuários distintos,
+     não dois aparelhos do mesmo login, porque é assim que a obra funciona. */
+  const { api } = servidorDeTeste();
+  const admin = await boot({ api });
+  admin.__api = api;
+  await pausa(600);
+  await preencherCadastroInicial(admin, { nome: 'André', usuario: 'andre', senha: 'senhaforte1' });
+  await criarObraVazia(admin);
+  await cadastrarPavimentoComPlanta(admin);
+  await admin.eval('sincronizarComServidor()');
+  await pausa(900);
+
+  const colega = await criarColegaComSenhaPropria(admin, {
+    nome: 'Nicolas', usuario: 'nicolas', provisoria: 'provisoria123', definitiva: 'senhadele456'
+  });
+  await pausa(1500);
+
+  const vista = await colega.eval(`(async () => {
+    const obra = projects.find((p) => p.id === 'obra-1');
+    const pav = obra && obra.floorPlans[0];
+    if (!pav) return { achou: false };
+    return {
+      achou: true,
+      desenho: pav.planImage || '',
+      arquivo: pav.planFileName || '',
+      binario: Boolean(await window.NBZMidia.registroDaPlanta(pav.id))
+    };
+  })()`);
+
+  confirmar(vista.achou, 'o colega deveria ter recebido o pavimento');
+  confirmar(String(vista.desenho).startsWith('blob:'),
+    `o colega deveria ver a planta, e tem "${vista.desenho}"`);
+  confirmar(vista.binario, 'e o binário tem de ficar no aparelho dele, para abrir sem sinal');
+  igual(vista.arquivo, 'N644-23-LOIM-0001-03S-HO-R00.pdf', 'com o nome do arquivo de origem');
+  admin.fechar();
+  colega.fechar();
+});
+
+teste('planta do diálogo sobrevive a demarcar e renomear o setor', async () => {
+  /* O fluxo pedido, com o formulário de verdade.
+
+     `saveRegionData` não encosta em `planImage` — mas chama `saveState()`, que
+     agenda a sincronização, e era na fusão que o desenho caía. Renomear um
+     setor quebrava pela MESMA causa, e por isso merece teste próprio: passa
+     por `openRegionEditor`, pelo formulário e por `renderSketch()`.
+
+     Confere as duas coisas, e as duas importam. Que o rename ACONTECEU — sem
+     isso o teste passaria com um submit que não fez nada, que é a armadilha
+     em que o teste vizinho do croqui cai, porque ele só olha a planta. E que a
+     planta continua no estado, no SVG e no armazenamento. */
+  const { api } = servidorDeTeste();
+  const ctx = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(ctx, { nome: 'André', usuario: 'andre', senha: 'senhaforte1' });
+  await criarObraVazia(ctx);
+  await cadastrarPavimentoComPlanta(ctx, { largura: 1200, altura: 800 });
+  await ctx.eval('sincronizarComServidor()');
+  await pausa(900);
+
+  async function plantaViva(etapa) {
+    const visto = await ctx.eval(`(async () => {
+      const pav = projects[0].floorPlans[0];
+      const img = document.querySelector('#planBackground');
+      return {
+        estado: pav.planImage || '',
+        href: img ? img.getAttribute('href') : null,
+        visivel: img ? img.getAttribute('visibility') : null,
+        binario: Boolean(await window.NBZMidia.registroDaPlanta(pav.id)),
+        erro: document.querySelector('#sketchError').textContent
+      };
+    })()`);
+    confirmar(String(visto.estado).startsWith('blob:'),
+      `${etapa}: a planta sumiu do estado — "${visto.estado}" (erro na tela: "${visto.erro}")`);
+    confirmar(visto.binario, `${etapa}: o binário sumiu do aparelho`);
+    igual(visto.href, visto.estado, `${etapa}: o desenho saiu do SVG`);
+    igual(visto.visivel, 'visible', `${etapa}: o desenho ficou oculto`);
+  }
+
+  await ctx.eval(`(() => { sketchProjectId = 'obra-1'; sketchFloorIndex = 0; renderSketch(); })()`);
+  await pausa(250);
+  await plantaViva('logo após cadastrar pelo diálogo');
+
+  /* 1. Demarcar a área. */
+  await ctx.eval(`(() => {
+    projects[0].floorPlans[0].regions.push({
+      id: 'set-x', name: 'SETOR 1', status: 'pending',
+      points: [{ x: 10, y: 10 }, { x: 40, y: 10 }, { x: 40, y: 40 }, { x: 10, y: 40 }], area: 12.5
+    });
+    selectedRegionId = 'set-x';
+    saveState();
+    renderSketch();
+  })()`);
+  await pausa(300);
+  await plantaViva('após demarcar');
+
+  /* 2. Renomear pelo formulário real. As coordenadas são postas à mão num
+        retângulo sabidamente válido: o objetivo aqui é exercitar a gravação,
+        não a validação de geometria, que tem teste próprio. */
+  await ctx.eval(`openRegionEditor('obra-1', 0, 'set-x')`);
+  await pausa(250);
+  await ctx.eval(`(() => {
+    document.querySelector('#regionName').value = 'ÁREA RENOMEADA';
+    document.querySelector('#regionAreaInput').value = '12,5';
+    document.querySelector('#regionXInput').value = '10';
+    document.querySelector('#regionYInput').value = '10';
+    document.querySelector('#regionWidthInput').value = '30';
+    document.querySelector('#regionHeightInput').value = '30';
+  })()`);
+  ctx.submit('#regionForm');
+  await pausa(500);
+
+  const setor = await ctx.eval(`(() => {
+    const r = projects[0].floorPlans[0].regions.find((i) => i.id === 'set-x');
+    return { nome: r ? r.name : '(sumiu)', erro: document.querySelector('#regionFormError').textContent };
+  })()`);
+  igual(setor.nome, 'ÁREA RENOMEADA',
+    `o setor deveria ter sido renomeado (erro no formulário: "${setor.erro}")`);
+  await ctx.eval('renderSketch()');
+  await pausa(250);
+  await plantaViva('após renomear o setor');
+
+  /* 3. E depois de sincronizar, que é quando o desenho caía de verdade. */
+  await ctx.eval('sincronizarComServidor()');
+  await pausa(900);
+  await ctx.eval('sincronizarComServidor({ completo: true })');
+  await pausa(900);
+  await ctx.eval('renderSketch()');
+  await pausa(250);
+  await plantaViva('após renomear e sincronizar');
+  ctx.fechar();
+});
+
 teste('a planta se mantém igual vinda de JPEG ou de PDF', async () => {
   /* O PDF nunca chega ao servidor como PDF: `rasterizePlanFile` renderiza a
      primeira página num canvas e entrega JPEG, exatamente como faz com imagem.
@@ -776,6 +1058,119 @@ teste('o servidor recusa PDF cru, porque quem rasteriza é o painel', async () =
     db.prepare('select planta_r2_key from pavimentos where id = ?').get('pav-1').planta_r2_key, null,
     'e nada pode ter sido gravado'
   );
+});
+
+teste('desenho que falha ao carregar é recuperado do armazenamento', async () => {
+  /* Rede de segurança para a classe inteira de sumiço que não consegui
+     reproduzir: o object URL morre — revogado, ou descartado pelo navegador sob
+     pressão de memória, coisa que o Safari do iPhone faz com imagem grande — e
+     `planImage` continua parecendo certo enquanto a tela fica vazia. É o sintoma
+     mais difícil de diagnosticar: estado correto, planta invisível.
+
+     O binário está no IndexedDB, então refazer o endereço resolve sem precisar
+     descobrir qual das causas foi. */
+  const { api } = servidorDeTeste();
+  const ctx = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(ctx, { nome: 'Richard', usuario: 'richard', senha: 'senhaforte1' });
+  await criarObraComFoto(ctx);
+  await ctx.eval('sketchProjectId = "obra-1"; sketchFloorIndex = 0;');
+  await importarPelaTela(ctx);
+  await pausa(400);
+  const original = await ctx.eval('projects[0].floorPlans[0].planImage');
+  confirmar(String(original).startsWith('blob:'), 'pré-condição: o desenho está lá');
+
+  /* Mata o endereço como o navegador faria, e dispara o erro de carregamento. */
+  await ctx.eval(`(async () => {
+    window.NBZMidia.liberarUrlDaPlanta('pav-1');
+    const img = document.querySelector('#planBackground');
+    img.dispatchEvent(new window.Event('error'));
+  })()`);
+  await pausa(600);
+
+  const depois = await ctx.eval(`(() => {
+    const img = document.querySelector('#planBackground');
+    return {
+      estado: projects[0].floorPlans[0].planImage || '',
+      href: img.getAttribute('href') || '',
+      visivel: img.getAttribute('visibility')
+    };
+  })()`);
+
+  confirmar(String(depois.estado).startsWith('blob:'),
+    `o desenho deveria ter sido recuperado, e está "${depois.estado}"`);
+  igual(depois.href, depois.estado, 'e reaplicado no SVG');
+  igual(depois.visivel, 'visible', 'e visível');
+  confirmar(depois.estado !== original,
+    'com endereço NOVO: reaproveitar o que falhou não recuperaria nada');
+  ctx.fechar();
+});
+
+teste('concluir o polígono pelo fluxo real não faz a planta sumir', async () => {
+  /* O relato: a planta aparece ao importar e some ao DEMARCAR.
+
+     Todos os testes anteriores empurravam o setor direto em `regions` — nunca
+     passavam por `finishSketchRegion()`, que é o que roda ao concluir o
+     polígono. Essa função faz muito mais: valida limites, recalcula estatísticas,
+     grava, redesenha, chama `renderAll()` e abre o editor de setor como um
+     SEGUNDO diálogo modal sobre o croqui. Qualquer um desses passos pode levar
+     o desenho junto, e nenhum estava coberto. */
+  const { api } = servidorDeTeste();
+  const ctx = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(ctx, { nome: 'Richard', usuario: 'richard', senha: 'senhaforte1' });
+  await criarObraComFoto(ctx);
+  await ctx.eval('sketchProjectId = "obra-1"; sketchFloorIndex = 0;');
+  await importarPelaTela(ctx);
+  await pausa(400);
+
+  const antes = await ctx.eval(`(() => {
+    const img = document.querySelector('#planBackground');
+    return { estado: projects[0].floorPlans[0].planImage || '', href: img ? img.getAttribute('href') : '', visivel: img ? img.getAttribute('visibility') : '' };
+  })()`);
+  confirmar(String(antes.estado).startsWith('blob:'), 'pré-condição: a planta aparece ao importar');
+  igual(antes.href, antes.estado, 'pré-condição: e está desenhada no SVG');
+
+  /* Agora o caminho REAL: pontos marcados no croqui e "Concluir polígono".
+     Os pontos ficam dentro do retângulo da planta (100,80 a 900,560) para passar
+     na validação de limites. O setor existente de `criarObraComFoto` é removido
+     antes, senão a nova demarcação cruza com ele e é recusada. */
+  const resultado = await ctx.eval(`(() => {
+    projects[0].floorPlans[0].regions = [];
+    projects[0].floorPlans[0].area = 500;
+    sketchPoints = [{x:200,y:150},{x:400,y:150},{x:400,y:300},{x:200,y:300}];
+    document.querySelector('#regionStatus').value = 'executed';
+    finishSketchRegion();
+    const img = document.querySelector('#planBackground');
+    return {
+      setores: projects[0].floorPlans[0].regions.length,
+      estado: projects[0].floorPlans[0].planImage || '',
+      href: img ? img.getAttribute('href') : '',
+      visivel: img ? img.getAttribute('visibility') : '',
+      erro: document.querySelector('#sketchError').textContent
+    };
+  })()`);
+
+  igual(resultado.setores, 1, `a demarcação deveria ter sido criada (erro: "${resultado.erro}")`);
+  confirmar(String(resultado.estado).startsWith('blob:'),
+    `a planta sumiu do estado ao concluir o polígono — "${resultado.estado}"`);
+  igual(resultado.href, resultado.estado,
+    'o desenho saiu do SVG ao concluir o polígono');
+  igual(resultado.visivel, 'visible', 'o desenho ficou oculto ao concluir o polígono');
+
+  /* E depois que o editor de setor que ele abre é fechado. */
+  await ctx.eval(`(() => {
+    const d = document.querySelector('#regionDialog');
+    if (d && d.open) d.close();
+    renderSketch();
+  })()`);
+  await pausa(300);
+  const depois = await desenhoNaTela(ctx);
+  confirmar(String(depois.estado).startsWith('blob:'),
+    `a planta sumiu depois de fechar o editor de setor — "${depois.estado}"`);
+  igual(depois.href, depois.estado, 'e saiu do SVG');
+  confirmar(depois.binario, 'e o binário sumiu do aparelho');
+  ctx.fechar();
 });
 
 /* ------------------------- caça às sumiços da planta ------------------- */
