@@ -4,15 +4,47 @@
    A ordem importa: regras de arquivos posteriores sobrepõem as anteriores,
    de propósito. */
 
+/* AS CORES DA MARCA NBZ, AMOSTRADAS DO PRÓPRIO LOGO
+
+   Os três valores saíram da contagem de pixels do arquivo, não de estimativa a
+   olho: #d7172f é o vermelho do símbolo, #6d6e71 o cinza de "NBZ" e #e7e7e7 o
+   cinza da sombra. Repetir o valor exato é o que faz o painel e a papelaria
+   parecerem a mesma empresa.
+
+   POR QUE O VERMELHO NÃO TOMA A TELA INTEIRA
+
+   "Não Liberado" é #f44336 — a um passo do vermelho da marca. Vermelho aqui
+   carrega SIGNIFICADO: diz que a área não foi liberada para execução. Pintar
+   botão, cabeçalho e aba da mesma família tornaria a cor ruído, e o engenheiro
+   passaria a precisar ler o rótulo justamente onde a cor deveria adiantar a
+   leitura.
+
+   Então a divisão é por papel. O vermelho fica na IDENTIDADE — marca, aba
+   ativa, ação principal —, que são poucos pontos e sempre acompanhados de
+   texto. O cinza do logo assume o volume: títulos, textos e superfícies. É
+   também a proporção do próprio logo, onde o vermelho é o símbolo e o cinza é
+   a palavra.
+
+   As quatro cores de situação não mudam. Elas não são decoração: são o dado. */
 :root{
   color-scheme:light;
-  --blue:#21477f;
-  --blue-2:#28589d;
-  --blue-3:#e9f0ff;
-  --ink:#202b3c;
-  --muted:#8491a5;
-  --line:#e7ebf1;
-  --bg:#f3f5f8;
+  --brand:#d7172f;
+  --brand-dark:#ac1225;
+  --brand-soft:#fdecee;
+  --graphite:#4b4b4d;
+  --graphite-2:#6d6e71;
+  --graphite-3:#e7e7e7;
+  /* Os nomes `--blue*` ficam como apelidos em vez de serem renomeados em
+     quarenta lugares: um `var(--blue)` esquecido num arquivo voltaria ao azul
+     antigo e ninguém notaria até ver a tela. Apontando daqui, não há como
+     sobrar azul. */
+  --blue:var(--brand);
+  --blue-2:var(--brand-dark);
+  --blue-3:var(--brand-soft);
+  --ink:#2c2d2e;
+  --muted:#868689;
+  --line:#e7e7e7;
+  --bg:#f5f5f5;
   --white:#fff;
   --green:#20b782;
   --orange:#f5a623;
@@ -42,9 +74,9 @@ a{
   text-decoration:none
 }
 button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{
-  outline:3px solid #78a9f5;
+  outline:3px solid #f17c89;
   outline-offset:2px
 }
 ::selection{
-  background:#c9dcff
+  background:#faced3
 }

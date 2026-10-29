@@ -14,25 +14,25 @@
 .select-field{
   height:32px;
   min-width:180px;
-  border:1px solid #dfe5ed;
+  border:1px solid #e6e6e6;
   border-radius:7px;
   background:white;
   padding:0 9px;
-  color:#4d5a6d;
+  color:#5c5d5e;
   font-size:9px
 }
 .action-button{
   height:32px;
   padding:0 11px;
-  border:1px solid #dfe5ed;
+  border:1px solid #e6e6e6;
   border-radius:7px;
   background:white;
-  color:#47566b;
+  color:#58595a;
   font-size:9px;
   font-weight:600
 }
 .action-button:hover{
-  border-color:#9eb5d8;
+  border-color:#d89ea5;
   color:var(--blue)
 }
 .report-metrics{
@@ -45,7 +45,7 @@
   padding:10px 8px;
   text-align:center;
   border-radius:8px;
-  background:#edf3ff;
+  background:#fdeff0;
   color:var(--blue)
 }
 .report-metric:nth-child(2){
@@ -53,12 +53,12 @@
   color:#17a66f
 }
 .report-metric:nth-child(3){
-  background:#eef8ff;
-  color:#347eca
+  background:#fdf0f1;
+  color:#ca3445
 }
 .report-metric:nth-child(4){
-  background:#f0f0ff;
-  color:#615ee6
+  background:#fef1f3;
+  color:#e65e6e
 }
 .report-metric strong{
   font:800 16px var(--display);
@@ -66,7 +66,7 @@
 }
 .report-metric span{
   font-size:8px;
-  color:#718096
+  color:#828385
 }
 .total-progress{
   padding:11px 12px;
@@ -83,10 +83,10 @@
 }
 .total-progress .progress-track{
   height:6px;
-  background:#e7edf5
+  background:#eeeeee
 }
 .total-progress .progress-fill{
-  background:#2671ef
+  background:var(--brand)
 }
 .report-heading{
   display:flex;
@@ -101,7 +101,7 @@
   margin-bottom:11px
 }
 .report-card-head{
-  background:linear-gradient(110deg,#21477f,#28599f);
+  background:linear-gradient(110deg,var(--brand),#9f2836);
   color:#fff;
   padding:11px 13px
 }
@@ -116,7 +116,7 @@
 }
 .report-card-head small{
   display:block;
-  color:#c5d5eb;
+  color:#ebc5c9;
   font-size:8px;
   margin-top:3px
 }
@@ -131,12 +131,12 @@
 .report-breakdown{
   display:grid;
   grid-template-columns:repeat(4,1fr);
-  border-bottom:1px solid #edf0f4
+  border-bottom:1px solid #f0f0f1
 }
 .report-breakdown div{
   text-align:center;
   padding:8px 4px;
-  border-right:1px solid #edf0f4
+  border-right:1px solid #f0f0f1
 }
 .report-breakdown div:last-child{
   border:0
@@ -146,7 +146,7 @@
   font-size:9px
 }
 .report-breakdown span{
-  color:#8b97a9;
+  color:#989a9c;
   font-size:8px
 }
 .report-card-toggle{
@@ -155,7 +155,7 @@
   background:#fff;
   text-align:left;
   padding:8px 12px;
-  color:#58667a;
+  color:#67696b;
   font-size:8px;
   display:flex;
   justify-content:space-between
@@ -169,12 +169,12 @@
   gap:8px;
   align-items:center;
   padding:8px 2px;
-  border-top:1px solid #eff2f6;
+  border-top:1px solid #f2f2f3;
   font-size:8px;
-  color:#748095
+  color:#838486
 }
 .floor-row strong{
-  color:#37465c
+  color:#48494b
 }
 .floor-row .done{
   color:#16a971
@@ -193,7 +193,7 @@
   align-items:start;
   gap:9px;
   padding:12px;
-  border-bottom:1px solid #eff2f5
+  border-bottom:1px solid #f2f2f2
 }
 .history-row:last-child{
   border:0
@@ -204,8 +204,8 @@
   border-radius:50%;
   display:grid;
   place-items:center;
-  background:#edf3ff;
-  color:#3565a7
+  background:#fdeff0;
+  color:#a73542
 }
 .history-row strong{
   display:block;
@@ -213,12 +213,12 @@
 }
 .history-row p{
   margin:2px 0 0;
-  color:#8793a5;
+  color:#949698;
   font-size:8px
 }
 .history-row time{
   font-size:8px;
-  color:#9da7b5;
+  color:#a8a9aa;
   white-space:nowrap
 }
 .empty-state{
@@ -227,13 +227,13 @@
   border-radius:10px;
   padding:32px 16px;
   text-align:center;
-  color:#8b97a8;
+  color:#98999b;
   font-size:10px;
   grid-column:1/-1
 }
 .empty-state strong{
   display:block;
-  color:#3f4d60;
+  color:#4e4f51;
   font-size:11px;
   margin-bottom:4px
 }

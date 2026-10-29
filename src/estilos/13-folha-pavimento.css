@@ -5,14 +5,14 @@
 /* ===== Relatórios por pavimento ===== */
 .report-floor-card{
   background:#fff;
-  border:1px solid #e8ecf2;
+  border:1px solid #ededed;
   border-radius:14px;
   overflow:hidden;
   margin-bottom:16px;
-  box-shadow:0 2px 10px #1b233008
+  box-shadow:0 2px 10px #25252608
 }
 .report-floor-card>header{
-  background:linear-gradient(100deg,#1d4ed8,#2563eb 55%,#3b82f6);
+  background:linear-gradient(100deg,#d81d33,#e8283e 55%,#ec4559);
   color:#fff;
   padding:13px 16px
 }
@@ -28,7 +28,7 @@
   font-weight:700;
   letter-spacing:.06em;
   text-transform:uppercase;
-  color:#cfe0ff
+  color:#fad4d8
 }
 .report-floor-card .rf-name{
   display:block;
@@ -46,7 +46,7 @@
 }
 .report-floor-card .rf-pct span{
   font-size:9px;
-  color:#cfe0ff
+  color:#fad4d8
 }
 .report-floor-card .rf-track{
   height:6px;
@@ -64,12 +64,12 @@
 .rf-breakdown{
   display:grid;
   grid-template-columns:repeat(4,minmax(0,1fr));
-  border-bottom:1px solid #eef1f6
+  border-bottom:1px solid #f2f2f2
 }
 .rf-breakdown div{
   padding:12px 6px;
   text-align:center;
-  border-right:1px solid #eef1f6
+  border-right:1px solid #f2f2f2
 }
 .rf-breakdown div:last-child{
   border-right:0
@@ -77,14 +77,14 @@
 .rf-breakdown strong{
   display:block;
   font:700 13px/1.2 var(--display);
-  color:#1b2330
+  color:#252526
 }
 .rf-breakdown span{
   font-size:8px;
   font-weight:700;
   letter-spacing:.06em;
   text-transform:uppercase;
-  color:#8e99a8
+  color:#9a9b9d
 }
 .rf-toggle{
   width:100%;
@@ -97,12 +97,12 @@
   gap:8px;
   font-size:10px;
   font-weight:600;
-  color:#45526a;
+  color:#565759;
   text-align:left
 }
 .rf-body{
   padding:0 16px 16px;
-  border-top:1px solid #eef1f6
+  border-top:1px solid #f2f2f2
 }
 .rf-sub{
   margin:14px 0 8px;
@@ -110,12 +110,12 @@
   font-weight:700;
   letter-spacing:.07em;
   text-transform:uppercase;
-  color:#98a2b1
+  color:#a3a4a6
 }
 .rf-plan{
-  border:1px solid #eef1f6;
+  border:1px solid #f2f2f2;
   border-radius:10px;
-  background:#f8fafc;
+  background:#fafafa;
   min-height:120px;
   display:grid;
   place-items:center;
@@ -146,7 +146,7 @@
 }
 .rf-table-wrap{
   overflow-x:auto;
-  border:1px solid #eef1f6;
+  border:1px solid #f2f2f2;
   border-radius:10px
 }
 .rf-table{
@@ -156,8 +156,8 @@
   min-width:460px
 }
 .rf-table th{
-  background:#f8fafc;
-  color:#8e99a8;
+  background:#fafafa;
+  color:#9a9b9d;
   font-size:8px;
   font-weight:700;
   letter-spacing:.05em;
@@ -171,12 +171,12 @@
 }
 .rf-table td{
   padding:10px 8px;
-  border-top:1px solid #f1f4f8;
-  color:#44506a
+  border-top:1px solid #f4f4f5;
+  color:#565758
 }
 .rf-table td:first-child{
   font-weight:700;
-  color:#1b2330
+  color:#252526
 }
 .rf-chip{
   display:inline-block;
@@ -195,5 +195,5 @@
 .rf-empty{
   margin:10px 0 0;
   font-size:9px;
-  color:#909bab
+  color:#9c9d9f
 }

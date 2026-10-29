@@ -18,12 +18,12 @@
   gap:7px;
   padding:0 10px;
   background:white;
-  border:1px solid #dfe5ed;
+  border:1px solid #e6e6e6;
   border-radius:8px;
   flex:1;
   min-width:190px;
   max-width:310px;
-  color:#9aa5b4
+  color:#a6a7a8
 }
 .searchbox input{
   border:0;
@@ -35,11 +35,11 @@
 }
 .filter-chip,.view-toggle button{
   height:28px;
-  border:1px solid #e1e6ed;
+  border:1px solid #e7e7e7;
   border-radius:20px;
   padding:0 11px;
   background:#fff;
-  color:#667388;
+  color:#757779;
   font-size:8px
 }
 .filter-chip.active,.view-toggle button.active{
@@ -53,7 +53,7 @@
 .view-toggle{
   display:flex;
   background:white;
-  border:1px solid #e1e6ed;
+  border:1px solid #e7e7e7;
   border-radius:8px;
   padding:2px;
   gap:2px
@@ -66,7 +66,7 @@
 }
 .results-count{
   font-size:8px;
-  color:#96a0b0;
+  color:#a2a3a4;
   margin:0 0 8px
 }
 .works-grid{
@@ -83,11 +83,11 @@
 .work-footer{
   display:flex;
   justify-content:space-between;
-  border-top:1px solid #edf0f4;
+  border-top:1px solid #f0f0f1;
   margin-top:9px;
   padding-top:8px;
   font-size:8px;
-  color:#8792a3
+  color:#939597
 }
 .open-project{
   border:0;
@@ -99,17 +99,17 @@
 }
 .map-board{
   height:350px;
-  border:1px solid #e3e9f1;
+  border:1px solid #eaeaea;
   border-radius:11px;
   position:relative;
   overflow:hidden;
-  background-color:#e9eef2;
-  background-image:linear-gradient(25deg,transparent 47%,#fff 48%,#fff 50%,transparent 51%),linear-gradient(145deg,transparent 44%,#fff 45%,#fff 47%,transparent 48%),linear-gradient(90deg,#e1e8e8 1px,transparent 1px),linear-gradient(#e1e8e8 1px,transparent 1px);
+  background-color:#edeeee;
+  background-image:linear-gradient(25deg,transparent 47%,#fff 48%,#fff 50%,transparent 51%),linear-gradient(145deg,transparent 44%,#fff 45%,#fff 47%,transparent 48%),linear-gradient(90deg,#e4e5e5 1px,transparent 1px),linear-gradient(#e4e5e5 1px,transparent 1px);
   background-size:100% 100%,100% 100%,52px 52px,52px 52px
 }
 .map-label{
   position:absolute;
-  color:#86949e;
+  color:#909294;
   font-size:8px;
   background:#ffffffae;
   padding:3px 6px;
@@ -124,7 +124,7 @@
   border-radius:9px;
   padding:6px 9px;
   font-size:8px;
-  box-shadow:0 3px 10px #17375b30
+  box-shadow:0 3px 10px #5b171f30
 }
 .map-pin:after{
   content:"";

@@ -32,7 +32,7 @@
 }
 .photo-report-card p{
   font-size:8px;
-  color:#7d899b;
+  color:#8a8c8e;
   margin:4px 0
 }
 .photo-thumbs{
@@ -44,7 +44,7 @@
   width:120px;
   height:90px;
   object-fit:contain;
-  background:#f2f5f9;
+  background:#f5f5f5;
   border-radius:5px
 }
 .photo-item{
@@ -59,8 +59,8 @@
   padding:5px;
   border:0;
   border-radius:5px;
-  background:#edf3ff;
-  color:#245da2;
+  background:#fdeff0;
+  color:#a22433;
   font-size:11px
 }
 .photo-manage-label{
@@ -103,7 +103,7 @@
 }
 .sketch-readout div{
   flex:1;
-  background:#f2f6fc;
+  background:#fcf2f3;
   border-radius:7px;
   padding:8px 10px
 }
@@ -113,15 +113,15 @@
 }
 .sketch-readout span{
   font-size:8px;
-  color:#7d899b
+  color:#8a8c8e
 }
 .sketch-canvas{
   width:100%;
   height:300px;
   display:block;
-  border:1px solid #dce4ef;
+  border:1px solid #e6e6e6;
   border-radius:9px;
-  background:#f8fafc;
+  background:#fafafa;
   cursor:crosshair;
   touch-action:none
 }
@@ -133,7 +133,7 @@
 }
 .sketch-tip{
   font-size:8px;
-  color:#8793a4;
+  color:#949597;
   margin:8px 0 0
 }
 .sketch-error{
@@ -143,10 +143,10 @@
   margin:5px 0 0
 }
 .photo-upload{
-  border:1px dashed #b7c4d5;
+  border:1px dashed #c5c6c7;
   border-radius:8px;
   padding:14px;
-  background:#f8fafc
+  background:#fafafa
 }
 .photo-upload input{
   font-size:9px;
@@ -154,7 +154,7 @@
 }
 .photo-upload small{
   display:block;
-  color:#8a96a8;
+  color:#97999b;
   font-size:8px;
   margin-top:5px
 }

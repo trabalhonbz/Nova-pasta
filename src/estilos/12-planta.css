@@ -38,21 +38,21 @@
 .sketch-zoom button{
   width:40px;
   height:40px;
-  border:1px solid #ccd7e6;
+  border:1px solid #d8d9da;
   border-radius:9px;
   background:#ffffffee;
-  color:#3d5878;
+  color:#595a5c;
   font-size:15px;
   font-weight:700;
   display:grid;
   place-items:center;
-  box-shadow:0 2px 6px #17375b22
+  box-shadow:0 2px 6px #5b171f22
 }
 .sketch-mode{
   display:flex;
   gap:4px;
   padding:3px;
-  background:#eef2f7;
+  background:#f3f3f3;
   border-radius:9px;
   margin:0 0 8px
 }
@@ -61,7 +61,7 @@
   border:0;
   border-radius:7px;
   background:transparent;
-  color:#6c7a90;
+  color:#7c7e80;
   min-height:42px;
   font-size:9px;
   font-weight:700;
@@ -73,7 +73,7 @@
 .sketch-mode button[aria-pressed="true"]{
   background:#fff;
   color:var(--blue);
-  box-shadow:0 1px 4px #18355720
+  box-shadow:0 1px 4px #57181f20
 }
 .sketch-opacity{
   display:flex;
@@ -81,7 +81,7 @@
   gap:8px;
   margin-top:8px;
   font-size:8px;
-  color:#78879b
+  color:#88898b
 }
 .sketch-opacity input{
   flex:1;
@@ -91,7 +91,7 @@
 }
 .sketch-zoom-readout{
   font-size:8px;
-  color:#78879b;
+  color:#88898b;
   min-width:62px;
   text-align:right;
   white-space:nowrap
@@ -103,7 +103,7 @@
 .plan-dialog{
   width:min(620px,calc(100% - 20px));
   max-height:94vh;
-  background:#f9fafc
+  background:#fafafb
 }
 .plan-topbar{
   display:flex;
@@ -111,14 +111,14 @@
   gap:10px;
   padding:10px 12px;
   background:#fff;
-  border-bottom:1px solid #eceff4
+  border-bottom:1px solid #f0f0f0
 }
 .plan-topbar h2{
   flex:1;
   min-width:0;
   margin:0;
   font:800 17px/1.25 var(--display);
-  color:#1b2330;
+  color:#252526;
   overflow:hidden;
   text-overflow:ellipsis;
   white-space:nowrap
@@ -130,16 +130,16 @@
   border:0;
   border-radius:10px;
   background:transparent;
-  color:#1b2330;
+  color:#252526;
   font-size:19px;
   display:grid;
   place-items:center
 }
 .plan-back:hover,.plan-topbar-icon:hover{
-  background:#f1f3f7
+  background:#f4f4f4
 }
 .plan-body{
-  background:#f9fafc;
+  background:#fafafb;
   padding-top:12px
 }
 .paint-bar{
@@ -150,7 +150,7 @@
   font-size:11px;
   font-weight:600;
   letter-spacing:.02em;
-  color:#7d8794;
+  color:#87888a;
   margin-bottom:9px
 }
 /* Cada cor leva o próprio nome: a paleta se explica sozinha e o cargo de campo não
@@ -169,7 +169,7 @@
   padding:8px 6px;
   border:2px solid transparent;
   border-radius:15px;
-  background:#f3f5f8;
+  background:#f5f5f6;
   display:grid;
   justify-items:center;
   align-content:center;
@@ -177,7 +177,7 @@
   transition:border-color .12s,background .12s,box-shadow .12s
 }
 .paint-swatches button:hover{
-  background:#eceff4
+  background:#f0f0f0
 }
 .paint-swatches i{
   display:block;
@@ -194,7 +194,7 @@
   font-weight:700;
   line-height:1.15;
   text-align:center;
-  color:#5c6878
+  color:#686a6c
 }
 .paint-swatches i.tool{
   display:grid;
@@ -218,11 +218,11 @@
 }
 .paint-swatches button[aria-pressed="true"]{
   background:#fff;
-  border-color:var(--sw,#1877f2);
-  box-shadow:0 1px 8px #1b23301f
+  border-color:var(--sw,#e82239);
+  box-shadow:0 1px 8px #2525261f
 }
 .paint-swatches button[aria-pressed="true"] span{
-  color:#1b2330
+  color:#252526
 }
 .paint-swatches button[aria-pressed="true"] i{
   display:grid;
@@ -236,10 +236,10 @@
 .plan-progress{
   margin-top:12px;
   background:#fff;
-  border:1px solid #eceff4;
+  border:1px solid #f0f0f0;
   border-radius:14px;
   padding:14px 15px;
-  box-shadow:0 2px 10px #1b233008
+  box-shadow:0 2px 10px #25252608
 }
 .plan-progress-head{
   display:flex;
@@ -249,16 +249,16 @@
 }
 .plan-progress-head strong{
   font:800 14px/1 var(--display);
-  color:#1b2330
+  color:#252526
 }
 .plan-progress-head b{
   font:800 26px/1 var(--display);
-  color:#1877f2
+  color:#e82239
 }
 .plan-progress-track{
   height:9px;
   border-radius:99px;
-  background:#e9edf3;
+  background:#eeeeee;
   overflow:hidden;
   margin:12px 0 13px
 }
@@ -266,7 +266,7 @@
   display:block;
   height:100%;
   border-radius:99px;
-  background:#1367fb
+  background:#e8263c
 }
 .plan-progress-legend{
   display:grid;
@@ -278,7 +278,7 @@
   align-items:center;
   gap:7px;
   font-size:12px;
-  color:#6b7280;
+  color:#747577;
   min-width:0
 }
 .plan-progress-legend i{
@@ -288,17 +288,17 @@
   border-radius:3px
 }
 .plan-progress-legend b{
-  color:#1b2330;
+  color:#252526;
   font-weight:700
 }
 .plan-progress-total{
   margin:12px 0 0;
   font-size:12px;
-  color:#6b7280
+  color:#747577
 }
 .plan-tools{
   margin-top:12px;
-  border:1px solid #e6eaf1;
+  border:1px solid #ebebec;
   border-radius:12px;
   background:#fff;
   padding:0 11px
@@ -312,7 +312,7 @@
   padding:12px 2px;
   font-size:11px;
   font-weight:700;
-  color:#5a6879;
+  color:#68696b;
   display:flex;
   align-items:center;
   gap:7px
@@ -330,14 +330,14 @@
   height:44px;
   border:0;
   border-radius:13px;
-  background:#eceff4ee;
-  color:#1b2330;
+  background:#f0f0f0ee;
+  color:#252526;
   font-size:17px;
-  box-shadow:0 1px 4px #1b233014
+  box-shadow:0 1px 4px #25252614
 }
 .region-label{
   font:800 13px var(--display);
-  fill:#111827;
+  fill:#271114;
   paint-order:stroke;
   stroke:#fff;
   stroke-width:4px;

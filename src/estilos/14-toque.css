@@ -133,8 +133,8 @@
     grid-template-columns:repeat(2,minmax(0,1fr))
   }
   .report-breakdown div{
-    border-right:1px solid #edf0f4;
-    border-top:1px solid #edf0f4
+    border-right:1px solid #f0f0f1;
+    border-top:1px solid #f0f0f1
   }
   .report-breakdown div:nth-child(2n){
     border-right:0
@@ -150,6 +150,6 @@
 @media(hover:none){
   .project-card:hover{
     transform:none;
-    box-shadow:0 2px 5px #27384e08
+    box-shadow:0 2px 5px #3a3a3b08
   }
 }

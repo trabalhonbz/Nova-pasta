@@ -4,7 +4,7 @@
 
 /* ===== Situação rápida (otimizado para toque) ===== */
 .quick-status{
-  border-top:1px dashed #e4e9f0;
+  border-top:1px dashed #eaeaea;
   margin-top:9px;
   padding-top:9px;
   display:grid;
@@ -13,7 +13,7 @@
 /* O painel do local reaproveita `.paint-bar`/`.paint-swatches` da barra da planta:
    mesma amostra, mesmo anel de selecao, mesmo "✓". Só muda a separacao do bloco. */
 .local-status{
-  border-top:1px dashed #e4e9f0;
+  border-top:1px dashed #eaeaea;
   margin:11px 0 0;
   padding-top:11px
 }
@@ -50,11 +50,11 @@
   text-align:left;
   text-decoration:underline;
   text-underline-offset:3px;
-  text-decoration-color:#c3cfdf
+  text-decoration-color:#d0d1d2
 }
 .quick-status-head .local-open span{
   font-size:8px;
-  color:#8b97a9;
+  color:#989a9c;
   white-space:nowrap
 }
 .quick-status-head .local-open:hover strong{
@@ -63,7 +63,7 @@
 .quick-status-head .quick-feedback{
   font-size:8px;
   font-weight:700;
-  color:#8b97a9;
+  color:#989a9c;
   white-space:nowrap
 }
 .quick-status-head .quick-feedback.ok{
@@ -79,10 +79,10 @@
 }
 .status-switch button{
   min-height:46px;
-  border:1px solid #dde3ec;
+  border:1px solid #e4e4e5;
   border-radius:9px;
   background:#fff;
-  color:#5a6779;
+  color:#68696b;
   font-size:10px;
   font-weight:700;
   display:flex;
@@ -123,7 +123,7 @@
 }
 /* ===== Galeria de fotografias nos relatórios ===== */
 .report-floor{
-  border-top:1px solid #eff2f6;
+  border-top:1px solid #f2f2f3;
   padding:11px 2px
 }
 .report-floor:first-child{
@@ -141,7 +141,7 @@
 }
 .report-floor-head .report-floor-meta{
   font-size:8px;
-  color:#8b97a9
+  color:#989a9c
 }
 .status-legend{
   display:flex;
@@ -153,11 +153,11 @@
   display:inline-flex;
   align-items:center;
   gap:5px;
-  background:#f7f9fc;
+  background:#fafafa;
   border-radius:20px;
   padding:4px 9px;
   font-size:8px;
-  color:#5f6d82
+  color:#6f7072
 }
 .status-legend i{
   width:8px;
@@ -174,11 +174,11 @@
   justify-content:space-between;
   gap:8px;
   font-size:8px;
-  color:#8290a2;
+  color:#909294;
   margin-bottom:5px
 }
 .photo-group-head strong{
-  color:#44536a;
+  color:#565758;
   font-size:9px
 }
 .photo-gallery{
@@ -192,7 +192,7 @@
   padding:0;
   border-radius:8px;
   overflow:hidden;
-  background:#eef1f6;
+  background:#f2f2f2;
   aspect-ratio:4/3;
   min-height:84px;
   cursor:zoom-in
@@ -201,7 +201,7 @@
   width:100%;
   height:100%;
   object-fit:contain;
-  background:#e8ecf3;
+  background:#ededee;
   display:block
 }
 img[data-broken="true"]{
@@ -215,8 +215,8 @@ img[data-broken="true"]{
   place-items:center;
   text-align:center;
   padding:6px;
-  background:#eef1f6;
-  color:#8b97a9;
+  background:#f2f2f2;
+  color:#989a9c;
   font-size:8px;
   border-radius:8px
 }
@@ -225,7 +225,7 @@ img[data-broken="true"]{
   left:0;
   right:0;
   bottom:0;
-  background:#0f2338cc;
+  background:#380f14cc;
   color:#fff;
   font-size:7px;
   padding:3px 5px;
@@ -234,16 +234,16 @@ img[data-broken="true"]{
 .photo-gallery .gallery-more{
   display:grid;
   place-items:center;
-  background:#eaf0fa;
+  background:#faeaec;
   color:var(--blue);
   font-size:9px;
   font-weight:700;
   border-radius:8px;
   min-height:84px;
-  border:1px dashed #b9cbe6
+  border:1px dashed #e6b9be
 }
 .floor-empty-note{
   font-size:8px;
-  color:#9aa5b6;
+  color:#a7a8a9;
   margin:6px 0 0
 }

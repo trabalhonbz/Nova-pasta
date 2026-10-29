@@ -39,7 +39,7 @@
 .local-head p{
   margin:2px 0 0;
   font-size:9px;
-  color:#808d9f
+  color:#8e8f91
 }
 .local-facts{
   display:grid;
@@ -48,7 +48,7 @@
   margin:10px 0
 }
 .local-facts div{
-  background:#f4f6f9;
+  background:#f6f6f7;
   border-radius:8px;
   padding:9px
 }
@@ -58,7 +58,7 @@
 }
 .local-facts span{
   font-size:8px;
-  color:#8b97a8
+  color:#98999b
 }
 .local-photo-actions{
   display:flex;
@@ -76,7 +76,7 @@
 .photo-item-meta{
   display:block;
   font-size:7px;
-  color:#8b97a9;
+  color:#989a9c;
   line-height:1.3;
   margin-top:3px;
   text-align:center
@@ -87,12 +87,12 @@
   justify-content:center;
   gap:4px;
   font-size:8px;
-  color:#5f6d82;
+  color:#6f7072;
   min-height:34px;
   cursor:pointer
 }
 .photo-include input{
-  accent-color:#2671ef;
+  accent-color:var(--brand);
   width:16px;
   height:16px
 }
@@ -101,7 +101,7 @@
   display:flex;
   gap:4px;
   padding:3px;
-  background:#eef2f7;
+  background:#f3f3f3;
   border-radius:9px;
   margin:16px 0 12px
 }
@@ -110,7 +110,7 @@
   border:0;
   border-radius:7px;
   background:transparent;
-  color:#6c7a90;
+  color:#7c7e80;
   min-height:44px;
   font-size:10px;
   font-weight:700
@@ -118,7 +118,7 @@
 .team-switch button[aria-selected="true"]{
   background:#fff;
   color:var(--blue);
-  box-shadow:0 1px 4px #18355720
+  box-shadow:0 1px 4px #57181f20
 }
 .team-filters{
   display:grid;
@@ -131,11 +131,11 @@
 }
 .team-filters input,.team-filters select{
   height:42px;
-  border:1px solid #dfe5ed;
+  border:1px solid #e6e6e6;
   border-radius:8px;
   padding:0 9px;
   background:#fff;
-  color:#38475c;
+  color:#494a4b;
   font-size:11px;
   width:100%
 }
@@ -157,7 +157,7 @@
 }
 .team-summary span{
   font-size:8px;
-  color:#8b97a8
+  color:#98999b
 }
 .team-list{
   display:grid;
@@ -166,7 +166,7 @@
 .team-row{
   background:#fff;
   border:1px solid var(--line);
-  border-left:4px solid #d7dde6;
+  border-left:4px solid #dededf;
   border-radius:10px;
   padding:11px;
   display:grid;
@@ -187,7 +187,7 @@
 }
 .team-row .team-meta{
   font-size:8px;
-  color:#8995a7;
+  color:#96989a;
   margin-top:2px;
   line-height:1.5
 }
@@ -199,16 +199,16 @@
   padding:2px 8px;
   font-size:8px;
   font-weight:700;
-  background:#eef1f6;
-  color:#64748b
+  background:#f2f2f2;
+  color:#767779
 }
 .team-badge.present{
   background:#e6f9f1;
   color:#108257
 }
 .team-badge.absent{
-  background:#f1f4f8;
-  color:#6b7a8d
+  background:#f4f4f5;
+  color:#7a7c7e
 }
 .team-badge.off{
   background:#fdeeee;
@@ -224,9 +224,9 @@
   min-height:44px;
   padding:0 13px;
   border-radius:8px;
-  border:1px solid #dfe5ed;
+  border:1px solid #e6e6e6;
   background:#fff;
-  color:#4a5a70;
+  color:#5c5d5e;
   font-size:10px;
   font-weight:700
 }
@@ -251,16 +251,16 @@
   border-radius:9px;
   padding:9px 11px;
   font-size:9px;
-  color:#5f6d82
+  color:#6f7072
 }
 .team-history strong{
   display:block;
   font-size:10px;
-  color:#37465c
+  color:#48494b
 }
 .team-history .correction{
   font-size:8px;
-  color:#9aa5b6;
+  color:#a7a8a9;
   margin-top:3px
 }
 .import-preview{
@@ -278,15 +278,15 @@
 .import-preview th,.import-preview td{
   text-align:left;
   padding:6px 8px;
-  border-bottom:1px solid #eff2f6;
+  border-bottom:1px solid #f2f2f3;
   white-space:nowrap
 }
 .import-preview th{
-  background:#f6f8fb;
+  background:#f9f9f9;
   position:sticky;
   top:0;
   font-size:8px;
-  color:#64748b
+  color:#767779
 }
 .import-preview tr.skip td{
   color:#b14343;
@@ -305,8 +305,8 @@
   border-radius:8px;
   padding:9px;
   text-align:center;
-  background:#eef3fb;
-  color:#2c4e85
+  background:#fbeef0;
+  color:#852c36
 }
 .import-counts strong{
   display:block;

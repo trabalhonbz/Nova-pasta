@@ -22,9 +22,9 @@
 }
 .metric,.panel,.project-card,.report-card{
   background:var(--white);
-  border:1px solid #edf0f4;
+  border:1px solid #f0f0f1;
   border-radius:11px;
-  box-shadow:0 2px 5px #27384e08
+  box-shadow:0 2px 5px #3a3a3b08
 }
 .metric{
   padding:12px 13px 11px;
@@ -40,8 +40,8 @@
   width:26px;
   height:26px;
   border-radius:9px;
-  background:#edf3ff;
-  color:#3c68aa;
+  background:#fdeff0;
+  color:#aa3c49;
   display:grid;
   place-items:center;
   font-size:13px
@@ -55,15 +55,15 @@
   color:#ed9d17
 }
 .metric-icon.sky{
-  background:#edf7ff;
-  color:#4e9eea
+  background:#fdeff0;
+  color:#ea4e60
 }
 .trend{
   width:16px;
   height:16px;
   border-radius:50%;
-  background:#eff4ff;
-  color:#5076b3;
+  background:#fdf1f2;
+  color:#b3505c;
   display:grid;
   place-items:center;
   font-size:10px
@@ -74,11 +74,11 @@
 }
 .metric-label{
   font-size:9px;
-  color:#758195
+  color:#838587
 }
 .metric-note{
   font-size:8px;
-  color:#a0aaba;
+  color:#acadae;
   margin-top:1px
 }
 .section-row{
@@ -93,7 +93,7 @@
 }
 .section-subtitle{
   font-size:8px;
-  color:#96a0b0;
+  color:#a2a3a4;
   margin:1px 0 0
 }
 .plain-link{
@@ -122,7 +122,7 @@
 }
 .project-card:hover{
   transform:translateY(-2px);
-  box-shadow:0 7px 18px #21385818
+  box-shadow:0 7px 18px #58212718
 }
 .project-cover{
   height:80px;
@@ -138,7 +138,7 @@
   content:"";
   position:absolute;
   inset:0;
-  background:linear-gradient(0deg,#102743c9,transparent 85%)
+  background:linear-gradient(0deg,#431016c9,transparent 85%)
 }
 .project-cover strong,.project-cover .status-pill{
   position:relative;
@@ -154,8 +154,8 @@
   right:7px;
   top:7px;
   border-radius:20px;
-  background:#f4f8ff;
-  color:#2672d5;
+  background:#fef5f6;
+  color:#d5263a;
   font-size:8px;
   font-weight:700;
   padding:3px 7px
@@ -165,7 +165,7 @@
 }
 .project-location,.project-owner{
   font-size:8px;
-  color:#8b97a9;
+  color:#989a9c;
   display:flex;
   align-items:center;
   gap:4px
@@ -175,7 +175,7 @@
   justify-content:space-between;
   margin:7px 0 4px;
   font-size:8px;
-  color:#687588
+  color:#76787a
 }
 .project-progress strong{
   color:var(--green)
@@ -183,7 +183,7 @@
 .progress-track{
   height:5px;
   border-radius:10px;
-  background:#e9edf3;
+  background:#eeeeee;
   overflow:hidden
 }
 .progress-fill{
@@ -194,7 +194,7 @@
 .project-area{
   display:flex;
   justify-content:space-between;
-  color:#8b97a9;
+  color:#989a9c;
   font-size:9px;
   margin-top:7px
 }
@@ -207,7 +207,7 @@
   gap:9px;
   align-items:flex-start;
   padding:8px 0;
-  border-bottom:1px solid #f0f2f5
+  border-bottom:1px solid #f2f2f3
 }
 .alert-item:last-child{
   border-bottom:0
@@ -232,7 +232,7 @@
 }
 .alert-item p{
   margin:1px 0 0;
-  color:#929cad;
+  color:#9e9fa1;
   font-size:8px
 }
 .chart-grid{
@@ -261,7 +261,7 @@
 }
 .panel-heading span{
   font-size:8px;
-  color:#98a2b2;
+  color:#a4a5a6;
   display:block
 }
 .bar-chart{
@@ -286,8 +286,8 @@
 }
 .bar-track{
   height:15px;
-  border-left:1px dashed #e7edf5;
-  background:repeating-linear-gradient(90deg,transparent 0,transparent calc(25% - 1px),#edf1f6 calc(25% - 1px),#edf1f6 25%)
+  border-left:1px dashed #eeeeee;
+  background:repeating-linear-gradient(90deg,transparent 0,transparent calc(25% - 1px),#f1f1f2 calc(25% - 1px),#f1f1f2 25%)
 }
 .bar-value{
   height:100%;
@@ -296,13 +296,13 @@
   min-width:2px
 }
 .bar-value.empty{
-  background:#d6deea
+  background:#e0e0e0
 }
 .axis{
   display:flex;
   justify-content:space-between;
   margin:5px 38px 0 113px;
-  color:#9aa5b6;
+  color:#a7a8a9;
   font-size:8px
 }
 .donut-wrap{
@@ -316,7 +316,7 @@
   width:124px;
   height:124px;
   border-radius:50%;
-  background:conic-gradient(#21477f 0 54%,#438ae8 54% 78%,#20b782 78% 91%,#efb34e 91%);
+  background:conic-gradient(var(--brand) 0 54%,#e84356 54% 78%,#20b782 78% 91%,#efb34e 91%);
   position:relative;
   display:grid;
   place-items:center
@@ -339,13 +339,13 @@
 }
 .donut-center span{
   font-size:7px;
-  color:#8e9aab
+  color:#9b9c9e
 }
 .legend{
   display:grid;
   gap:9px;
   font-size:8px;
-  color:#768397
+  color:#858688
 }
 .legend-row{
   display:flex;
@@ -356,10 +356,10 @@
   width:7px;
   height:7px;
   border-radius:50%;
-  background:#21477f
+  background:var(--brand)
 }
 .legend-dot.blue{
-  background:#438ae8
+  background:#e84356
 }
 .legend-dot.green{
   background:#20b782
@@ -394,7 +394,7 @@
 .storage-track{
   height:7px;
   border-radius:999px;
-  background:#eef1f6;
+  background:#f2f2f2;
   overflow:hidden
 }
 .storage-fill{

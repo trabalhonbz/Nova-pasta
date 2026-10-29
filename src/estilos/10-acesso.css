@@ -7,7 +7,7 @@
   position:fixed;
   inset:0;
   z-index:5000;
-  background:linear-gradient(140deg,#13294d,#21477f);
+  background:linear-gradient(140deg,#4d131a,var(--brand));
   display:grid;
   place-items:center;
   padding:18px;
@@ -21,7 +21,7 @@
   background:#fff;
   border-radius:14px;
   padding:20px 20px 22px;
-  box-shadow:0 22px 60px #08182f66
+  box-shadow:0 22px 60px #2f080d66
 }
 .auth-card h2{
   font:800 17px var(--display);
@@ -29,7 +29,7 @@
 }
 .auth-card p.auth-lead{
   font-size:10px;
-  color:#7a8698;
+  color:#87898b;
   margin:0 0 14px
 }
 .auth-card .form-field{
@@ -53,7 +53,7 @@
 .auth-env{
   margin:12px 0 0;
   font-size:9px;
-  color:#8b96a7;
+  color:#97999b;
   text-align:center
 }
 .auth-feedback{
@@ -80,13 +80,13 @@
   border:1px solid var(--line);
   border-radius:7px;
   background:#fff;
-  color:#64718a;
+  color:#757679;
   font-size:9px;
   padding:6px 8px;
   min-height:32px
 }
 .user-menu button:hover{
-  border-color:#9eb5d8;
+  border-color:#d89ea5;
   color:var(--blue)
 }
 .role-tag{
@@ -120,17 +120,17 @@
 }
 .lock-panel p{
   font-size:10px;
-  color:#7c8899;
+  color:#898a8c;
   margin:0 0 13px
 }
 .lock-panel input{
   width:100%;
   height:44px;
-  border:1px solid #dfe5ed;
+  border:1px solid #e6e6e6;
   border-radius:8px;
   padding:0 10px;
   font-size:12px;
-  color:#38475c
+  color:#494a4b
 }
 .lock-panel .button-primary{
   width:100%;
@@ -160,7 +160,7 @@
 }
 .users-row span{
   font-size:8px;
-  color:#8995a7
+  color:#96989a
 }
 .users-row .floor-delete{
   min-height:38px;
@@ -179,13 +179,13 @@
   pointer-events:none
 }
 .toast{
-  background:#20304a;
+  background:#4a2025;
   color:#fff;
   border-radius:9px;
   padding:11px 13px;
   font-size:10px;
   font-weight:600;
-  box-shadow:0 10px 26px #0b182c45;
+  box-shadow:0 10px 26px #2c0b0f45;
   display:flex;
   align-items:center;
   gap:8px;
@@ -198,7 +198,7 @@
   background:#b63f3f
 }
 .toast.loading{
-  background:#2a4a7d
+  background:#7d2a34
 }
 @keyframes toast-in{
   from{
