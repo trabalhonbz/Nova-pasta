@@ -67,6 +67,25 @@ export function podeEditarPlanta(sessao) {
   return Boolean(sessao) && CARGOS_DE_PLANTA.includes(sessao.nivelAcesso);
 }
 
+/* Esta sessao enxerga esta obra?
+
+   Cargo diz O QUE a pessoa faz; a alocacao em `usuario_obras` diz ONDE. As
+   rotas que entregam binario por id — fotografia e planta — ficam fora do
+   recorte do `/sync/baixar`, entao sao elas que precisam perguntar.
+
+   Administrador passa por cargo. Sem `obraId` nao ha o que conferir e a
+   resposta e negativa: faltar a obra significa que a juncao nao achou o dono
+   do arquivo, e entregar binario orfao e o oposto do que esta funcao serve. */
+export async function podeVerObra(env, sessao, obraId) {
+  if (!sessao) return false;
+  if (sessao.nivelAcesso === 'administrador') return true;
+  if (!obraId) return false;
+  const linha = await env.DB.prepare(
+    'select 1 as ok from usuario_obras where usuario_id = ? and obra_id = ?'
+  ).bind(sessao.id, obraId).first();
+  return Boolean(linha);
+}
+
 /* O R2 precisa ser ativado uma vez no painel da Cloudflare antes do primeiro
    uso, e isso pode nao ter sido feito ainda. Sem este aviso, a falta do binding
    apareceria como "Erro interno" — que nao diz a ninguem o que fazer.
@@ -191,9 +210,21 @@ export async function enviar(env, sessao, pedido, parametros) {
 export async function servir(env, sessao, id, pedido) {
   if (!env.FOTOS) return new Response('Armazenamento de fotografias não ativado.', { status: 503 });
   const linha = await env.DB.prepare(
-    'select r2_key from fotos where id = ? and excluido_em is null'
+    `select f.r2_key, r.obra_id from fotos f
+       join relatorios_foto r on r.id = f.relatorio_id
+      where f.id = ? and f.excluido_em is null`
   ).bind(id).first();
   if (!linha) return new Response('Fotografia não encontrada.', { status: 404 });
+  /* O recorte por obra do `/sync/baixar` nao alcanca esta rota: ela entrega o
+     binario por id, sem passar pelo pacote. Sem a conferencia aqui, quem
+     descobrisse um id leria a fotografia de uma obra que nem enxerga.
+
+     Responde 404, e nao 403: dizer "sem permissao" confirmaria que a
+     fotografia existe, e para quem nao tem acesso a obra ela nao deve nem
+     existir. */
+  if (!await podeVerObra(env, sessao, linha.obra_id)) {
+    return new Response('Fotografia não encontrada.', { status: 404 });
+  }
 
   /* If-None-Match antes de tocar no R2: com a imagem imutavel, o navegador que
      ja tem a foto recebe 304 sem gastar leitura no bucket. */
@@ -359,9 +390,13 @@ export async function excluirPlanta(env, sessao, pavimentoId) {
 export async function servirPlanta(env, sessao, pavimentoId, pedido) {
   if (!env.FOTOS) return new Response('Armazenamento de plantas não ativado.', { status: 503 });
   const linha = await env.DB.prepare(
-    'select planta_r2_key from pavimentos where id = ? and excluido_em is null'
+    'select planta_r2_key, obra_id from pavimentos where id = ? and excluido_em is null'
   ).bind(pavimentoId).first();
   if (!linha || !linha.planta_r2_key) return new Response('Planta não encontrada.', { status: 404 });
+  /* Mesma razão de `servir`: a planta sai por id, fora do pacote filtrado. */
+  if (!await podeVerObra(env, sessao, linha.obra_id)) {
+    return new Response('Planta não encontrada.', { status: 404 });
+  }
 
   const objeto = await env.FOTOS.get(linha.planta_r2_key);
   if (!objeto) return new Response('Arquivo ausente no bucket.', { status: 404 });

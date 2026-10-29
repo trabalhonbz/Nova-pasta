@@ -166,6 +166,7 @@
   <dialog id="employeeDialog"><div class="dialog-head"><h2 id="employeeDialogTitle">Novo funcionário</h2><button class="dialog-close" type="button" data-close-dialog aria-label="Fechar">×</button></div><form class="dialog-body" id="employeeForm"><div class="form-grid"><div class="form-field full"><label for="employeeName">Nome completo <b style="color:#df4545">*</b></label><input id="employeeName" required maxlength="80" autocomplete="off"></div><div class="form-field"><label for="employeeCode">Matrícula ou código</label><input id="employeeCode" maxlength="30" autocomplete="off" placeholder="Opcional"></div><div class="form-field"><label for="employeeRole">Função ou cargo</label><input id="employeeRole" maxlength="50" autocomplete="off" placeholder="Opcional"></div><div class="form-field"><label for="employeeCompany">Empresa ou empreiteira</label><input id="employeeCompany" maxlength="60" autocomplete="off" placeholder="Opcional"></div><div class="form-field"><label for="employeePhone">Telefone</label><input id="employeePhone" maxlength="24" autocomplete="off" inputmode="tel" placeholder="Opcional"></div><div class="form-field full"><label for="employeeActive">Situação cadastral</label><select id="employeeActive"><option value="true">Ativo</option><option value="false">Inativo</option></select></div></div><p class="auth-feedback" id="employeeFeedback" role="status"></p><div class="region-editor-actions"><button class="button-secondary floor-delete" type="button" id="employeeDeleteButton" hidden>Excluir cadastro</button><div class="dialog-actions"><button class="button-secondary" type="button" data-close-dialog>Cancelar</button><button class="button-primary" type="submit">Salvar funcionário</button></div></div></form></dialog>
   <dialog id="importDialog"><div class="dialog-head"><h2>Importar funcionários do Excel</h2><button class="dialog-close" type="button" data-close-dialog aria-label="Fechar">×</button></div><div class="dialog-body"><p class="detail-note">Aceita <b>.xlsx</b>, <b>.xls</b> e <b>.csv</b>. A primeira linha deve conter os títulos das colunas: Nome, Matrícula, Função, Empresa, Telefone e Situação. Baixe o modelo se tiver dúvida.</p><div style="display:flex;gap:7px;flex-wrap:wrap;margin:11px 0"><label class="button-secondary photo-manage-label" for="importFile" style="flex:1 1 170px;justify-content:center">▤ Escolher planilha</label><button class="action-button" type="button" id="importTemplateButton" style="flex:1 1 170px">⤓ Baixar modelo</button></div><input id="importFile" type="file" accept=".xlsx,.xls,.csv,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden><p class="auth-feedback" id="importFeedback" role="status"></p><div id="importResult" hidden><div class="import-counts" id="importCounts"></div><div class="import-preview" id="importPreview"></div><p class="detail-note" id="importNote"></p></div><div class="dialog-actions"><button class="button-secondary" type="button" data-close-dialog>Cancelar</button><button class="button-primary" type="button" id="importConfirm" disabled>Confirmar importação</button></div></div></dialog>
   <dialog id="attendanceDialog"><div class="dialog-head"><h2 id="attendanceDialogTitle">Registro de presença</h2><button class="dialog-close" type="button" data-close-dialog aria-label="Fechar">×</button></div><form class="dialog-body" id="attendanceForm"><p class="detail-note" id="attendanceContext"></p><div class="form-grid"><div class="form-field full"><label for="attendanceCheckIn">Entrada</label><input id="attendanceCheckIn" type="datetime-local" required></div><div class="form-field full"><label for="attendanceCheckOut">Saída (deixe vazio se ainda estiver na obra)</label><input id="attendanceCheckOut" type="datetime-local"></div><div class="form-field full"><label for="attendanceReason">Motivo da correção <b style="color:#df4545">*</b></label><input id="attendanceReason" required maxlength="120" placeholder="Ex.: horário lançado errado"></div></div><p class="auth-feedback" id="attendanceFeedback" role="status"></p><div class="dialog-actions"><button class="button-secondary" type="button" data-close-dialog>Cancelar</button><button class="button-primary" type="submit">Salvar correção</button></div></form></dialog>
+  <dialog id="userWorksDialog"><div class="dialog-head"><h2 id="userWorksTitle">Obras visíveis</h2><button class="dialog-close" type="button" data-close-dialog aria-label="Fechar">×</button></div><div class="dialog-body"><p class="detail-note" id="userWorksHint">Marque as obras que esta pessoa pode ver. As não marcadas ficam invisíveis para ela em todo o painel.</p><div class="users-table" id="userWorksList"></div><p class="auth-feedback" id="userWorksFeedback" role="status"></p><div class="dialog-actions"><button class="button-secondary" type="button" data-close-dialog>Cancelar</button><button class="button-primary" type="button" id="userWorksSave">Salvar acesso</button></div></div></dialog>
   <dialog id="usersDialog"><div class="dialog-head"><h2>Usuários e cargos</h2><button class="dialog-close" type="button" data-close-dialog aria-label="Fechar">×</button></div><div class="dialog-body"><p class="detail-note">Cada cargo libera apenas as seções e ações previstas. Os acessos valem para este navegador/ambiente.</p><div class="users-table" id="usersList"></div><h3 style="font:700 11px var(--display);margin:16px 0 8px">Adicionar usuário</h3><form id="newUserForm"><div class="form-grid"><div class="form-field full"><label for="newUserName">Nome</label><input id="newUserName" required maxlength="60"></div><div class="form-field"><label for="newUserLogin">Usuário</label><input id="newUserLogin" required maxlength="40" autocomplete="off"></div><div class="form-field"><label for="newUserRole">Cargo</label><select id="newUserRole"></select></div><div class="form-field full"><label for="newUserPassword">Senha provisória (mínimo 8 caracteres)</label><input id="newUserPassword" type="password" required minlength="8" maxlength="120" autocomplete="new-password"></div></div><p class="auth-feedback" id="newUserFeedback" role="status"></p><div class="dialog-actions"><button class="button-primary" type="submit">Cadastrar usuário</button></div></form><h3 style="font:700 11px var(--display);margin:16px 0 8px">Alterar minha senha</h3><form id="changePasswordForm"><div class="form-grid"><div class="form-field"><label for="currentPassword">Senha atual</label><input id="currentPassword" type="password" required maxlength="120" autocomplete="current-password"></div><div class="form-field"><label for="newPassword">Nova senha</label><input id="newPassword" type="password" required minlength="8" maxlength="120" autocomplete="new-password"></div></div><p class="auth-feedback" id="changePasswordFeedback" role="status"></p><div class="dialog-actions"><button class="button-secondary" type="submit">Salvar nova senha</button></div></form><div class="dialog-actions"><button class="button-secondary" type="button" data-close-dialog>Fechar</button></div></div></dialog>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -4171,7 +4172,22 @@
       historyUnlockedUntil = 0;
       addActivity('Acesso ao painel', `${user.name} · ${roleOf(user.role).label}`);
       saveState();
+      /* O acesso vale desde o primeiro quadro. Esperar a sincronização para
+         podar mostraria, por um instante, as obras de demonstração e o que
+         ficou de antes — e um vislumbre do que não se pode ver já é vazamento.
+         Síncrono com o que está guardado; a conferência com o servidor vem
+         logo atrás e corrige se mudou. */
+      if (comServidor && user.role !== 'administrador') {
+        const guardado = lerAcessoGuardado(user.id);
+        if (guardado !== undefined) {
+          obrasVisiveis = guardado;
+          if (podarObrasSemAcesso()) saveState();
+        }
+      } else {
+        obrasVisiveis = null;
+      }
       applySession();
+      aplicarAcessoDasObras();
     }
     function endSession(reason) {
       if (currentUser) {
@@ -4349,9 +4365,70 @@
     function renderUsersList() {
       const list = document.querySelector('#usersList');
       if (!list) return;
-      list.innerHTML = users.map((user) => `<div class="users-row"><div><strong>${escapeHtml(user.name)}</strong><span>@${escapeHtml(user.username)} · <b class="role-tag">${escapeHtml(roleOf(user.role).label)}</b></span></div><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><select data-user-role="${escapeHtml(user.id)}" aria-label="Cargo de ${escapeHtml(user.name)}" style="min-height:38px;border:1px solid #dfe5ed;border-radius:7px;padding:0 7px;font-size:10px;background:#fff;color:#38475c">${roleDefinitions.map((role) => `<option value="${role.value}" ${user.role === role.value ? 'selected' : ''}>${role.label}</option>`).join('')}</select>${user.id === currentUser?.id ? '<span style="font-size:8px;color:#8995a7">sessão atual</span>' : `<button class="button-secondary floor-delete" type="button" data-delete-user="${escapeHtml(user.id)}">Excluir</button>`}</div></div>`).join('') || '<p class="detail-note">Nenhum usuário cadastrado.</p>';
+      list.innerHTML = users.map((user) => `<div class="users-row"><div><strong>${escapeHtml(user.name)}</strong><span>@${escapeHtml(user.username)} · <b class="role-tag">${escapeHtml(roleOf(user.role).label)}</b></span></div><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><select data-user-role="${escapeHtml(user.id)}" aria-label="Cargo de ${escapeHtml(user.name)}" style="min-height:38px;border:1px solid #dfe5ed;border-radius:7px;padding:0 7px;font-size:10px;background:#fff;color:#38475c">${roleDefinitions.map((role) => `<option value="${role.value}" ${user.role === role.value ? 'selected' : ''}>${role.label}</option>`).join('')}</select>${comServidor && user.role !== 'administrador' ? `<button class="button-secondary" type="button" data-user-works="${escapeHtml(user.id)}">▤ Obras</button>` : ''}${user.id === currentUser?.id ? '<span style="font-size:8px;color:#8995a7">sessão atual</span>' : `<button class="button-secondary floor-delete" type="button" data-delete-user="${escapeHtml(user.id)}">Excluir</button>`}</div></div>`).join('') || '<p class="detail-note">Nenhum usuário cadastrado.</p>';
       document.querySelector('#newUserRole').innerHTML = roleDefinitions.map((role) => `<option value="${role.value}">${role.label}</option>`).join('');
     }
+    /* ---------------- alocação de obras por usuário (só administrador) ----- */
+
+    let userWorksTarget = null;
+
+    /* A lista mostrada é a de obras do ADMINISTRADOR, que vê todas. Usar o
+       estado local de quem abriu seria o certo justamente porque só o
+       administrador chega aqui — e ele tem o conjunto completo. */
+    function renderUserWorks(marcadas) {
+      const lista = document.querySelector('#userWorksList');
+      if (!lista) return;
+      const conjunto = marcadas instanceof Set ? marcadas : new Set(marcadas || []);
+      lista.innerHTML = projects.length
+        ? projects.map((project) => `<div class="users-row"><label style="display:flex;align-items:center;gap:9px;cursor:pointer"><input type="checkbox" data-work-access="${escapeHtml(project.id)}" ${conjunto.has(project.id) ? 'checked' : ''}><span><strong>${escapeHtml(project.name)}</strong><span style="display:block;font-size:9px;color:#8995a7">${escapeHtml(project.city || 'sem cidade')} · ${escapeHtml(project.client || 'sem cliente')}</span></span></label></div>`).join('')
+        : '<p class="detail-note">Nenhuma obra cadastrada ainda.</p>';
+    }
+
+    async function openUserWorks(userId) {
+      if (!requirePermission('users.manage', 'Somente administradores definem o acesso às obras.')) return;
+      const user = users.find((item) => item.id === userId);
+      if (!user || !comServidor || !window.NBZApi) return;
+      userWorksTarget = userId;
+      document.querySelector('#userWorksTitle').textContent = `Obras visíveis · ${user.name}`;
+      document.querySelector('#userWorksFeedback').textContent = 'Carregando o acesso atual…';
+      renderUserWorks([]);
+      document.querySelector('#userWorksDialog').showModal();
+      try {
+        const dados = await window.NBZApi.obrasDoUsuario(userId);
+        renderUserWorks(dados && dados.obras);
+        document.querySelector('#userWorksFeedback').textContent = '';
+      } catch (falha) {
+        document.querySelector('#userWorksFeedback').textContent = `Não foi possível carregar: ${falha.message}`;
+      }
+    }
+
+    document.querySelector('#userWorksSave').addEventListener('click', async () => {
+      if (!userWorksTarget || !requirePermission('users.manage')) return;
+      const marcadas = [...document.querySelectorAll('[data-work-access]')]
+        .filter((caixa) => caixa.checked)
+        .map((caixa) => caixa.dataset.workAccess);
+      const feedback = document.querySelector('#userWorksFeedback');
+      feedback.className = 'auth-feedback';
+      feedback.textContent = 'Salvando…';
+      const user = users.find((item) => item.id === userWorksTarget);
+      try {
+        await window.NBZApi.definirObrasDoUsuario(userWorksTarget, marcadas);
+        addActivity('Acesso às obras atualizado', `${user ? user.name : userWorksTarget} · ${marcadas.length} obra(s)`);
+        saveState();
+        feedback.className = 'auth-feedback ok';
+        feedback.textContent = 'Acesso salvo.';
+        notify(`${user ? user.name : 'Usuário'} agora vê ${marcadas.length} obra(s).`, 'ok');
+        document.querySelector('#userWorksDialog').close();
+      } catch (falha) {
+        feedback.textContent = `Não foi possível salvar: ${falha.message}`;
+      }
+    });
+
+    document.querySelector('#usersList').addEventListener('click', (event) => {
+      const botao = event.target.closest('[data-user-works]');
+      if (botao) openUserWorks(botao.dataset.userWorks);
+    });
+
     document.querySelector('#usersList').addEventListener('change', async (event) => {
       const select = event.target.closest('[data-user-role]');
       if (!select || !requirePermission('users.manage')) return;
@@ -4689,6 +4766,14 @@
           await baixarFotosFaltantes();
           if (currentUser) renderAll();
         }
+        /* FORA do `if`, e é justamente aí que estava o erro.
+
+           Quando o acesso é RETIRADO, o pacote da descida vem vazio — não há
+           obra visível para mandar, e não há exclusão, porque a obra não foi
+           apagada, só deixou de ser dela. Com a poda lá dentro, o único caso
+           em que ela precisava rodar era o único em que não rodava, e a obra
+           ficava no aparelho para sempre. */
+        await aplicarAcessoDasObras();
         /* Depois de subir foto é quando o número mudou de verdade; atualizar
            aqui mantém a barra honesta sem pedir rede a cada clique na tela. */
         atualizarUsoDoArmazenamento();
@@ -4747,6 +4832,86 @@
           if (floor.id && enviados.has(floor.id)) floor.temPlanta = true;
         }
       }
+    }
+
+    /* ============ QUAIS OBRAS ESTA PESSOA ENXERGA ============
+
+       `null` significa "todas", e é o estado do administrador e do modo sem
+       servidor. Conjunto vazio significa o oposto — nenhuma obra. Os dois nunca
+       podem se confundir: trocar um pelo outro ou esconde tudo de quem pode
+       ver, ou mostra tudo a quem não pode.
+
+       Isto NÃO é o controle de acesso. O controle vive no `/sync/baixar`, que
+       nem envia a obra não alocada. Aqui é o acabamento de duas pontas que o
+       servidor sozinho não resolve:
+
+       - as obras de demonstração, que nascem no estado antes de qualquer
+         sincronização e nunca passaram pelo servidor;
+       - a obra cujo acesso foi RETIRADO. A fusão preserva o que o pacote não
+         traz — e tem de preservar, senão todo delta apagaria o que não mudou.
+         Então a obra removida da alocação continuaria no aparelho para sempre,
+         sem nada que voltasse a tirá-la. */
+    let obrasVisiveis = null;
+
+    /* Guardar a última lista conhecida é o que mantém a regra valendo sem
+       sinal. Sem isto, abrir o painel offline deixaria `obrasVisiveis` em
+       `null` — "vê todas" — e a pessoa voltaria a enxergar no aparelho o que
+       já havia baixado de obras que perdeu. */
+    function chaveDeAcesso(userId) { return `${storageKey}-acesso-${userId}`; }
+
+    function lerAcessoGuardado(userId) {
+      try {
+        const bruto = JSON.parse(localStorage.getItem(chaveDeAcesso(userId)));
+        if (bruto && bruto.todas === true) return null;
+        if (bruto && Array.isArray(bruto.obras)) return new Set(bruto.obras);
+      } catch {}
+      return undefined;
+    }
+
+    function gravarAcessoGuardado(userId, conjunto) {
+      try {
+        localStorage.setItem(chaveDeAcesso(userId), JSON.stringify(
+          conjunto ? { todas: false, obras: [...conjunto] } : { todas: true }
+        ));
+      } catch {}
+    }
+
+    async function carregarAcessoDasObras() {
+      if (!comServidor || !currentUser) { obrasVisiveis = null; return; }
+      if (currentUser.role === 'administrador') {
+        obrasVisiveis = null;
+        gravarAcessoGuardado(currentUser.id, null);
+        return;
+      }
+      /* Parte do que estava guardado: se a rede falhar, a regra continua a
+         última conhecida em vez de virar "vê todas". */
+      const guardado = lerAcessoGuardado(currentUser.id);
+      if (guardado !== undefined) obrasVisiveis = guardado;
+      if (!window.NBZApi || !window.NBZApi.token() || !window.NBZApi.online()) return;
+      try {
+        const dados = await window.NBZApi.obrasDoUsuario(currentUser.id);
+        obrasVisiveis = dados && dados.todas ? null : new Set((dados && dados.obras) || []);
+        gravarAcessoGuardado(currentUser.id, obrasVisiveis);
+      } catch (falha) {
+        console.warn('Não foi possível conferir o acesso às obras:', falha.message);
+      }
+    }
+
+    /* Tira do estado local a obra que esta pessoa não pode ver. Devolve se algo
+       saiu, para quem chama gravar só quando houve mudança. */
+    function podarObrasSemAcesso() {
+      if (!obrasVisiveis) return false;
+      const antes = projects.length;
+      projects = projects.filter((project) => obrasVisiveis.has(project.id));
+      return projects.length !== antes;
+    }
+
+    /* Aplica o acesso e redesenha. Usada depois de entrar e depois de cada
+       sincronização, que são os dois momentos em que a lista pode ter mudado. */
+    async function aplicarAcessoDasObras({ redesenhar = true } = {}) {
+      await carregarAcessoDasObras();
+      if (podarObrasSemAcesso()) saveStateSemReplicar();
+      if (redesenhar && currentUser) renderAll();
     }
 
     async function enfileirarPlantasPendentes() {

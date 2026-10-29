@@ -160,6 +160,20 @@ async function rotear(pedido, env, contexto) {
     );
   }
 
+  /* Vem ANTES de `/usuarios/:id`: a expressao de id casa com qualquer coisa
+     sem barra, mas nao com `.../obras`, e inverter a ordem deixaria esta rota
+     inalcancavel por um descuido futuro de regex. */
+  const usuarioObras = caminho.match(/^\/usuarios\/([^/]+)\/obras$/);
+  if (usuarioObras) {
+    if (metodo === 'GET') return responder(await usuarios.listarObras(env, sessao, usuarioObras[1]), origem);
+    if (metodo === 'PUT') {
+      return responder(
+        await usuarios.definirObras(env, sessao, usuarioObras[1], await corpoJson(pedido)),
+        origem
+      );
+    }
+  }
+
   const usuarioId = caminho.match(/^\/usuarios\/([^/]+)$/);
   if (usuarioId) {
     if (metodo === 'PATCH') {

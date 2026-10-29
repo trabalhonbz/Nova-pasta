@@ -103,6 +103,31 @@ create table if not exists obras (
 
 create index if not exists idx_obras_sync on obras(atualizado_em);
 
+/* ------------------------------------------------- quem enxerga cada obra */
+
+/* QUAIS OBRAS CADA PESSOA VE.
+
+   Administrador nao aparece aqui e nao precisa: ele ve tudo, por cargo. Para
+   todos os outros cargos a regra e a inversa da usual — nada e visivel ate ser
+   liberado. Lista de PERMISSAO, nao de bloqueio: obra nova nasce invisivel
+   para quem nao foi alocado, em vez de vazar por esquecimento.
+
+   A linha e apagada de verdade (`delete`), sem `excluido_em`: nao ha historico
+   a preservar numa alocacao, e manter a linha morta obrigaria toda consulta a
+   filtra-la — um `where` esquecido devolveria acesso a quem o perdeu.
+
+   `on delete cascade` nos dois lados: usuario removido ou obra apagada nao
+   deixam alocacao orfa capaz de liberar uma obra futura que reuse o id. */
+create table if not exists usuario_obras (
+  usuario_id text not null references usuarios(id) on delete cascade,
+  obra_id    text not null references obras(id) on delete cascade,
+  criado_por text references usuarios(id),
+  criado_em  text not null default (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  primary key (usuario_id, obra_id)
+);
+
+create index if not exists idx_usuario_obras_obra on usuario_obras(obra_id);
+
 /* -------------------------------------------------------------- pavimentos */
 /* `ordem` substitui o floorIndex do app, que hoje e a posicao no array e
    se desloca quando um pavimento do meio e removido. */

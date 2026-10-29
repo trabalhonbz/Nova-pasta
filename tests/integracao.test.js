@@ -543,8 +543,29 @@ teste('quando o R2 aparece, a fila acumulada sobe sozinha', async () => {
    o administrador deixar de conhecer a senha de quem usa o sistema. Num teste
    que precisa de dois usuários de verdade sincronizando, essa é a única forma
    de chegar lá. */
-async function criarColegaComSenhaPropria(admin, { nome, usuario, provisoria, definitiva, cargo = 'engenheiro' }) {
+/* `obras` diz a que obras o colega fica alocado, e o padrão é TODAS as que o
+   administrador tem no momento.
+
+   O padrão é esse porque é o que o administrador faz ao pôr alguém para
+   trabalhar, e porque era o comportamento implícito antes de o acesso por obra
+   existir: sem ele, todo teste de "o colega recebe X" mediria a regra de
+   acesso em vez da coisa que pretende medir. Quem testa a restrição passa
+   `obras: []` ou a lista exata, e aí a regra é o assunto. */
+async function criarColegaComSenhaPropria(admin, { nome, usuario, provisoria, definitiva, cargo = 'engenheiro', obras = null }) {
   await cadastrarPeloPainel(admin, { nome, usuario, senha: provisoria, cargo });
+
+  if (cargo !== 'administrador') {
+    const alvo = obras || await admin.eval('projects.map((p) => p.id)');
+    const id = await admin.eval(
+      `(() => { const u = users.find((item) => item.username === ${JSON.stringify(usuario)}); return u ? u.id : ''; })()`
+    );
+    if (id) {
+      await admin.eval(
+        `window.NBZApi.definirObrasDoUsuario(${JSON.stringify(id)}, ${JSON.stringify(alvo)})`
+      );
+      await pausa(300);
+    }
+  }
 
   const dele = await boot({ api: admin.__api });
   await pausa(600);
@@ -593,6 +614,17 @@ teste('ADM cria pavimento, todos veem; ADM exclui, some para todos', async () =>
   })()`);
   await admin.eval('sincronizarComServidor()');
   await pausa(600);
+
+  /* O colega nasceu ANTES desta obra existir, então a alocação automática do
+     auxiliar não tinha o que alocar. Alocar agora é o que o administrador faz
+     ao criar obra nova: ela nasce invisível, e ele libera quem vai trabalhar
+     nela. Sem este passo, o teste mediria a regra de acesso em vez do que ele
+     existe para medir — criar aparece para todos, excluir some para todos. */
+  await admin.eval(`(async () => {
+    const u = users.find((item) => item.username === 'nicolas');
+    if (u) await window.NBZApi.definirObrasDoUsuario(u.id, ['obra-1']);
+  })()`);
+  await pausa(400);
 
   igual(
     db.prepare("select nome from pavimentos where id = 'pav-novo' and excluido_em is null").get().nome,
@@ -1148,6 +1180,196 @@ teste('o relatório desenha as demarcações sobre a planta', async () => {
   })()`);
   confirmar(!semMedidas, 'sem as medidas da planta, melhor não desenhar do que desenhar torto');
   ctx.fechar();
+});
+
+/* ==================== acesso por obra ==================== */
+
+/* Duas obras no servidor, para haver uma permitida e uma proibida. */
+async function criarDuasObras(ctx) {
+  await ctx.eval(`(() => {
+    projects = [
+      { id: 'obra-1', name: 'MEDICAL CENTER', city: 'São Paulo', client: 'Racional',
+        manager: 'Filipp', system: 'Manta asfáltica', status: 'Em andamento',
+        date: '2026-06-01', image: '', area: 0, executed: 0, inProgress: 0, pending: 0,
+        blocked: 0, unclassified: 0, floors: 1,
+        floorPlans: [{ id: 'pav-1', name: 'Térreo', area: 100, planImage: '', planWidth: 0,
+          planHeight: 0, planFileName: '',
+          regions: [{ id: 'set-1', name: 'Setor A', status: 'executed', points: [{x:10,y:20}], area: 10 }] }],
+        photoReports: [] },
+      { id: 'obra-2', name: 'SK LISBOA', city: 'São Paulo', client: 'Rocontec',
+        manager: 'Leonardo', system: 'Membrana líquida', status: 'Em andamento',
+        date: '2026-01-12', image: '', area: 0, executed: 0, inProgress: 0, pending: 0,
+        blocked: 0, unclassified: 0, floors: 1,
+        floorPlans: [{ id: 'pav-2', name: 'Cobertura', area: 200, planImage: '', planWidth: 0,
+          planHeight: 0, planFileName: '',
+          regions: [{ id: 'set-2', name: 'Setor B', status: 'pending', points: [{x:5,y:5}], area: 20 }] }],
+        photoReports: [] }
+    ];
+    saveState();
+  })()`);
+  await ctx.eval('sincronizarComServidor()');
+  await pausa(900);
+}
+
+teste('o colega só recebe do servidor a obra em que foi alocado', async () => {
+  /* O pedido: "o responsável, ou qualquer usuário sem ser administrador, só vê
+     a obra que eu deixar visível para ele."
+
+     O teste bate no SERVIDOR, não na tela, e é essa a diferença que importa.
+     Esconder a obra na interface deixaria o pacote chegar inteiro ao aparelho,
+     e qualquer um que abrisse o console do navegador leria tudo. Por isso a
+     verificação é sobre o que `/sync/baixar` entrega. */
+  const { api } = servidorDeTeste();
+  const admin = await boot({ api });
+  admin.__api = api;
+  await pausa(600);
+  await preencherCadastroInicial(admin, { nome: 'André', usuario: 'andre', senha: 'senhaforte1' });
+  await criarDuasObras(admin);
+
+  const colega = await criarColegaComSenhaPropria(admin, {
+    nome: 'Filipp Mafra', usuario: 'filipp', provisoria: 'provisoria123', definitiva: 'senhadele456', obras: []
+  });
+  await pausa(1200);
+
+  /* Sem alocação nenhuma, o padrão é não ver obra alguma: lista de permissão,
+     não de bloqueio — obra nova não vaza enquanto ninguém a tranca. */
+  const semAcesso = await colega.eval(`(() => {
+    const pacote = projects.filter((p) => p.id === 'obra-1' || p.id === 'obra-2');
+    return pacote.map((p) => p.id);
+  })()`);
+  igual(semAcesso.length, 0,
+    `sem alocação o colega não deveria ver obra nenhuma, e vê ${JSON.stringify(semAcesso)}`);
+
+  /* O administrador aloca só o MEDICAL CENTER. */
+  const idDoColega = await admin.eval(`(() => {
+    const u = users.find((item) => item.username === 'filipp');
+    return u ? u.id : '';
+  })()`);
+  confirmar(idDoColega, 'o colega deveria estar na lista de usuários do administrador');
+  await admin.eval(`window.NBZApi.definirObrasDoUsuario(${JSON.stringify(idDoColega)}, ['obra-1'])`);
+  await pausa(500);
+
+  await colega.eval('sincronizarComServidor({ completo: true })');
+  await pausa(1200);
+
+  const comAcesso = await colega.eval(`(() => ({
+    ids: projects.map((p) => p.id),
+    medical: Boolean(projects.find((p) => p.id === 'obra-1')),
+    lisboa: Boolean(projects.find((p) => p.id === 'obra-2'))
+  }))()`);
+
+  confirmar(comAcesso.medical, `o colega deveria ver o MEDICAL CENTER, e tem ${JSON.stringify(comAcesso.ids)}`);
+  confirmar(!comAcesso.lisboa, 'a SK LISBOA tem de continuar invisível para ele');
+  admin.fechar();
+  colega.fechar();
+});
+
+teste('o administrador continua vendo todas as obras', async () => {
+  /* Contraprova: a regra nova não pode ter restringido quem deve ver tudo. */
+  const { api } = servidorDeTeste();
+  const admin = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(admin, { nome: 'André', usuario: 'andre', senha: 'senhaforte1' });
+  await criarDuasObras(admin);
+
+  await admin.eval('sincronizarComServidor({ completo: true })');
+  await pausa(900);
+
+  const vistas = await admin.eval('projects.filter((p) => p.id.startsWith("obra-")).map((p) => p.id).sort()');
+  igual(JSON.stringify(vistas), JSON.stringify(['obra-1', 'obra-2']),
+    'o administrador tem de continuar vendo as duas obras');
+  admin.fechar();
+});
+
+teste('o colega não escreve na obra que não enxerga', async () => {
+  /* Ler e escrever respondem à mesma lista. Filtrar só a descida esconderia a
+     obra sem proteger o dado: o id é só um texto, e bastaria uma chamada ao
+     `/sync/subir` com o id certo para alterar uma obra invisível. */
+  const { api, db } = servidorDeTeste();
+  const admin = await boot({ api });
+  admin.__api = api;
+  await pausa(600);
+  await preencherCadastroInicial(admin, { nome: 'André', usuario: 'andre', senha: 'senhaforte1' });
+  await criarDuasObras(admin);
+
+  const colega = await criarColegaComSenhaPropria(admin, {
+    nome: 'Filipp Mafra', usuario: 'filipp', provisoria: 'provisoria123', definitiva: 'senhadele456', obras: []
+  });
+  await pausa(1200);
+
+  const idDoColega = await admin.eval(`(() => {
+    const u = users.find((item) => item.username === 'filipp');
+    return u ? u.id : '';
+  })()`);
+  await admin.eval(`window.NBZApi.definirObrasDoUsuario(${JSON.stringify(idDoColega)}, ['obra-1'])`);
+  await pausa(500);
+
+  /* O aparelho dele tenta subir as DUAS, inclusive a proibida — é o que faria
+     um estado adulterado, ou um aparelho que ficou com a obra de antes. */
+  await colega.eval(`(() => {
+    projects = [
+      { id: 'obra-1', name: 'MEDICAL CENTER MEXIDO', city: 'X', client: 'Y', manager: '',
+        system: '', status: 'Em andamento', date: '', image: '', area: 0, executed: 0,
+        inProgress: 0, pending: 0, blocked: 0, unclassified: 0, floors: 0,
+        floorPlans: [], photoReports: [] },
+      { id: 'obra-2', name: 'SK LISBOA INVADIDA', city: 'X', client: 'Y', manager: '',
+        system: '', status: 'Em andamento', date: '', image: '', area: 0, executed: 0,
+        inProgress: 0, pending: 0, blocked: 0, unclassified: 0, floors: 0,
+        floorPlans: [], photoReports: [] }
+    ];
+  })()`);
+  await colega.eval('window.NBZApi.subirEstado(window.NBZSync.paraServidor(projects))');
+  await pausa(900);
+
+  const nomes = db.prepare('select id, nome from obras order by id').all();
+  const medical = nomes.find((linha) => linha.id === 'obra-1');
+  const lisboa = nomes.find((linha) => linha.id === 'obra-2');
+
+  igual(medical.nome, 'MEDICAL CENTER MEXIDO', 'na obra alocada ele grava normalmente');
+  igual(lisboa.nome, 'SK LISBOA',
+    `a obra não alocada não pode ter sido alterada, e virou "${lisboa.nome}"`);
+  admin.fechar();
+  colega.fechar();
+});
+
+teste('retirar o acesso tira a obra do aparelho do colega', async () => {
+  /* A fusão preserva o que o pacote não traz — e tem de preservar, senão todo
+     delta apagaria o que não mudou. O efeito colateral é que a obra cujo
+     acesso foi RETIRADO ficaria no aparelho para sempre, sem nada que voltasse
+     a tirá-la. É a poda local que fecha esse buraco. */
+  const { api } = servidorDeTeste();
+  const admin = await boot({ api });
+  admin.__api = api;
+  await pausa(600);
+  await preencherCadastroInicial(admin, { nome: 'André', usuario: 'andre', senha: 'senhaforte1' });
+  await criarDuasObras(admin);
+
+  const colega = await criarColegaComSenhaPropria(admin, {
+    nome: 'Filipp Mafra', usuario: 'filipp', provisoria: 'provisoria123', definitiva: 'senhadele456', obras: []
+  });
+  await pausa(1200);
+
+  const idDoColega = await admin.eval(`(() => {
+    const u = users.find((item) => item.username === 'filipp');
+    return u ? u.id : '';
+  })()`);
+  await admin.eval(`window.NBZApi.definirObrasDoUsuario(${JSON.stringify(idDoColega)}, ['obra-1'])`);
+  await pausa(500);
+  await colega.eval('sincronizarComServidor({ completo: true })');
+  await pausa(1200);
+  confirmar(await colega.eval('Boolean(projects.find((p) => p.id === "obra-1"))'),
+    'pré-condição: o colega tem de estar vendo o MEDICAL CENTER');
+
+  /* O administrador retira o acesso. */
+  await admin.eval(`window.NBZApi.definirObrasDoUsuario(${JSON.stringify(idDoColega)}, [])`);
+  await pausa(500);
+  await colega.eval('sincronizarComServidor({ completo: true })');
+  await pausa(1200);
+
+  igual(await colega.eval('Boolean(projects.find((p) => p.id === "obra-1"))'), false,
+    'retirado o acesso, a obra tem de sair do aparelho dele');
+  admin.fechar();
+  colega.fechar();
 });
 
 teste('a planta se mantém igual vinda de JPEG ou de PDF', async () => {
@@ -2080,6 +2302,28 @@ function semearUsuarios(db) {
   }
 }
 
+/* Aloca os cargos semeados na obra, como um administrador faria antes de pedir
+   trabalho a alguém.
+
+   Desde que o acesso passou a ser por obra, cargo sozinho não basta: o técnico
+   muda situação de setor POR CARGO, mas só onde está alocado. Os testes de
+   cargo querem medir a regra de CARGO, então tiram a outra do caminho.
+
+   Chamado depois de a obra existir, e não dentro de `semearUsuarios`: a chave
+   estrangeira de `usuario_obras` exige a obra gravada, e há teste que confere
+   que nenhuma obra existe logo após semear.
+
+   O administrador fica de fora de propósito. Ele vê tudo por cargo, e criar
+   linha para ele esconderia um erro em que o filtro passasse a exigir alocação
+   também de quem não deveria precisar. */
+function alocarNaObra(db, obraId = 'obra-1', usuarios = ['u1', 'u2', 'u3']) {
+  for (const id of usuarios) {
+    db.prepare(
+      'insert or ignore into usuario_obras (usuario_id, obra_id) values (?, ?)'
+    ).run(id, obraId);
+  }
+}
+
 function obraDeTeste(extra = {}) {
   return {
     id: 'obra-1', nome: 'MEDICAL CENTER', cidade: 'São Paulo',
@@ -2117,6 +2361,7 @@ teste('técnico muda a situação do setor, que é o que o cargo permite', async
   semearUsuarios(db);
   const adm = { id: 'u0', nivelAcesso: 'administrador' };
   await sync.subir(env, adm, { obras: [obraDeTeste()] });
+  alocarNaObra(db);
   igual(db.prepare("select situacao from setores where id='set-1'").get().situacao, 'pending',
     'pré-condição: o setor existe com a situação inicial');
 
@@ -2155,6 +2400,7 @@ teste('encarregado edita obra existente mas não cria obra nova', async () => {
   /* Com a obra já existente, ele edita. */
   const adm = { id: 'u0', nivelAcesso: 'administrador' };
   await sync.subir(env, adm, { obras: [obraDeTeste()] });
+  alocarNaObra(db);
   await sync.subir(env, encarregado, { obras: [obraDeTeste({ cidade: 'Campinas' })] });
 
   igual(db.prepare("select cidade from obras where id='obra-1'").get().cidade, 'Campinas',
@@ -2300,6 +2546,14 @@ teste('cargo sem permissão não exclui, e a pendência não some', async () => 
   db.prepare('insert into obras (id, nome) values (?, ?)').run('obra-1', 'MEDICAL CENTER');
   db.prepare('insert into pavimentos (id, obra_id, nome) values (?, ?, ?)').run('pav-1', 'obra-1', 'Térreo');
   db.prepare('insert into setores (id, pavimento_id, nome) values (?, ?, ?)').run('set-1', 'pav-1', 'Setor A');
+  /* O acesso por obra também vale para apagar. Sem a alocação, a recusa viria
+     por OBRA e o teste mediria a regra errada — ele existe para provar que a
+     recusa é por CARGO, e que a pendência sobrevive a ela. */
+  db.prepare(
+    `insert into usuarios (id, usuario, nome, nivel_acesso, senha_hash, senha_salt)
+     values ('u1', 'u1', 'u1', 'encarregado', 'x', 'y')`
+  ).run();
+  alocarNaObra(db, 'obra-1', ['u1']);
 
   const encarregado = { id: 'u1', nivelAcesso: 'encarregado' };
   const resposta = await sync.subir(env, encarregado, {

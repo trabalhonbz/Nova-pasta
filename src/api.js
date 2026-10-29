@@ -329,6 +329,22 @@
     return chamar(`/usuarios/${encodeURIComponent(id)}`, { metodo: 'PATCH', corpo: dados });
   }
 
+  /* Quais obras esta pessoa enxerga. `todas: true` e a resposta para
+     administrador, que ve tudo por cargo — e e diferente de lista vazia, que
+     significa "nao ve obra nenhuma". Confundir os dois daria acesso total a
+     quem nao tem nenhum, entao os dois campos viajam juntos. */
+  function obrasDoUsuario(id) {
+    return chamar(`/usuarios/${encodeURIComponent(id)}/obras`);
+  }
+
+  /* Manda o estado final das caixas marcadas, nao o que mudou: o servidor troca
+     a lista inteira, entao uma requisicao perdida nunca deixa acesso a mais. */
+  function definirObrasDoUsuario(id, obras) {
+    return chamar(`/usuarios/${encodeURIComponent(id)}/obras`, {
+      metodo: 'PUT', corpo: { obras }
+    });
+  }
+
   async function redefinirSenhaDe(id, senha) {
     const salt = novoSalt();
     return chamar(`/usuarios/${encodeURIComponent(id)}/senha`, {
@@ -817,6 +833,8 @@
     listarUsuarios,
     cadastrarUsuario,
     editarUsuario,
+    obrasDoUsuario,
+    definirObrasDoUsuario,
     redefinirSenhaDe,
     excluirUsuario,
     enfileirarFoto,

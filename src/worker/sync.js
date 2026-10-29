@@ -85,6 +85,43 @@ async function obrasQueExistem(env, ids) {
   return new Set((results || []).map((linha) => linha.id));
 }
 
+/* As obras que esta sessao pode ver e escrever, ou `null` para quem pode tudo.
+
+   `null` em vez de "conjunto com todas as obras", de proposito: administrador
+   nao tem linha em `usuario_obras`, e montar o conjunto dele obrigaria a
+   varrer a tabela de obras a cada sincronizacao para chegar sempre a mesma
+   resposta. `null` diz "nao filtre", e quem chama trata isso explicitamente —
+   um conjunto vazio significa o oposto, "nao ve nada", e confundir os dois
+   daria acesso total a quem nao tem nenhum. */
+async function obrasPermitidas(env, sessao) {
+  if (!sessao || sessao.nivelAcesso === 'administrador') return null;
+  const { results } = await env.DB.prepare(
+    'select obra_id from usuario_obras where usuario_id = ?'
+  ).bind(sessao.id).all();
+  return new Set((results || []).map((linha) => linha.obra_id));
+}
+
+/* A que obra pertence cada alvo de exclusao, para conferir o acesso antes de
+   apagar. Sem isto, bastaria o id de um setor para apagar demarcacao de uma
+   obra que a pessoa nem enxerga — a exclusao nunca passou pela descida, entao
+   o filtro de leitura nao a alcanca.
+
+   Uma consulta por tipo, e nao uma por item: a fila de exclusoes chega em
+   lote, e consultar item a item multiplicaria as idas ao D1. */
+async function obrasDosAlvos(env, tipo, ids) {
+  if (!ids.length) return new Map();
+  const marcas = ids.map(() => '?').join(',');
+  const sql = {
+    obra: `select id, id as obra_id from obras where id in (${marcas})`,
+    pavimento: `select id, obra_id from pavimentos where id in (${marcas})`,
+    setor: `select s.id, p.obra_id from setores s
+              join pavimentos p on p.id = s.pavimento_id where s.id in (${marcas})`
+  }[tipo];
+  if (!sql) return new Map();
+  const { results } = await env.DB.prepare(sql).bind(...ids).all();
+  return new Map((results || []).map((linha) => [linha.id, linha.obra_id]));
+}
+
 /* Mantem o mais recente entre o que chegou e o que esta gravado. Sem data no
    que chegou, assume-se agora: o cliente acabou de mandar. */
 function maisRecente(entrada, gravado) {
@@ -141,10 +178,23 @@ export async function subir(env, sessao, corpo) {
     ? null
     : await obrasQueExistem(env, obras.map((obra) => limpar(obra && obra.id, 64)).filter(Boolean));
 
+  /* NAO VER A OBRA TEM DE SIGNIFICAR NAO ESCREVER NELA.
+
+     Filtrar so a descida esconderia a obra sem proteger o dado: o id continua
+     sendo um texto, e bastaria uma chamada a `/sync/subir` com o id certo para
+     alterar nome, situacao ou setores de uma obra que a pessoa nem enxerga.
+     Leitura e escrita respondem a mesma lista.
+
+     Obra fora da lista e PULADA, nao recusada: um aparelho pode ter no estado
+     uma obra cujo acesso acabou de ser retirado, e derrubar o lote inteiro por
+     causa dela faria a pessoa perder tambem o que ainda pode gravar. */
+  const permitidas = await obrasPermitidas(env, sessao);
+
   for (const obra of obras) {
     const obraId = limpar(obra && obra.id, 64);
     if (!obraId) continue;
     if (existentes && !existentes.has(obraId)) continue;
+    if (permitidas && !permitidas.has(obraId)) continue;
     montarObra(env, sessao, obra, obraId, instrucoes, contagem);
   }
 
@@ -222,12 +272,37 @@ async function aplicarExclusoes(env, sessao, pedidas) {
   const instrucoes = [];
   const aplicadas = [];
 
+  /* O acesso por obra vale para apagar tambem. Cargo diz QUE TIPO de registro
+     a pessoa pode excluir; a alocacao diz EM QUAL OBRA. Conferir so o cargo
+     deixaria um engenheiro apagar pavimentos de qualquer obra do sistema,
+     inclusive as que nao aparecem na tela dele. */
+  const permitidas = await obrasPermitidas(env, sessao);
+  const obraDoAlvo = new Map();
+  if (permitidas) {
+    for (const tipo of Object.keys(TIPOS_DE_EXCLUSAO)) {
+      const ids = lista
+        .filter((item) => limpar(item && item.tipo, 20) === tipo)
+        .map((item) => limpar(item && item.id, 64))
+        .filter(Boolean);
+      for (const [id, obraId] of await obrasDosAlvos(env, tipo, ids)) {
+        obraDoAlvo.set(`${tipo}:${id}`, obraId);
+      }
+    }
+  }
+
   for (const item of lista) {
     const tipo = limpar(item && item.tipo, 20);
     const id = limpar(item && item.id, 64);
     const regra = TIPOS_DE_EXCLUSAO[tipo];
     if (!regra || !id) continue;
     if (!regra.cargos.includes(sessao.nivelAcesso)) continue;
+    /* Alvo que nao existe mais nao tem obra a conferir: deixa passar, porque o
+       `update` nao encontrara linha e o efeito e nenhum. O que nao pode passar
+       e alvo existente cuja obra esta fora da lista. */
+    if (permitidas) {
+      const obraId = obraDoAlvo.get(`${tipo}:${id}`);
+      if (obraId && !permitidas.has(obraId)) continue;
+    }
 
     instrucoes.push(env.DB.prepare(
       `update ${regra.tabela} set excluido_em = ?, atualizado_em = ?
@@ -465,18 +540,45 @@ export async function baixar(env, sessao, parametros) {
   const desde = String(parametros.get('desde') || '').trim();
   const corte = desde && Number.isFinite(Date.parse(desde)) ? desde : '1970-01-01T00:00:00.000Z';
 
+  /* O RECORTE POR OBRA ACONTECE AQUI, E PRECISA ACONTECER AQUI.
+
+     Esconder a obra na tela nao e controle de acesso: o pacote chegava inteiro
+     ao aparelho, e quem abrisse o console do navegador — ou chamasse
+     `/sync/baixar` direto com o proprio token — lia tudo. Filtrar na consulta
+     e o que faz a obra nao alocada simplesmente nao existir para a pessoa.
+
+     Administrador nao e filtrado, por cargo. Para os demais a regra e de
+     permissao: so vem o que esta em `usuario_obras`, entao obra nova nasce
+     invisivel ate ser liberada, em vez de vazar enquanto ninguem se lembra de
+     bloquea-la.
+
+     O filtro desce junto com a hierarquia, por juncao e nao em JavaScript: o
+     setor so conhece o pavimento, e num delta parcial o pavimento dele pode
+     nao ter vindo — filtrar na memoria deixaria passar o setor de uma obra
+     proibida sempre que ela nao estivesse no mesmo pacote. */
+  const restrito = sessao.nivelAcesso !== 'administrador';
+  const minhasObras = 'select obra_id from usuario_obras where usuario_id = ?';
+  const eu = restrito ? [sessao.id] : [];
+
   const obras = await consultar(env,
-    `select * from obras where atualizado_em > ? order by atualizado_em limit 500`, [corte]);
+    `select * from obras where atualizado_em > ?${restrito ? ` and id in (${minhasObras})` : ''}
+      order by atualizado_em limit 500`, [corte, ...eu]);
   const pavimentos = await consultar(env,
-    `select * from pavimentos where atualizado_em > ? order by atualizado_em limit 2000`, [corte]);
+    `select * from pavimentos where atualizado_em > ?${restrito ? ` and obra_id in (${minhasObras})` : ''}
+      order by atualizado_em limit 2000`, [corte, ...eu]);
   const setores = await consultar(env,
-    `select * from setores where atualizado_em > ? order by atualizado_em limit 5000`, [corte]);
+    `select s.* from setores s${restrito ? ' join pavimentos p on p.id = s.pavimento_id' : ''}
+      where s.atualizado_em > ?${restrito ? ` and p.obra_id in (${minhasObras})` : ''}
+      order by s.atualizado_em limit 5000`, [corte, ...eu]);
   const relatorios = await consultar(env,
-    `select * from relatorios_foto where atualizado_em > ? order by atualizado_em limit 2000`, [corte]);
+    `select * from relatorios_foto where atualizado_em > ?${restrito ? ` and obra_id in (${minhasObras})` : ''}
+      order by atualizado_em limit 2000`, [corte, ...eu]);
   const fotos = await consultar(env,
-    `select id, relatorio_id, bytes, largura, altura, legenda, incluir_laudo, data,
-            autor_id, atualizado_em, excluido_em
-       from fotos where atualizado_em > ? order by atualizado_em limit 5000`, [corte]);
+    `select f.id, f.relatorio_id, f.bytes, f.largura, f.altura, f.legenda, f.incluir_laudo, f.data,
+            f.autor_id, f.atualizado_em, f.excluido_em
+       from fotos f${restrito ? ' join relatorios_foto r on r.id = f.relatorio_id' : ''}
+      where f.atualizado_em > ?${restrito ? ` and r.obra_id in (${minhasObras})` : ''}
+      order by f.atualizado_em limit 5000`, [corte, ...eu]);
 
   return {
     em: agora(),

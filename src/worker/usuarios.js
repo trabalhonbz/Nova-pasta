@@ -317,3 +317,81 @@ async function registrar(env, sessao, texto, detalhe) {
     'insert into atividades (id, texto, detalhe, autor_id, autor_nome) values (?, ?, ?, ?, ?)'
   ).bind(novoId(), texto, detalhe, sessao.id, sessao.nome).run();
 }
+
+/* ------------------------------------------------- obras visiveis por pessoa */
+
+/* QUAIS OBRAS CADA PESSOA ENXERGA.
+
+   Administrador ve todas por cargo e nao tem linha em `usuario_obras`: alocar
+   obra para ele nao faria diferenca, e a lista vazia dele nao significa "nao ve
+   nada". Quem consome isto precisa saber a diferenca, entao a resposta diz o
+   cargo junto — `todas: true` e a forma honesta de dizer "nao se aplica".
+
+   So o administrador consulta ou altera a alocacao de terceiros. Qualquer
+   pessoa pode ver a propria: saber a que obras se tem acesso nao vaza nada que
+   a propria sincronizacao ja nao entregue. */
+export async function listarObras(env, sessao, id) {
+  if (!ehAdministrador(sessao) && sessao.id !== id) {
+    return { erro: 'Apenas o administrador consulta o acesso de outras pessoas.', status: 403 };
+  }
+
+  const alvo = await env.DB.prepare(
+    'select id, nivel_acesso from usuarios where id = ? and excluido_em is null'
+  ).bind(id).first();
+  if (!alvo) return { erro: 'Usuário não encontrado.', status: 404 };
+
+  if (alvo.nivel_acesso === 'administrador') return { ok: true, todas: true, obras: [] };
+
+  const { results } = await env.DB.prepare(
+    'select obra_id from usuario_obras where usuario_id = ?'
+  ).bind(id).all();
+  return { ok: true, todas: false, obras: (results || []).map((linha) => linha.obra_id) };
+}
+
+/* Troca a lista inteira pela que veio, em vez de somar e tirar item a item.
+
+   A tela envia o estado final das caixas marcadas, e e esse estado que deve
+   valer. Com operacoes incrementais, uma requisicao perdida deixaria a pessoa
+   com acesso que o administrador acabou de retirar — e sem nada na tela
+   indicando a divergencia. */
+export async function definirObras(env, sessao, id, corpo) {
+  if (!ehAdministrador(sessao)) {
+    return { erro: 'Apenas o administrador define o acesso às obras.', status: 403 };
+  }
+
+  const alvo = await env.DB.prepare(
+    'select id, nivel_acesso from usuarios where id = ? and excluido_em is null'
+  ).bind(id).first();
+  if (!alvo) return { erro: 'Usuário não encontrado.', status: 404 };
+  if (alvo.nivel_acesso === 'administrador') {
+    return { erro: 'Administrador já enxerga todas as obras.', status: 409 };
+  }
+
+  const pedidas = Array.isArray(corpo && corpo.obras) ? corpo.obras : [];
+  if (pedidas.length > 500) return { erro: 'Lista de obras grande demais.', status: 413 };
+
+  const ids = [...new Set(pedidas.map((obra) => limpar(obra, 64)).filter(Boolean))];
+
+  /* So entra obra que existe. Id inventado viraria uma linha que nunca libera
+     nada e que ninguem consegue desmarcar pela tela, porque a tela lista as
+     obras reais. */
+  let validos = [];
+  if (ids.length) {
+    const marcas = ids.map(() => '?').join(',');
+    const { results } = await env.DB.prepare(
+      `select id from obras where excluido_em is null and id in (${marcas})`
+    ).bind(...ids).all();
+    validos = (results || []).map((linha) => linha.id);
+  }
+
+  const instrucoes = [env.DB.prepare('delete from usuario_obras where usuario_id = ?').bind(id)];
+  for (const obraId of validos) {
+    instrucoes.push(env.DB.prepare(
+      `insert into usuario_obras (usuario_id, obra_id, criado_por, criado_em)
+       values (?, ?, ?, ?)`
+    ).bind(id, obraId, sessao.id, agora()));
+  }
+  await env.DB.batch(instrucoes);
+
+  return { ok: true, todas: false, obras: validos };
+}
