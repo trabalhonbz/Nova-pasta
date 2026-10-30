@@ -1551,6 +1551,97 @@ teste('remover planta é só do administrador, na tela e na rota', async () => {
   colega.fechar();
 });
 
+teste('polígono irregular fecha tocando no ponto de partida', async () => {
+  /* O relato: "essa parte dos pontinhos, para demarcar áreas que não são
+     quadradas ou retangulares."
+
+     Marcar ponto a ponto funcionava; FECHAR é que não. O único caminho era o
+     botão "Concluir polígono", que mora em `.sketch-tools` — escondido atrás
+     do "☰" da barra de cima. Quem marcava os pontos ficava com o desenho
+     aberto sem ter onde terminar, e concluía que a ferramenta não fechava
+     área irregular. */
+  const { api } = servidorDeTeste();
+  const ctx = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(ctx, { nome: 'André', usuario: 'andre', senha: 'senhaforte1' });
+  await criarObraVazia(ctx);
+  await cadastrarPavimentoComPlanta(ctx, { largura: 1200, altura: 800 });
+
+  /* Um triângulo: três pontos, que é a figura mais simples que não é
+     retângulo — exatamente o caso que o botão de arrastar não resolve. */
+  const fechou = await ctx.eval(`(() => {
+    sketchProjectId = 'obra-1';
+    sketchFloorIndex = 0;
+    setSketchMode('draw');
+    const pontos = [{ x: 300, y: 200 }, { x: 500, y: 200 }, { x: 400, y: 380 }];
+    let proximo = 0;
+    eventToSketchPoint = () => pontos[Math.min(proximo, pontos.length - 1)];
+    const canvas = document.querySelector('#sketchCanvas');
+    const clicar = () => canvas.dispatchEvent(new window.Event('click', { bubbles: true, cancelable: true }));
+    for (proximo = 0; proximo < pontos.length; proximo++) clicar();
+    const antesDeFechar = sketchPoints.length;
+
+    /* Agora toca de volta no ponto de partida. */
+    eventToSketchPoint = () => ({ x: 302, y: 201 });
+    clicar();
+
+    const pav = projects[0].floorPlans[0];
+    return {
+      antesDeFechar,
+      setores: pav.regions.length,
+      vertices: pav.regions.length ? pav.regions[0].points.length : 0,
+      rascunhoLimpo: sketchPoints.length === 0,
+      erro: document.querySelector('#sketchError').textContent
+    };
+  })()`);
+  await pausa(400);
+
+  igual(fechou.antesDeFechar, 3, 'os três toques deveriam virar três pontos');
+  igual(fechou.setores, 1, `tocar no ponto de partida tem de fechar a área (erro: "${fechou.erro}")`);
+  igual(fechou.vertices, 3, 'e o setor nasce com os três vértices, sem duplicar o de partida');
+  confirmar(fechou.rascunhoLimpo, 'o rascunho tem de sair da tela depois de fechar');
+  ctx.fechar();
+});
+
+teste('o ponto de partida só vira alvo quando dá para fechar', async () => {
+  /* O destaque é a instrução: sem ele, "toque no ponto inicial" seria regra
+     invisível. Com um ou dois pontos ainda não há área possível, e marcar o
+     alvo ali prometeria um fechamento que seria recusado. */
+  const { api } = servidorDeTeste();
+  const ctx = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(ctx, { nome: 'André', usuario: 'andre', senha: 'senhaforte1' });
+  await criarObraVazia(ctx);
+  await cadastrarPavimentoComPlanta(ctx, { largura: 1200, altura: 800 });
+
+  const visto = await ctx.eval(`(() => {
+    sketchProjectId = 'obra-1';
+    sketchFloorIndex = 0;
+    setSketchMode('draw');
+    const medir = () => {
+      const circulos = [...document.querySelectorAll('#sketchPoints circle')];
+      if (!circulos.length) return { n: 0, destacado: false };
+      const raios = circulos.map((c) => Number(c.getAttribute('r')));
+      return { n: circulos.length, destacado: raios[0] > raios[raios.length - 1] };
+    };
+    sketchPoints = [{ x: 300, y: 200 }, { x: 500, y: 200 }];
+    renderSketchGeometry();
+    const comDois = medir();
+    sketchPoints = [{ x: 300, y: 200 }, { x: 500, y: 200 }, { x: 400, y: 380 }];
+    renderSketchGeometry();
+    const comTres = medir();
+    sketchPoints = [];
+    renderSketchGeometry();
+    return { comDois, comTres };
+  })()`);
+
+  igual(visto.comDois.n, 2, 'dois pontos desenhados');
+  igual(visto.comDois.destacado, false, 'com dois pontos ainda não há o que fechar');
+  igual(visto.comTres.n, 3, 'três pontos desenhados');
+  igual(visto.comTres.destacado, true, 'com três, o ponto de partida vira alvo');
+  ctx.fechar();
+});
+
 teste('a planta se mantém igual vinda de JPEG ou de PDF', async () => {
   /* O PDF nunca chega ao servidor como PDF: `rasterizePlanFile` renderiza a
      primeira página num canvas e entrega JPEG, exatamente como faz com imagem.

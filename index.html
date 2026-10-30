@@ -1874,7 +1874,7 @@
       if (sketchMode === 'draw') selectedRegionId = null;
       const hints = {
         pan: 'Escolha uma cor acima e toque na área para pintá-la. Sem cor escolhida, o toque abre as fotografias e os dados do local. Arraste para deslocar a planta.',
-        draw: 'Demarcar: arraste do ponto inicial ao final para criar o retângulo da área. Um toque simples adiciona pontos de um polígono livre.',
+        draw: 'Demarcar: arraste para criar um retângulo. Para área irregular, toque ponto a ponto e feche tocando no ponto vermelho de partida — ou dê um duplo clique.',
         edit: 'Toque numa área para selecioná-la, arraste o interior para movê-la e os cantos para redimensionar.'
       };
       renderSketch();
@@ -1935,7 +1935,18 @@
         return shape + regionOverlayHtml(region, floor, labelScale);
       }).join('');
       drawSketchDraft();
-      const draftPoints = sketchPoints.map((point) => `<circle cx="${point.x}" cy="${point.y}" r="${handleRadius * 0.7}" fill="#108d68" stroke="white" stroke-width="${strokeWidth * 1.5}"/>`).join('');
+      /* O primeiro ponto cresce e muda de cor assim que fechar vira possível.
+
+         Sem esse sinal, "toque no ponto inicial" seria instrução invisível: o
+         ponto de partida parecia igual aos outros, e nada na tela dizia que
+         ele era o alvo. Com três pontos no chão a figura já pode virar área, e
+         é esse o momento de mostrar onde terminar. */
+      const podeFechar = sketchPoints.length >= 3;
+      const draftPoints = sketchPoints.map((point, indice) => {
+        const partida = podeFechar && indice === 0;
+        const raio = handleRadius * (partida ? 1.25 : 0.7);
+        return `<circle cx="${point.x}" cy="${point.y}" r="${raio}" fill="${partida ? '#d7172f' : '#108d68'}" stroke="white" stroke-width="${strokeWidth * (partida ? 2.2 : 1.5)}"${partida ? '><title>Toque aqui para fechar a área</title></circle>' : '/>'}`;
+      }).join('');
       const selectedRegion = floor.regions.find((region) => region.id === selectedRegionId);
       const handles = selectedRegion ? regionHandles(selectedRegion).map((item) => `<circle class="sketch-handle" data-region-handle="${item.handle}" data-region-id="${escapeHtml(selectedRegion.id)}" cx="${Math.round(item.x * 100) / 100}" cy="${Math.round(item.y * 100) / 100}" r="${handleRadius}" fill="white" stroke="#454648" stroke-width="${strokeWidth * 1.6}"/>`).join('') : '';
       document.querySelector('#sketchPoints').innerHTML = draftPoints + handles;
@@ -3227,6 +3238,24 @@
       if (panDrag?.pointerId === event.pointerId) panDrag = null;
       renderSketchGeometry();
     });
+    /* Duplo clique também fecha, para quem está no computador.
+
+       O toque no ponto inicial é o gesto natural no celular, mas no mouse
+       mirar um alvo pequeno dá trabalho — e duplo clique é o que todo editor
+       de desenho entende como "terminei".
+
+       Os dois cliques do duplo já empilharam dois pontos no mesmo lugar: o
+       segundo é descartado, senão a área nasceria com um vértice duplicado,
+       que não muda a forma mas suja o polígono e o cálculo de perímetro. */
+    sketchCanvas.addEventListener('dblclick', (event) => {
+      if (sketchMode !== 'draw' || sketchPoints.length < 3) return;
+      event.preventDefault();
+      const ultimo = sketchPoints[sketchPoints.length - 1];
+      const penultimo = sketchPoints[sketchPoints.length - 2];
+      if (penultimo && Math.hypot(ultimo.x - penultimo.x, ultimo.y - penultimo.y) < 1) sketchPoints.pop();
+      if (sketchPoints.length >= 3) finishSketchRegion();
+      else renderSketchGeometry();
+    });
     sketchCanvas.addEventListener('wheel', (event) => {
       event.preventDefault();
       zoomPlanView(event.deltaY < 0 ? 1.2 : 1 / 1.2, eventToSketchPoint(event));
@@ -3253,6 +3282,29 @@
       if (sketchMode !== 'draw') return;
       const point = eventToSketchPoint(event);
       const planBounds = getPlanBounds(floor);
+      /* TOCAR NO PRIMEIRO PONTO FECHA O POLÍGONO.
+
+         Área que não é retângulo se desenha ponto a ponto, e o único jeito de
+         fechar era o botão "Concluir polígono" — que mora em `.sketch-tools`,
+         escondido atrás do "☰" da barra de cima. Quem marcava os pontos ficava
+         com o desenho aberto sem ter onde terminar, e concluía que a
+         ferramenta não fechava área.
+
+         Voltar ao ponto de partida é como se fecha um contorno no papel, e é o
+         gesto que todo editor de mapa usa. O botão continua lá para quem o
+         encontrar; isto é o caminho que não precisa ser descoberto.
+
+         O raio acompanha o zoom: em `planView.width` pequeno a planta está
+         ampliada, e um alvo fixo em unidades do desenho ficaria grande demais
+         na tela, engolindo pontos legítimos vizinhos. */
+      if (sketchPoints.length >= 3) {
+        const partida = sketchPoints[0];
+        const alcance = Math.max(6, planView.width / 45);
+        if (Math.hypot(point.x - partida.x, point.y - partida.y) <= alcance) {
+          finishSketchRegion();
+          return;
+        }
+      }
       if (point.x >= planBounds.x && point.x <= planBounds.x + planBounds.width && point.y >= planBounds.y && point.y <= planBounds.y + planBounds.height) sketchPoints.push(point);
       renderSketchGeometry();
     });
