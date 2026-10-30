@@ -69,8 +69,8 @@
 .local-photo-actions .photo-manage-label,.local-photo-actions button{
   flex:1 1 150px;
   justify-content:center;
-  min-height:46px;
-  font-size:11px;
+  min-height:54px;
+  font-size:12px;
   text-align:center
 }
 .photo-item-meta{

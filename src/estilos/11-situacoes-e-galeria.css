@@ -13,9 +13,9 @@
 /* O painel do local reaproveita `.paint-bar`/`.paint-swatches` da barra da planta:
    mesma amostra, mesmo anel de selecao, mesmo "✓". Só muda a separacao do bloco. */
 .local-status{
-  border-top:1px dashed #eaeaea;
-  margin:11px 0 0;
-  padding-top:11px
+  border-bottom:1px dashed #eaeaea;
+  margin:4px 0 0;
+  padding-bottom:11px
 }
 .local-status .paint-bar-label{
   margin-bottom:8px
