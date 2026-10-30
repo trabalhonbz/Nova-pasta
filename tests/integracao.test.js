@@ -1642,6 +1642,72 @@ teste('o ponto de partida só vira alvo quando dá para fechar', async () => {
   ctx.fechar();
 });
 
+teste('demarcar usa o gesto do AREA do AutoCAD, sem a medição', async () => {
+  /* O pedido veio por comparação: "sabe o comando AREA do AutoCAD?". Ele
+     mostra área e perímetro enquanto você clica, fecha no Enter e cancela no
+     Esc — e quem demarca planta aqui já tem esse gesto na mão.
+
+     Faltavam as quatro coisas: o teclado não fazia nada no desenho, a leitura
+     ao vivo só existia no retângulo arrastado, e a prévia do polígono ficava
+     aberta, obrigando a imaginar o último lado. */
+  const { api } = servidorDeTeste();
+  const ctx = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(ctx, { nome: 'André', usuario: 'andre', senha: 'senhaforte1' });
+  await criarObraVazia(ctx);
+  await cadastrarPavimentoComPlanta(ctx, { largura: 1200, altura: 800 });
+
+  const lendo = await ctx.eval(`(() => {
+    sketchProjectId = 'obra-1';
+    sketchFloorIndex = 0;
+    setSketchMode('draw');
+    sketchPoints = [{ x: 300, y: 200 }, { x: 500, y: 200 }, { x: 500, y: 350 }];
+    renderSketchGeometry();
+    const traco = document.querySelector('#sketchDraft').getAttribute('points').trim().split(/\\s+/);
+    return {
+      leitura: document.querySelector('#sketchError').textContent,
+      vertices: traco.length,
+      primeiro: traco[0],
+      ultimo: traco[traco.length - 1]
+    };
+  })()`);
+
+  /* A leitura diz O QUE FAZER, não quanto mede: a área que vale é a digitada
+     no formulário, medida em campo, e `regionArea` prefere esse valor ao
+     estimado pelo polígono. Mostrar a conta da tela durante o traço criaria
+     duas verdades para a mesma área — e a que aparece primeiro é a que gruda. */
+  confirmar(/Enter/.test(lendo.leitura), `a leitura deveria dizer que Enter fecha, e veio "${lendo.leitura}"`);
+  confirmar(/Esc/.test(lendo.leitura), 'e que Esc cancela');
+  confirmar(!/m²/.test(lendo.leitura), 'e NÃO deveria anunciar área durante o desenho');
+  confirmar(!/perímetro/.test(lendo.leitura), 'nem perímetro: a ferramenta demarca, não mede');
+  igual(lendo.vertices, 4, 'a prévia tem de voltar ao ponto inicial, fechando a figura');
+  igual(lendo.primeiro, lendo.ultimo, 'o último ponto da prévia é o primeiro de novo');
+
+  /* Enter fecha. */
+  await ctx.eval(`(() => {
+    const e = new window.Event('keydown', { bubbles: true, cancelable: true });
+    Object.defineProperty(e, 'key', { value: 'Enter' });
+    document.querySelector('#sketchDialog').dispatchEvent(e);
+  })()`);
+  await pausa(400);
+  igual(await ctx.eval('projects[0].floorPlans[0].regions.length'), 1,
+    'Enter tem de fechar a área, como no AutoCAD');
+
+  /* Esc cancela o desenho seguinte sem tocar no que já foi gravado. */
+  await ctx.eval(`(() => {
+    sketchPoints = [{ x: 600, y: 400 }, { x: 700, y: 400 }];
+    renderSketchGeometry();
+    const e = new window.Event('keydown', { bubbles: true, cancelable: true });
+    Object.defineProperty(e, 'key', { value: 'Escape' });
+    document.querySelector('#sketchDialog').dispatchEvent(e);
+  })()`);
+  await pausa(300);
+  igual(await ctx.eval('sketchPoints.length'), 0, 'Esc descarta os pontos em andamento');
+  igual(await ctx.eval('projects[0].floorPlans[0].regions.length'), 1,
+    'e não encosta na área que já estava gravada');
+  ctx.fechar();
+});
+
 teste('a planta se mantém igual vinda de JPEG ou de PDF', async () => {
   /* O PDF nunca chega ao servidor como PDF: `rasterizePlanFile` renderiza a
      primeira página num canvas e entrega JPEG, exatamente como faz com imagem.

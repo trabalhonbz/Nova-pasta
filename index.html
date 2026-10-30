@@ -1898,10 +1898,36 @@
     }
     function drawSketchDraft() {
       const draft = sketchRectDraft ? sketchRectDraft.points : sketchPoints;
-      const closed = sketchRectDraft ? [...draft, draft[0]] : draft;
+      /* A PRÉVIA JÁ APARECE FECHADA a partir do terceiro ponto.
+
+         Antes a linha ficava aberta até o fim, e a pessoa tinha de imaginar o
+         último lado para saber que forma estava criando. Fechar na tela mostra
+         a área de verdade enquanto ela ainda pode ser corrigida — é o que o
+         AREA do AutoCAD faz com a borracha elástica. */
+      const closed = (sketchRectDraft || draft.length >= 3) ? [...draft, draft[0]] : draft;
       document.querySelector('#sketchDraft').setAttribute('points', closed.map((point) => `${Math.round(point.x * 100) / 100},${Math.round(point.y * 100) / 100}`).join(' '));
       const floor = currentSketchFloor();
-      if (sketchRectDraft && floor) document.querySelector('#sketchError').textContent = `${regionDraftAreaText(sketchRectDraft.points, floor)} em seleção…`;
+      if (!floor) return;
+      if (sketchRectDraft) {
+        document.querySelector('#sketchError').textContent = `${regionDraftAreaText(sketchRectDraft.points, floor)} em seleção…`;
+        return;
+      }
+      /* A LEITURA DIZ O QUE FAZER, NÃO QUANTO MEDE.
+
+         Área e perímetro calculados do desenho sairiam diferentes do número
+         que vale: a área do setor é digitada no formulário, medida em campo, e
+         `regionArea` prefere esse valor ao estimado pelo polígono. Mostrar a
+         conta da tela durante o traço criaria duas verdades para a mesma área,
+         e a que aparece primeiro é a que gruda.
+
+         Aqui a ferramenta demarca o lugar; quanto ele tem é assunto da medição. */
+      if (sketchPoints.length >= 3) {
+        document.querySelector('#sketchError').textContent =
+          `${sketchPoints.length} pontos — Enter fecha a área, Esc cancela.`;
+      } else if (sketchPoints.length) {
+        document.querySelector('#sketchError').textContent =
+          `${sketchPoints.length} ponto${sketchPoints.length > 1 ? 's' : ''} — marque ao menos 3 para fechar a área.`;
+      }
     }
     function regionHandles(region) {
       const box = getPointsBounds(region.points);
@@ -3321,6 +3347,26 @@
     });
     document.querySelector('#sketchDialog').addEventListener('keydown', (event) => {
       if (event.key === 'Delete' && sketchMode === 'edit' && selectedRegionId) { event.preventDefault(); deleteSelectedRegion(); }
+      /* Enter fecha e Esc cancela, que é o teclado do comando AREA do AutoCAD
+         — e quem demarca planta aqui já tem esse gesto na mão. Clicar ponto a
+         ponto e procurar o mouse para terminar quebra o ritmo justamente na
+         hora em que a figura está quase pronta.
+
+         Esc não fecha o diálogo quando há desenho em andamento: descartar os
+         pontos é o que a pessoa quer primeiro, e sair da planta inteira por
+         engano custaria recomeçar. */
+      if (sketchMode === 'draw' && event.key === 'Enter' && sketchPoints.length >= 3) {
+        event.preventDefault();
+        finishSketchRegion();
+        return;
+      }
+      if (sketchMode === 'draw' && event.key === 'Escape' && sketchPoints.length) {
+        event.preventDefault();
+        event.stopPropagation();
+        sketchPoints = [];
+        document.querySelector('#sketchError').textContent = 'Demarcação cancelada.';
+        renderSketchGeometry();
+      }
     });
     document.querySelector('#sketchDialog').addEventListener('click', (event) => {
       const button = event.target.closest('[data-sketch-action]');
