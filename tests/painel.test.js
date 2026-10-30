@@ -455,7 +455,7 @@ function prepararDoisSetores(ctx) {
   })()`);
 }
 
-teste('a barra reúne as quatro cores, Demarcar Áreas e Fotos', async () => {
+teste('a barra reúne as quatro cores, Demarcar Áreas, Mover e Edição', async () => {
   const ctx = await boot();
   confirmar(await criarAdministrador(ctx), 'não abriu a sessão');
   prepararDoisSetores(ctx);
@@ -463,7 +463,11 @@ teste('a barra reúne as quatro cores, Demarcar Áreas e Fotos', async () => {
 
   const botoes = [...ctx.doc.querySelectorAll('#paintSwatches [data-paint]')];
   const situacoes = JSON.parse(ctx.eval('JSON.stringify(regionStatusOptions.map((o) => [o.value, o.label]))'));
-  igual(botoes.length, situacoes.length + 2, 'quatro cores mais Demarcar Áreas e Fotos');
+  /* Três ferramentas agora, e não duas: "Mover" ganhou lugar na barra porque
+     o modo de edição existia inteiro no código e não tinha por onde ser
+     ativado — dava para desenhar uma área e não dava para corrigir a
+     posição dela. */
+  igual(botoes.length, situacoes.length + 3, 'quatro cores mais Demarcar Áreas, Mover e Edição');
 
   for (const [valor, rotulo] of situacoes) {
     const botao = ctx.doc.querySelector(`#paintSwatches [data-paint="${valor}"]`);
@@ -476,7 +480,13 @@ teste('a barra reúne as quatro cores, Demarcar Áreas e Fotos', async () => {
     'a barra deveria trazer o botão de demarcar'
   );
   igual(
-    ctx.doc.querySelector('#paintSwatches [data-paint=""] span')?.textContent, 'Fotos',
+    ctx.doc.querySelector('#paintSwatches [data-paint="edit"] span')?.textContent, 'Mover',
+    'a barra deveria trazer o botão de mover e redimensionar'
+  );
+  /* "Fotos" virou "Edição": tocar no setor abre os dados dele, e a
+     fotografia é uma das coisas que estão lá dentro, não a única. */
+  igual(
+    ctx.doc.querySelector('#paintSwatches [data-paint=""] span')?.textContent, 'Edição',
     'a barra deveria manter o acesso às fotografias do local'
   );
   ctx.fechar();

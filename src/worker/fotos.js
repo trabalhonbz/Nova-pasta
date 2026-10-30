@@ -357,8 +357,19 @@ export async function enviarPlanta(env, sessao, pedido, parametros) {
    `/sync/subir` como qualquer outra alteracao de setor. Apagar setor por aqui
    tambem duplicaria a regra em dois lugares. */
 export async function excluirPlanta(env, sessao, pavimentoId) {
-  if (!podeEditarPlanta(sessao)) {
-    return { erro: 'Seu cargo não permite remover plantas.', status: 403 };
+  /* APAGAR PLANTA É SÓ DO ADMINISTRADOR, e por isso tem regra separada de
+     `podeEditarPlanta`.
+
+     A mesma função cobria enviar e apagar, e estreita-la para administrador
+     tiraria do engenheiro e do encarregado o direito de IMPORTAR planta — que
+     e o trabalho deles em campo, e nao foi o que se pediu restringir. Sao
+     acoes de peso diferente: importar acrescenta, apagar remove de todos os
+     aparelhos e derruba o binario do bucket.
+
+     A tela esconde o botao para os demais cargos, e esconder botao nao e
+     permissao: sem esta checagem, bastaria chamar a rota direto. */
+  if (!sessao || sessao.nivelAcesso !== 'administrador') {
+    return { erro: 'Apenas o administrador remove plantas.', status: 403 };
   }
 
   const linha = await env.DB.prepare(

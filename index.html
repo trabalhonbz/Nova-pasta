@@ -244,7 +244,20 @@
          relatório. */
       const demarcando = sketchMode === 'draw';
       swatches.push(`<button type="button" class="paint-tool" data-paint="draw" style="--sw:#4b4b4d;--ink:#fff" aria-pressed="${demarcando}" aria-label="Demarcar áreas: desenhar um novo setor na planta" title="Desenhar um novo setor na planta"${can('regions.edit') ? '' : ' disabled'}><i class="tool" style="background:#898a8c" aria-hidden="true">▭</i><span>Demarcar Áreas</span></button>`);
-      swatches.push(`<button type="button" class="paint-tool" data-paint="" style="--sw:#9a9b9d;--ink:#fff" aria-pressed="${!demarcando && paintStatus === ''}" aria-label="Fotos: tocar num setor abre as fotografias e os dados do local" title="Tocar num setor abre as fotografias e os dados do local"><i class="tool" style="background:#7c7d7f" aria-hidden="true">▣</i><span>Fotos</span></button>`);
+      /* MOVER: a porta que faltava para o modo de edição.
+
+         O modo existia inteiro — arrastar o interior move, as alças de canto
+         redimensionam, Delete apaga, e até o texto de ajuda já estava escrito
+         em `hints.edit` — mas `setSketchMode('edit')` não era chamado em lugar
+         nenhum. Código completo e inalcançável, que é o pior tipo de ausência:
+         parece implementado para quem lê e não existe para quem usa.
+
+         Daí o relato de que não dava para corrigir a posição de uma área já
+         demarcada. Não dava mesmo: errar o lugar obrigava a apagar e
+         redesenhar, perdendo área, situação e datas junto. */
+      const editando = sketchMode === 'edit';
+      swatches.push(`<button type="button" class="paint-tool" data-paint="edit" style="--sw:#6d6e71;--ink:#fff" aria-pressed="${editando}" aria-label="Mover: arrastar e redimensionar uma área já demarcada" title="Arrastar e redimensionar uma área já demarcada"${can('regions.edit') ? '' : ' disabled'}><i class="tool" style="background:#6d6e71" aria-hidden="true">✥</i><span>Mover</span></button>`);
+      swatches.push(`<button type="button" class="paint-tool" data-paint="" style="--sw:#9a9b9d;--ink:#fff" aria-pressed="${!demarcando && !editando && paintStatus === ''}" aria-label="Edição: tocar num setor abre os dados e as fotografias do local" title="Tocar num setor abre os dados e as fotografias do local"><i class="tool" style="background:#7c7d7f" aria-hidden="true">▣</i><span>Edição</span></button>`);
       holder.innerHTML = swatches.join('');
       /* O rótulo da barra repete em palavras o que está ativo, para quem está no
          canteiro com a tela sob sol não depender só do anel de seleção. */
@@ -1569,6 +1582,14 @@
           setSketchMode(sketchMode === 'draw' ? 'pan' : 'draw');
           return;
         }
+        if (button.dataset.paint === 'edit') {
+          if (!requirePermission('regions.edit', 'Seu cargo não permite editar demarcações.')) return;
+          /* Mover e pintar também são excludentes: com uma cor armada o toque
+             pinta, e seria impossível arrastar sem repintar o que se pega. */
+          paintStatus = '';
+          setSketchMode(sketchMode === 'edit' ? 'pan' : 'edit');
+          return;
+        }
         paintStatus = button.dataset.paint;
         if (sketchMode !== 'pan') setSketchMode('pan');
         /* Com uma área já selecionada, a cor vale para ela imediatamente — era o que
@@ -2063,8 +2084,35 @@
          inteira do problema, sem precisar descobrir qual das causas foi. */
       planImage.onerror = () => { recuperarDesenhoDaPlanta(floor); };
       document.querySelector('#planFileName').textContent = floor.planFileName || 'Nenhuma planta importada';
+      /* Remover planta é AÇÃO DE ADMINISTRADOR, e some para os demais.
+
+         Antes bastava `regions.edit`, que inclui engenheiro e encarregado —
+         os dois cargos que mais abrem o croqui em campo. A remoção vale para
+         todos os aparelhos e apaga o binário no servidor: é a ação mais
+         destrutiva da tela, e a que menos precisa estar à mão de quem está
+         medindo área no canteiro.
+
+         Escondido, e não apenas desabilitado: botão cinza convida a tentar, e
+         a tentativa só devolve recusa. O que não é para este cargo não ocupa
+         espaço na barra. */
+      document.querySelector('#removePlan').hidden = !can('users.manage');
       document.querySelector('#removePlan').disabled = !floor.planImage;
       document.querySelector('#floorAreaInput').value = areaInputValue(floor.area);
+      /* O seletor "Marcação" acompanha a área selecionada.
+
+         Ele mostra situação, e por isso precisa dizer a verdade sobre a área
+         que está selecionada. Só `saveRegionData` o atualizava: pintar pela
+         barra de cores trocava `region.status` e a cor do polígono, e o
+         seletor seguia no valor anterior — a área ficava vermelha com
+         "Em execução" escrito ao lado, que é a contradição que se via na tela.
+
+         A correção mora aqui, e não em cada caminho que muda situação, porque
+         foi exatamente o remendo caminho a caminho que deixou este ponto para
+         trás. `renderSketch()` roda depois de toda alteração; sincronizar o
+         seletor aqui cobre a barra de cores, o painel do local e o formulário
+         de uma vez, e qualquer caminho novo nasce coberto. */
+      const areaSelecionada = floor.regions.find((item) => item.id === selectedRegionId);
+      if (areaSelecionada) document.querySelector('#regionStatus').value = areaSelecionada.status;
       document.querySelector('#floorAreaReadout').textContent = `${formatNumber(floor.area)} m²`;
       document.querySelector('#executedAreaReadout').textContent = `${formatNumber(floorAreaByStatus(floor, 'executed'))} m²`;
       document.querySelector('#executedAreaReadout').nextElementSibling.textContent = statusLabelOf('executed');
@@ -2082,7 +2130,8 @@
       renderPaintSwatches();
       const canEditRegions = can('regions.edit');
       document.querySelectorAll('[data-sketch-action="clear"],#floorPlanFile,#floorAreaInput').forEach((element) => { element.disabled = !canEditRegions; });
-      document.querySelector('#removePlan').disabled = !canEditRegions || !floor.planImage;
+      document.querySelector('#removePlan').hidden = !can('users.manage');
+      document.querySelector('#removePlan').disabled = !can('users.manage') || !floor.planImage;
       document.querySelector('.plan-import').hidden = !canEditRegions;
       clampPlanView();
       const rounded = [planView.x, planView.y, planView.width, planView.height].map((value) => Math.round(value * 100) / 100);
@@ -2825,6 +2874,20 @@
         else item.removeAttribute('aria-current');
       });
       document.querySelectorAll('.view').forEach((section) => section.classList.toggle('active', section.id === `${view}View`));
+      /* Abrir Relatórios pede o que falta na hora, em vez de esperar a busca
+         periódica.
+
+         Ela roda de minuto em minuto, e quem abre a tela logo depois de um
+         colega subir uma planta esperava até sessenta segundos olhando um
+         pavimento sem desenho — sem nada dizendo que era espera. É a tela em
+         que o atraso mais custa, porque é dela que sai a folha impressa.
+
+         Só descida: abrir uma tela não é motivo para empurrar estado ao
+         servidor. */
+      if (view === 'reports' && comServidor && currentUser) {
+        sincronizarComServidor({ apenasBaixar: true })
+          .catch((falha) => console.warn('Busca ao abrir relatórios adiada:', falha.message));
+      }
       const [eyebrow, title, description] = pageMeta[view];
       document.querySelector('#pageEyebrow').textContent = eyebrow;
       document.querySelector('#pageTitle').textContent = title;
@@ -3053,6 +3116,18 @@
       if (pinchGesture && activeSketchPointers.size < 2) pinchGesture = null;
     }
     sketchCanvas.addEventListener('pointerdown', (event) => {
+      /* SÓ O BOTÃO PRIMÁRIO DESENHA.
+
+         Sem esta linha, qualquer botão do mouse abria um retângulo: clicar com
+         a RODINHA criava uma demarcação, e com o botão direito também — junto
+         com o menu de contexto. Quem rolava a planta apertando a rodinha saía
+         com setores de 0 m² espalhados sem entender de onde vinham.
+
+         A checagem vale só para mouse. Em toque e caneta o `button` é sempre 0,
+         e filtrar por tipo evita que uma mudança futura na especificação de
+         ponteiros derrube o gesto de dois dedos, que depende deste mesmo
+         manipulador. */
+      if (event.pointerType === 'mouse' && event.button !== 0) return;
       activeSketchPointers.set(event.pointerId, { clientX: event.clientX, clientY: event.clientY });
       if (activeSketchPointers.size === 2) { startPinchGesture(); event.preventDefault(); return; }
       if (activeSketchPointers.size > 2 || pinchGesture) return;
@@ -4972,7 +5047,45 @@
        O limite por rodada existe porque a planta pesa centenas de KB: uma obra
        com vinte pavimentos baixaria vários MB de uma vez, travando a tela num
        celular em rede de obra. O resto vem na sincronização seguinte. */
-    async function baixarPlantasFaltantes(limite = 5) {
+    /* Baixa em lotes PARALELOS, com um teto de simultaneidade.
+
+       Em fila, cada arquivo espera o anterior terminar, e o tempo total é a
+       soma das esperas de rede — que no computador são quase todas latência,
+       não transferência. Quatro de cada vez aproveita a conexão boa sem
+       disparar trinta pedidos juntos no 4G da obra, que é o outro extremo.
+
+       O teto é por rodada de lote, não por rodada de sincronização: o laço de
+       quem chama é que decide quando parar. */
+    async function baixarEmLotes(itens, simultaneos, baixarUm) {
+      let feitos = 0;
+      for (let inicio = 0; inicio < itens.length; inicio += simultaneos) {
+        const lote = itens.slice(inicio, inicio + simultaneos);
+        const resultados = await Promise.all(lote.map((item) => baixarUm(item).catch(() => false)));
+        feitos += resultados.filter(Boolean).length;
+      }
+      return feitos;
+    }
+
+    /* QUANTAS PLANTAS E FOTOS VÊM POR RODADA.
+
+       Os limites de 5 plantas e 20 fotos foram calibrados para o celular na
+       obra, e no computador viravam só espera: com doze plantas, o relatório
+       levava dois minutos para ficar inteiro, porque o resto só chegava na
+       busca seguinte — e ela roda de minuto em minuto.
+
+       `saveData` ligado é a pessoa pedindo economia, e `effectiveType` abaixo
+       de 4g é rede fraca de verdade; nos dois casos o comportamento antigo
+       continua valendo. Na ausência da informação — que é o caso da maioria
+       dos navegadores de computador — assume-se conexão boa, porque é onde o
+       problema aparece. */
+    function redeEconomica() {
+      const rede = navigator.connection;
+      if (!rede) return false;
+      if (rede.saveData) return true;
+      return ['slow-2g', '2g', '3g'].includes(rede.effectiveType);
+    }
+
+    async function baixarPlantasFaltantes(limite = redeEconomica() ? 5 : 400) {
       if (!comServidor || !await temMidia()) return 0;
       const faltando = [];
       for (const project of projects) {
@@ -4988,18 +5101,36 @@
       }
       if (!faltando.length) return 0;
 
-      let baixadas = 0;
-      for (const floor of faltando.slice(0, limite)) {
+      /* A planta é o que trava o relatório: sem ela a folha sai sem o desenho,
+         e é justamente a folha que a pessoa quer imprimir. Por isso vêm todas
+         de uma vez na conexão boa, em vez de cinco por rodada. */
+      const alvo = faltando.slice(0, limite);
+      anunciarDownload(alvo.length, 'planta');
+      const baixadas = await baixarEmLotes(alvo, redeEconomica() ? 2 : 4, async (floor) => {
         const url = await window.NBZApi.baixarPlanta(floor.id);
-        if (url) {
-          floor.planImage = url;
-          baixadas += 1;
-        }
-      }
+        if (!url) return false;
+        floor.planImage = url;
+        return true;
+      });
+      anunciarDownload(0, 'planta');
       return baixadas;
     }
 
-    async function baixarFotosFaltantes(limite = 20) {
+    /* Diz na tela que ainda falta coisa chegando.
+
+       Sem isto a espera é indistinguível de defeito: a pessoa abre o relatório,
+       vê pavimento sem planta e conclui que a planta se perdeu — foi o que já
+       aconteceu antes por outro motivo. Dizer "baixando 7" transforma falha
+       aparente em espera explicada. */
+    function anunciarDownload(quantos, tipo) {
+      const alvo = document.querySelector('#syncIndicator');
+      if (!alvo) return;
+      if (!quantos) { alvo.hidden = !pendingChanges; if (!pendingChanges) alvo.textContent = ''; return; }
+      alvo.hidden = false;
+      alvo.textContent = `↓ baixando ${quantos} ${tipo}${quantos > 1 ? 's' : ''}…`;
+    }
+
+    async function baixarFotosFaltantes(limite = redeEconomica() ? 20 : 80) {
       if (!comServidor || !await temMidia()) return 0;
       const faltando = [];
       for (const project of projects) {
@@ -5011,14 +5142,23 @@
       }
       if (!faltando.length) return 0;
 
-      let baixadas = 0;
-      for (const photo of faltando.slice(0, limite)) {
+      /* Fotografia mantém teto por rodada, ao contrário da planta.
+
+         A diferença é de volume e de urgência: uma obra acumula centenas de
+         fotos e só algumas estão à vista, enquanto a planta é uma por
+         pavimento e sem ela o relatório sai sem o desenho. Puxar tudo de uma
+         vez gastaria rede e cota do bucket para encher uma galeria que
+         ninguém abriu. O teto subiu de 20 para 80 na conexão boa, o que cobre
+         uma visita inteira numa rodada só. */
+      const alvo = faltando.slice(0, limite);
+      anunciarDownload(alvo.length, 'foto');
+      const baixadas = await baixarEmLotes(alvo, redeEconomica() ? 2 : 4, async (photo) => {
         const url = await window.NBZApi.baixarFoto(photo.id);
-        if (url) {
-          photo.data = url;
-          baixadas += 1;
-        }
-      }
+        if (!url) return false;
+        photo.data = url;
+        return true;
+      });
+      anunciarDownload(0, 'foto');
       return baixadas;
     }
 

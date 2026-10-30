@@ -1372,6 +1372,185 @@ teste('retirar o acesso tira a obra do aparelho do colega', async () => {
   colega.fechar();
 });
 
+teste('trocar a cor leva o seletor Marcação junto', async () => {
+  /* O relato: "demarco com azul (Executando), troco para vermelho (Não
+     Liberado), a cor muda mas o status continua Executando."
+
+     Só `saveRegionData` atualizava o seletor. Pintar pela barra de cores
+     trocava `region.status` e a cor do polígono e deixava o seletor para trás,
+     então a área ficava vermelha com "Em execução" escrito ao lado. */
+  const { api } = servidorDeTeste();
+  const ctx = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(ctx, { nome: 'André', usuario: 'andre', senha: 'senhaforte1' });
+  await criarObraVazia(ctx);
+  await cadastrarPavimentoComPlanta(ctx, { largura: 1200, altura: 800 });
+
+  await ctx.eval(`(() => {
+    sketchProjectId = 'obra-1';
+    sketchFloorIndex = 0;
+    projects[0].floorPlans[0].regions.push({
+      id: 'set-x', name: 'SETOR 1', status: 'inProgress',
+      points: [{ x: 150, y: 120 }, { x: 300, y: 120 }, { x: 300, y: 260 }, { x: 150, y: 260 }], area: 12
+    });
+    selectedRegionId = 'set-x';
+    saveState();
+    renderSketch();
+  })()`);
+  await pausa(300);
+
+  igual(await ctx.eval(`document.querySelector('#regionStatus').value`), 'inProgress',
+    'pré-condição: o seletor começa na situação da área');
+
+  /* Pinta de vermelho pela barra, que é o caminho do relato. */
+  await ctx.eval(`(() => {
+    document.querySelector('[data-paint="blocked"]').dispatchEvent(new window.Event('click', { bubbles: true }));
+  })()`);
+  await pausa(400);
+
+  const depois = await ctx.eval(`(() => {
+    const r = projects[0].floorPlans[0].regions.find((i) => i.id === 'set-x');
+    const poligono = document.querySelector('[data-region-id="set-x"]');
+    return {
+      status: r.status,
+      seletor: document.querySelector('#regionStatus').value,
+      cor: poligono ? poligono.getAttribute('fill') : ''
+    };
+  })()`);
+
+  igual(depois.status, 'blocked', 'a situação da área tem de mudar');
+  igual(depois.cor, '#f44336', 'e a cor do polígono acompanhar');
+  igual(depois.seletor, 'blocked',
+    `o seletor Marcação tem de acompanhar, e ficou em "${depois.seletor}"`);
+  ctx.fechar();
+});
+
+teste('o botão do meio do mouse não cria demarcação', async () => {
+  /* O relato: usar a rodinha do mouse criava áreas de 0 m² sem explicação. O
+     `pointerdown` aceitava qualquer botão, então clicar com a rodinha — ou com
+     o direito — abria um retângulo igual ao clique esquerdo. */
+  const { api } = servidorDeTeste();
+  const ctx = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(ctx, { nome: 'André', usuario: 'andre', senha: 'senhaforte1' });
+  await criarObraVazia(ctx);
+  await cadastrarPavimentoComPlanta(ctx, { largura: 1200, altura: 800 });
+
+  /* O SVG no jsdom tem tamanho zero, então a coordenada real cai fora da
+     planta e NENHUM botão desenharia — as asserções passariam pelo motivo
+     errado, sem provar nada sobre a checagem de botão. Fixando o ponto dentro
+     dos limites, o que sobra em jogo é exatamente o botão. */
+  await ctx.eval(`(() => {
+    sketchProjectId = 'obra-1';
+    sketchFloorIndex = 0;
+    setSketchMode('draw');
+    eventToSketchPoint = () => ({ x: 400, y: 300 });
+  })()`);
+  await pausa(250);
+
+  const resultado = await ctx.eval(`(() => {
+    const canvas = document.querySelector('#sketchCanvas');
+    const evento = (tipo, button) => {
+      const e = new window.Event(tipo, { bubbles: true, cancelable: true });
+      Object.defineProperties(e, {
+        pointerId: { value: 1 }, pointerType: { value: 'mouse' }, button: { value: button },
+        clientX: { value: 300 }, clientY: { value: 200 }
+      });
+      canvas.dispatchEvent(e);
+    };
+    evento('pointerdown', 1);                 // botão do meio
+    const comMeio = Boolean(sketchRectDraft);
+    evento('pointerdown', 2);                 // botão direito
+    const comDireito = Boolean(sketchRectDraft);
+    evento('pointerdown', 0);                 // primário, que deve funcionar
+    const comPrimario = Boolean(sketchRectDraft);
+    sketchRectDraft = null;
+    return { comMeio, comDireito, comPrimario };
+  })()`);
+
+  igual(resultado.comMeio, false, 'a rodinha não pode abrir demarcação');
+  igual(resultado.comDireito, false, 'o botão direito também não');
+  igual(resultado.comPrimario, true, 'e o botão primário tem de continuar desenhando');
+  ctx.fechar();
+});
+
+teste('o modo Mover existe e é alcançável pela barra', async () => {
+  /* O modo de edição estava inteiro no código — arrastar move, as alças
+     redimensionam, Delete apaga — e `setSketchMode('edit')` não era chamado em
+     lugar nenhum. Código completo e sem porta: parecia implementado para quem
+     lia e não existia para quem usava. */
+  const { api } = servidorDeTeste();
+  const ctx = await boot({ api });
+  await pausa(600);
+  await preencherCadastroInicial(ctx, { nome: 'André', usuario: 'andre', senha: 'senhaforte1' });
+  await criarObraVazia(ctx);
+  await cadastrarPavimentoComPlanta(ctx, { largura: 1200, altura: 800 });
+  await ctx.eval(`(() => { sketchProjectId = 'obra-1'; sketchFloorIndex = 0; renderSketch(); })()`);
+  await pausa(250);
+
+  confirmar(await ctx.eval(`Boolean(document.querySelector('[data-paint="edit"]'))`),
+    'a barra precisa oferecer o botão Mover');
+
+  await ctx.eval(`document.querySelector('[data-paint="edit"]').dispatchEvent(new window.Event('click', { bubbles: true }))`);
+  await pausa(300);
+  igual(await ctx.eval('sketchMode'), 'edit', 'clicar em Mover entra no modo de edição');
+
+  /* E volta, para o botão não virar uma armadilha sem saída. */
+  await ctx.eval(`document.querySelector('[data-paint="edit"]').dispatchEvent(new window.Event('click', { bubbles: true }))`);
+  await pausa(300);
+  igual(await ctx.eval('sketchMode'), 'pan', 'clicar de novo volta para a navegação');
+  ctx.fechar();
+});
+
+teste('remover planta é só do administrador, na tela e na rota', async () => {
+  /* Esconder botão não é permissão: a checagem que vale é a do servidor.
+     Importar continua liberado para engenheiro e encarregado — é o trabalho
+     deles em campo, e restringir isso não foi o que se pediu. */
+  const { api, db } = servidorDeTeste();
+  const admin = await boot({ api });
+  admin.__api = api;
+  await pausa(600);
+  await preencherCadastroInicial(admin, { nome: 'André', usuario: 'andre', senha: 'senhaforte1' });
+  await criarObraVazia(admin);
+  await cadastrarPavimentoComPlanta(admin, { largura: 1200, altura: 800 });
+  await admin.eval('sincronizarComServidor()');
+  await pausa(900);
+
+  const pavimentoId = await admin.eval('projects[0].floorPlans[0].id');
+  confirmar(
+    db.prepare('select planta_r2_key from pavimentos where id = ?').get(pavimentoId).planta_r2_key,
+    'pré-condição: a planta subiu'
+  );
+
+  /* O administrador vê o botão. */
+  await admin.eval(`(() => { sketchProjectId = 'obra-1'; sketchFloorIndex = 0; renderSketch(); })()`);
+  await pausa(250);
+  igual(await admin.eval(`document.querySelector('#removePlan').hidden`), false,
+    'o administrador continua enxergando o botão');
+
+  /* O engenheiro não vê — e a rota recusa mesmo chamada direto. */
+  const colega = await criarColegaComSenhaPropria(admin, {
+    nome: 'Nicolas', usuario: 'nicolas', provisoria: 'provisoria123', definitiva: 'senhadele456'
+  });
+  await pausa(1200);
+  await colega.eval(`(() => { sketchProjectId = 'obra-1'; sketchFloorIndex = 0; renderSketch(); })()`);
+  await pausa(250);
+  igual(await colega.eval(`document.querySelector('#removePlan').hidden`), true,
+    'para o engenheiro o botão some');
+
+  const recusa = await colega.eval(`(async () => {
+    try { await window.NBZApi.excluirPlanta(${JSON.stringify(pavimentoId)}); return 'passou'; }
+    catch (e) { return String(e.status || e.message); }
+  })()`);
+  igual(recusa, '403', `a rota tem de recusar o engenheiro, e respondeu "${recusa}"`);
+  confirmar(
+    db.prepare('select planta_r2_key from pavimentos where id = ?').get(pavimentoId).planta_r2_key,
+    'e a planta continua no servidor'
+  );
+  admin.fechar();
+  colega.fechar();
+});
+
 teste('a planta se mantém igual vinda de JPEG ou de PDF', async () => {
   /* O PDF nunca chega ao servidor como PDF: `rasterizePlanFile` renderiza a
      primeira página num canvas e entrega JPEG, exatamente como faz com imagem.
@@ -3310,9 +3489,34 @@ teste('técnico não apaga planta nem chamando a rota direto', async () => {
   );
   igual(envioRecusado.status, 403, 'o técnico também não importa planta');
 
-  /* Contraprova: encarregado tem `regions.edit` e precisa continuar podendo. */
-  const permitido = await fotos.excluirPlanta(env, { id: 'u2', nivelAcesso: 'encarregado' }, 'pav-1');
-  confirmar(!permitido.erro, `encarregado deveria poder remover, e veio "${permitido.erro || ''}"`);
+  /* APAGAR PLANTA PASSOU A SER SÓ DO ADMINISTRADOR.
+
+     A regra mudou a pedido: a remoção vale para todos os aparelhos e derruba o
+     binário do bucket, e é a ação mais destrutiva da tela de planta. O
+     encarregado e o engenheiro, que são quem mais abre o croqui em campo,
+     deixaram de apagar — mas continuam IMPORTANDO, que é o trabalho deles.
+     São ações de peso diferente: uma acrescenta, a outra remove de todos. */
+  const encarregadoRecusado = await fotos.excluirPlanta(env, { id: 'u2', nivelAcesso: 'encarregado' }, 'pav-1');
+  igual(encarregadoRecusado.status, 403, 'encarregado não apaga mais planta');
+  const engenheiroRecusado = await fotos.excluirPlanta(env, { id: 'u2', nivelAcesso: 'engenheiro' }, 'pav-1');
+  igual(engenheiroRecusado.status, 403, 'engenheiro também não');
+  confirmar(
+    db.prepare('select planta_r2_key from pavimentos where id = ?').get('pav-1').planta_r2_key,
+    'e a planta continua no servidor depois das duas recusas'
+  );
+
+  /* Contraprova dupla: o administrador apaga, e o encarregado segue importando
+     — senão a restrição teria quebrado o uso em campo em vez de protegê-lo. */
+  const envioDoEncarregado = await fotos.enviarPlanta(
+    env, { id: 'u2', nivelAcesso: 'encarregado' },
+    { headers: { get: () => null }, arrayBuffer: () => Promise.resolve(new Uint8Array(20).buffer) },
+    new URLSearchParams({ pavimento: 'pav-1' })
+  );
+  confirmar(envioDoEncarregado.status !== 403,
+    'encarregado tem de continuar podendo importar planta');
+
+  const permitido = await fotos.excluirPlanta(env, { id: 'u0', nivelAcesso: 'administrador' }, 'pav-1');
+  confirmar(!permitido.erro, `o administrador deveria poder remover, e veio "${permitido.erro || ''}"`);
   igual(
     db.prepare('select planta_r2_key from pavimentos where id = ?').get('pav-1').planta_r2_key, null,
     'e a remoção dele tem de valer'
